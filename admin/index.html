@@ -39,9 +39,42 @@
     <section class="panel" id="list-panel">
       <div class="panel__head">
         <input type="search" id="list-filter" placeholder="Filter…">
+        <button id="bulk-upload" hidden>⇪ Bulk upload</button>
         <button id="new-record">+ New</button>
       </div>
       <table class="list" id="list"></table>
+    </section>
+
+    <!-- BULK MEDIA UPLOAD -->
+    <section class="editor" id="bulk-panel" hidden>
+      <div class="editor__head">
+        <button type="button" id="bulk-close" class="editor__back">&larr; Back to list</button>
+        <h2>Bulk upload media</h2>
+      </div>
+      <p class="bulk__intro">Shared credit/rights/type apply to every file. Alt text is required per
+        file (see non-negotiable #1). Files upload as separate media records.</p>
+      <div class="drawer__fields">
+        <label>Type
+          <select id="bulk-type"></select>
+        </label>
+        <label>Rights *
+          <select id="bulk-rights"></select>
+        </label>
+        <label class="span-2">Credit *
+          <input type="text" id="bulk-credit" placeholder="e.g. Photo © Jane Collector, used with permission">
+        </label>
+        <label class="span-2">Source URL
+          <input type="text" id="bulk-source">
+        </label>
+        <label class="span-2">Choose files
+          <input type="file" id="bulk-files" accept="image/*,.pdf" multiple>
+        </label>
+      </div>
+      <div class="bulk__grid" id="bulk-grid"></div>
+      <div class="drawer__actions">
+        <button type="button" id="bulk-submit">Upload all</button>
+        <span class="drawer__status" id="bulk-status"></span>
+      </div>
     </section>
 
     <!-- FULL-PAGE EDITOR -->
@@ -53,6 +86,7 @@
       <form id="record-form">
         <div class="drawer__fields" id="drawer-fields"></div>
         <div class="drawer__links" id="drawer-links"></div>
+        <div class="drawer__credits" id="drawer-credits"></div>
         <div class="drawer__media" id="drawer-media"></div>
         <div class="drawer__actions">
           <button type="submit" id="save">Save</button>

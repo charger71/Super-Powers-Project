@@ -120,6 +120,7 @@ create table creators (
   slug        text unique not null,            -- 'george-perez'
   name        text not null,
   role_summary text,                           -- 'Artist / designer'
+  overview    text,                            -- short lede above the bio (public page)
   bio         text,
   birth_year  smallint,
   death_year  smallint,
@@ -247,6 +248,8 @@ create index on media_characters (character_id, role);
 create table media_creators (
   media_id   uuid references media_assets(id) on delete cascade,
   creator_id uuid references creators(id)     on delete cascade,
+  sort_order smallint default 0,
+  is_primary boolean default false,           -- the headshot/portrait
   primary key (media_id, creator_id)
 );
 create table media_variations (
@@ -315,6 +318,7 @@ create table publication_creators (
 create table publication_characters (
   publication_id uuid references publications(id) on delete cascade,
   character_id   uuid references characters(id)   on delete cascade,
+  sort_order     int default 0,                   -- editorial order in the admin's link editor
   primary key (publication_id, character_id)
 );
 

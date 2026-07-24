@@ -169,6 +169,7 @@ async function fetchReleases() {
     'releases?select=*,series(name,year),lines(name,slug,sort_order),' +
     'characters!releases_character_id_fkey(name,slug),' +
     'release_characters(character_id,characters(name,slug)),' +
+    'release_creators(role,creators(name,slug)),' +
     `media_releases(is_primary,sort_order,${MEDIA_EMBED})`
   );
   return list.sort(releaseOrder);
@@ -217,6 +218,25 @@ async function fetchMerchandise() {
     );
   } catch {
     console.warn('Merchandise unavailable (is the media_merchandise migration applied?) — building without the merchandise section.');
+    return [];
+  }
+}
+
+// Creators — public bio pages. Each carries an optional photo (media_creators)
+// and its "credited work" is derived from the reverse join tables (toys via
+// release_creators, comics via publication_creators). Tolerant: if the
+// overview/photo columns aren't migrated yet, build without creator pages.
+async function fetchCreators() {
+  try {
+    return await rest(
+      'creators?select=*,' +
+      `media_creators(is_primary,sort_order,${MEDIA_EMBED}),` +
+      'release_creators(role,releases(name,slug,type,release_year)),' +
+      'publication_creators(role,publications(title,slug,kind,year))' +
+      '&order=name.asc'
+    );
+  } catch {
+    console.warn('Creators unavailable (is the creator_pages migration applied?) — building without creator pages.');
     return [];
   }
 }
@@ -317,6 +337,7 @@ ${body}
             <li><a href="/index.html#timeline">Timeline</a></li>
             <li><a href="/toys/index.html">Toy Database</a></li>
             <li><a href="/comics/index.html">Comic Database</a></li>
+            <li><a href="/creators/index.html">Creators</a></li>
             <li><a href="/media/index.html">In the Media</a></li>
             <li><a href="/merchandise/index.html">Merchandise</a></li>
             <li><a href="/index.html#search">Search</a></li>
@@ -676,6 +697,18 @@ function renderReleasePage(r, variations, adj) {
           </ul>
         </div>` : '';
 
+  // Design/sculpt/packaging credits, linking to each creator's bio page
+  // (mirrors the comic page's Credits section).
+  const credits = (r.release_creators ?? [])
+    .map((rc) => ({ ...rc.creators, role: rc.role })).filter((c) => c?.name);
+  const creditsSection = credits.length ? `
+        <section class="dossier-about">
+          <h3>Credits</h3>
+          <ul class="credits-list">
+            ${credits.map((c) => `<li><a href="/creators/${esc(c.slug)}.html">${esc(c.name)}</a>${c.role ? ` — ${esc(c.role)}` : ''}</li>`).join('\n            ')}
+          </ul>
+        </section>` : '';
+
   const variationsSection = (variations ?? []).length ? `
   <section class="release-variations">
     <div class="wrap">
@@ -762,6 +795,7 @@ ${backAndCrumb([
       <article class="dossier-lede">
 ${galleryInline}
 ${notesSection}
+${creditsSection}
 ${sourcesSection}
       </article>
 
@@ -1206,7 +1240,7 @@ function renderPublicationPage(p, packedRelease, adj) {
         <section class="dossier-about">
           <h3>Credits</h3>
           <ul class="credits-list">
-            ${creators.map((c) => `<li><a href="/index.html#creators">${esc(c.name)}</a>${c.role ? ` — ${esc(c.role)}` : ''}</li>`).join('\n            ')}
+            ${creators.map((c) => `<li><a href="/creators/${esc(c.slug)}.html">${esc(c.name)}</a>${c.role ? ` — ${esc(c.role)}` : ''}</li>`).join('\n            ')}
           </ul>
         </section>` : '';
 
@@ -1249,12 +1283,12 @@ ${backAndCrumb([
 
       <article class="dossier-lede">
         <section class="release-gallery-block">
-          <p class="dek">Cover</p>
+          <p class="dek">${media.length > 1 ? 'Cover &amp; Interiors' : 'Cover'}</p>
           <div class="release-gallery">
-            <figure>
-              ${lbTrigger(media[0] ?? { storage_path: null, embed_url: cover, alt_text: p.title, credit: '' }, `pub-${p.slug}`, p.title)}
-              ${media[0]?.credit ? `<figcaption>Scan: ${esc(media[0].credit)}</figcaption>` : ''}
-            </figure>
+            ${(media.length ? media : [{ storage_path: null, embed_url: cover, alt_text: p.title, credit: '' }]).map((m) => `<figure>
+              ${lbTrigger(m, `pub-${p.slug}`, p.title)}
+              ${m.credit ? `<figcaption>Scan: ${esc(m.credit)}</figcaption>` : ''}
+            </figure>`).join('\n            ')}
           </div>
         </section>
 ${descSection}
@@ -1276,6 +1310,177 @@ ${charsSection}
 ${pager('comics', adj?.prev, adj?.next)}`;
 
   return pageShell({ title: p.title, description, ogImage: cover, body });
+}
+
+// ---- creator (bio) detail page ------------------------------------------
+
+// Combine the reverse-join rows into one entry per credited work, collecting
+// the roles this creator held on it (a creator can be both writer and cover).
+function groupCredits(rows, embed, keyOf) {
+  const map = new Map();
+  for (const row of rows ?? []) {
+    const item = row[embed];
+    if (!item) continue;
+    const key = keyOf(item);
+    const entry = map.get(key) ?? { ...item, roles: [] };
+    if (row.role) entry.roles.push(row.role);
+    map.set(key, entry);
+  }
+  return [...map.values()];
+}
+
+const creditRoles = (roles) => roles.length
+  ? ` — ${esc([...new Set(roles)].join(', '))}` : '';
+
+function renderCreatorPage(cr, adj) {
+  const photo = sortedMedia(cr.media_creators)[0];
+  const portrait = mediaUrl(photo) ?? PLACEHOLDER;
+  const portraitAlt = photo?.alt_text ?? `${cr.name} — portrait`;
+
+  const description = stripTags(cr.overview ?? cr.bio ?? cr.role_summary
+    ?? `${cr.name} — a creator behind the DC Super Powers Collection.`).slice(0, 158);
+
+  let lifespan = null;
+  if (cr.birth_year && cr.death_year) lifespan = `${cr.birth_year}–${cr.death_year}`;
+  else if (cr.birth_year) lifespan = `b. ${cr.birth_year}`;
+  else if (cr.death_year) lifespan = `d. ${cr.death_year}`;
+
+  const toys = groupCredits(cr.release_creators, 'releases', (r) => r.slug)
+    .sort((a, b) => (a.release_year ?? 9999) - (b.release_year ?? 9999) || a.name.localeCompare(b.name));
+  const comics = groupCredits(cr.publication_creators, 'publications', (p) => p.slug)
+    .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999) || a.title.localeCompare(b.title));
+
+  const spec = specRows([
+    ['Role', cr.role_summary],
+    ['Years', lifespan],
+    ['Toys credited', toys.length || null],
+    ['Comics credited', comics.length || null],
+  ]);
+
+  const portraitSidebar = `
+      <img class="dossier-portrait" src="${esc(portrait)}" alt="${esc(portraitAlt)}">
+      ${photo?.credit ? `<p class="dek dek--sm">Photo: ${esc(photo.credit)}</p>` : ''}`;
+
+  const overviewSection = cr.overview ? `
+        <section class="dossier-about">
+          ${richText(cr.overview)}
+        </section>` : '';
+
+  const bioSection = cr.bio ? `
+        <section class="dossier-about">
+          <h3>Biography</h3>
+          ${richText(cr.bio)}
+        </section>` : '';
+
+  const creditList = (items, hrefBase, labelOf, metaOf) => `
+          <ul class="credits-list">
+            ${items.map((it) => `<li><a href="/${hrefBase}/${esc(it.slug)}.html">${esc(labelOf(it))}</a>${metaOf(it) ? ` <span class="credit-meta">${esc(metaOf(it))}</span>` : ''}${creditRoles(it.roles)}</li>`).join('\n            ')}
+          </ul>`;
+
+  const creditedSection = (toys.length || comics.length) ? `
+        <section class="dossier-about">
+          <h3>Credited Work</h3>
+          ${toys.length ? `<p class="dek">Toys &amp; Figures</p>${creditList(toys, 'release', (r) => r.name, (r) => [r.release_year, titleCase(r.type)].filter(Boolean).join(' · '))}` : ''}
+          ${comics.length ? `<p class="dek">Comics</p>${creditList(comics, 'comics', (p) => p.title, (p) => p.year ? String(p.year) : '')}` : ''}
+        </section>` : `
+        <section class="dossier-about">
+          <p class="hint">No credited work recorded yet.</p>
+        </section>`;
+
+  const subtitle = [cr.role_summary, lifespan].filter(Boolean).join(' · ');
+
+  const body = `
+  <section class="dossier-head">
+    <div class="wrap">
+${backAndCrumb([
+  { label: 'Home', href: '/index.html' },
+  { label: 'Creators', href: '/creators/index.html' },
+  { label: cr.name },
+])}
+
+      <div class="dossier-head__tags">
+        <span class="dossier-tag dossier-tag--blue">Creator</span>
+      </div>
+
+      <h1 class="dossier-title">${esc(cr.name)}</h1>
+      ${subtitle ? `<p class="dossier-aliases">${esc(subtitle)}</p>` : ''}
+    </div>
+  </section>
+
+  <section class="dossier-body">
+    <div class="wrap dossier-body__grid">
+
+      <article class="dossier-lede">
+${overviewSection}
+${bioSection}
+${creditedSection}
+      </article>
+
+      <div class="dossier-sidebar">
+${portraitSidebar}
+        <aside class="dossier-spec">
+          <p class="dek">Details</p>
+          <dl>
+            ${spec}
+          </dl>
+        </aside>
+      </div>
+
+    </div>
+  </section>
+${pager('creators', adj?.prev, adj?.next)}`;
+
+  return pageShell({ title: cr.name, description, ogImage: portrait, body });
+}
+
+function renderCreatorIndex(creators) {
+  const card = (cr) => {
+    const portrait = mediaUrl(sortedMedia(cr.media_creators)[0]) ?? PLACEHOLDER;
+    const credits = (cr.release_creators?.length ?? 0) + (cr.publication_creators?.length ?? 0);
+    const meta = [cr.role_summary, credits ? `${credits} credit${credits === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ');
+    return `<a class="figure-card" href="/creators/${esc(cr.slug)}.html">
+          <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
+            <img class="figure-card__photo" src="${esc(portrait)}" alt="${esc(cr.name)} — portrait">
+          </div>
+          <h3>${esc(cr.name)}</h3>
+          ${meta ? `<p class="figure-card__meta">${esc(meta)}</p>` : ''}
+        </a>`;
+  };
+
+  const body = `${indexHead(
+    'Creators',
+    '<span class="dossier-tag dossier-tag--blue">Bylines</span>',
+    'Creators',
+    'The writers, artists, and designers behind Super Powers',
+  )}
+
+  <section class="dossier-body">
+    <div class="wrap">
+      <article class="dossier-lede media-lede">
+        <p class="dek">Overview</p>
+        <p>The people who designed, wrote, and drew the Super Powers line — ${creators.length} creator${creators.length === 1 ? '' : 's'}. Each page collects an overview, a biography, and every toy and comic credited to them in the archive.</p>
+      </article>
+    </div>
+  </section>
+
+  <div class="star-bar" aria-hidden="true"></div>
+  <div class="roster roster--blue">
+  <section class="roster-group">
+    <div class="wrap">
+      <div class="figures-grid">
+        ${creators.map(card).join('\n        ')}
+      </div>
+    </div>
+  </section>
+  </div>
+  <div class="star-bar" aria-hidden="true"></div>`;
+
+  return pageShell({
+    title: 'Creators',
+    description: `Browse the ${creators.length} creators behind the DC Super Powers Collection — writers, artists, and designers.`,
+    ogImage: PLACEHOLDER,
+    body,
+  });
 }
 
 // ---- section index pages ------------------------------------------------
@@ -1813,10 +2018,11 @@ ${essaysSection}
 
 // ---- main ---------------------------------------------------------------
 
-const [characters, releases, pubsByChar, enemiesByChar, variationsByRelease, screenMedia, merchandise, allPublications] = await Promise.all([
+const [characters, releases, pubsByChar, enemiesByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators] = await Promise.all([
   fetchCharacters(), fetchReleases(), fetchPublicationsByCharacter(), fetchEnemiesByCharacter(),
   fetchVariationsByRelease(), fetchScreenMedia(), fetchMerchandise(),
   rest(`publications?select=*,media_publications(is_primary,sort_order,${MEDIA_EMBED}),publication_creators(role,creators(name,slug)),publication_characters(characters(name,slug))&order=kind.asc,year.asc`).catch(() => []),
+  fetchCreators(),
 ]);
 
 if (!characters.length && !releases.length && !screenMedia.length && !merchandise.length) {
@@ -1831,6 +2037,7 @@ await mkdir(join(root, 'merchandise'), { recursive: true });
 await mkdir(join(root, 'characters'), { recursive: true });
 await mkdir(join(root, 'toys'), { recursive: true });
 await mkdir(join(root, 'comics'), { recursive: true });
+await mkdir(join(root, 'creators'), { recursive: true });
 
 const adjacent = (arr, i) => arr.length > 1
   ? { prev: arr[(i - 1 + arr.length) % arr.length], next: arr[(i + 1) % arr.length] }
@@ -1906,11 +2113,21 @@ for (const [i, m] of merchandise.entries()) {
   }
 }
 
+// Creator bio pages — comic/toy credits link here
+for (const [i, cr] of creators.entries()) {
+  const html = renderCreatorPage(cr, adjacent(creators, i));
+  if (await writeIfChanged(join(root, 'creators', `${cr.slug}.html`), html)) {
+    written++;
+    console.log(`built creators/${cr.slug}.html`);
+  } else skipped++;
+}
+
 // Section index pages — listings the homepage tiles link to
 for (const [dir, html] of [
   ['characters', renderCharacterIndex(characters)],
   ['toys', renderToyIndex(releases)],
   ['comics', renderComicIndex(allPublications)],
+  ...(creators.length ? [['creators', renderCreatorIndex(creators)]] : []),
 ]) {
   if (await writeIfChanged(join(root, dir, 'index.html'), html)) {
     written++;

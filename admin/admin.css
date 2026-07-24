@@ -218,6 +218,44 @@ input.invalid { border-color: var(--danger); }
   border: 1px solid var(--rule);
   border-radius: 4px;
 }
+
+/* bulk media upload */
+.bulk__intro {
+  color: var(--ink-mid);
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+}
+.bulk__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.bulk__card {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.bulk__card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 3px;
+  background: var(--rule);
+}
+.bulk__card .bulk__name {
+  font-size: 0.7rem;
+  color: var(--ink-mid);
+  word-break: break-all;
+}
+.bulk__card input {
+  font-size: 0.8rem;
+}
+.bulk__card--done { opacity: 0.5; }
+.bulk__card--error { border-color: #c0392b; }
 .drawer__media h3,
 .drawer__links h3 {
   margin: 1.5rem 0 0.5rem;

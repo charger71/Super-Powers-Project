@@ -19,6 +19,7 @@ const ENUMS = {
   variation_type: ['card', 'paint', 'mold', 'accessory', 'packaging', 'country'],
   media_type:     ['photo', 'video', 'scan', 'audio'],
   rights_status:  ['owned', 'permission_granted', 'fair_use_editorial', 'link_only'],
+  publication_kind: ['mini_series', 'pack_in_mini', 'book', 'rpg'],
 };
 
 // ---- entity definitions -------------------------------------------------
@@ -101,6 +102,38 @@ const ENTITIES = {
       { col: 'sources',          label: 'Sources (comma-separated URLs)', kind: 'array' },
     ],
   },
+  publications: {
+    label: 'Comics',
+    table: 'publications',
+    titleCol: 'title',
+    orderBy: { col: 'year', ascending: true },
+    listCols: ['title', 'slug', 'kind', 'year'],
+    // cover + interior scans attach like any other media (media_publications);
+    // the "attached media" section marks one is_primary as the cover.
+    mediaJoin: { table: 'media_publications', fk: 'publication_id' },
+    // which canonical characters appear in this comic — the "Comic Appearances"
+    // the front end renders on dossiers and comic pages, now editable.
+    linkJoins: [
+      { label: 'Characters (appearances)', table: 'publication_characters', fk: 'publication_id', targetFk: 'character_id', targetTable: 'characters' },
+    ],
+    // writer / artist / editor credits — a creator + a role. role is part of the
+    // join's primary key, so one creator can hold several roles on one comic.
+    creditJoins: [
+      { label: 'Credits (writer / artist / editor)', table: 'publication_creators', fk: 'publication_id',
+        roles: ['writer', 'penciller', 'inker', 'colorist', 'letterer', 'cover', 'editor'] },
+    ],
+    fields: [
+      { col: 'title',        label: 'Title',        kind: 'text', required: true },
+      { col: 'slug',         label: 'Slug',         kind: 'slug', required: true },
+      { col: 'kind',         label: 'Kind',         kind: 'enum', values: ENUMS.publication_kind },
+      { col: 'publisher',    label: 'Publisher',    kind: 'text' },
+      { col: 'year',         label: 'Year',         kind: 'number' },
+      { col: 'issue_number', label: 'Issue number', kind: 'text' },
+      { col: 'language',     label: 'Language',     kind: 'text', initial: 'en' },
+      { col: 'packed_with',  label: 'Packed with (release)', kind: 'fk', table: 'releases' },
+      { col: 'description',  label: 'Description',   kind: 'rich' },
+    ],
+  },
   screen_media: {
     label: 'Screen media',
     table: 'screen_media',
@@ -159,6 +192,22 @@ const ENTITIES = {
       { col: 'manufacturer', label: 'Manufacturer', kind: 'text' },
       { col: 'year',         label: 'Year',         kind: 'number' },
       { col: 'description',  label: 'Description',   kind: 'rich' },
+    ],
+  },
+  creators: {
+    label: 'Creators',
+    table: 'creators',
+    listCols: ['name', 'slug', 'role_summary'],
+    // the creator's photo/headshot — mark one attachment primary for the page portrait
+    mediaJoin: { table: 'media_creators', fk: 'creator_id' },
+    fields: [
+      { col: 'name',         label: 'Name',         kind: 'text', required: true },
+      { col: 'slug',         label: 'Slug',         kind: 'slug', required: true },
+      { col: 'role_summary', label: 'Role summary (tagline)', kind: 'text' },
+      { col: 'overview',     label: 'Overview (lede)', kind: 'rich' },
+      { col: 'bio',          label: 'Bio (body)',   kind: 'rich' },
+      { col: 'birth_year',   label: 'Birth year',   kind: 'number' },
+      { col: 'death_year',   label: 'Death year',   kind: 'number' },
     ],
   },
   media: {
@@ -276,6 +325,7 @@ function listCell(row, col) {
 
 function renderList() {
   const def = ENTITIES[state.entity];
+  $('bulk-upload').hidden = !def.upload;
   const filter = $('list-filter').value.trim().toLowerCase();
   const cols = def.listCols.filter((c) => c !== '_thumb');
   const rows = filter
@@ -691,6 +741,126 @@ async function renderLinkSections(def, row) {
   }
 }
 
+// ---- creator credits (creator + role join tables) -----------------------
+// Like renderLinkSections, but the join carries a `role` that is part of its
+// primary key — so the picker is (creator, role) and one creator can appear
+// under several roles. Target table is always `creators`.
+async function renderCreditSections(def, row) {
+  const box = $('drawer-credits');
+  box.replaceChildren();
+  if (!def.creditJoins?.length) return;
+
+  for (const join of def.creditJoins) {
+    const section = document.createElement('div');
+    const h = document.createElement('h3');
+    h.textContent = join.label;
+    section.append(h);
+
+    if (!row) {
+      const hint = document.createElement('p');
+      hint.className = 'hint';
+      hint.textContent = `Save this record first, then add ${join.label.toLowerCase()}.`;
+      section.append(hint);
+      box.append(section);
+      continue;
+    }
+
+    const { data: credits, error } = await db.from(join.table)
+      .select(`creator_id, role, creators!${join.table}_creator_id_fkey(id, name, slug)`)
+      .eq(join.fk, row.id)
+      .order('role');
+
+    if (error) {
+      const p = document.createElement('p');
+      p.className = 'hint';
+      p.textContent = error.message;
+      section.append(p);
+      box.append(section);
+      continue;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'link-list';
+    for (const c of credits ?? []) {
+      const creator = c.creators;
+      if (!creator) continue;
+      const li = document.createElement('li');
+      li.textContent = `${creator.name}${c.role ? ` — ${c.role}` : ''}`;
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'danger';
+      rm.textContent = 'Remove';
+      rm.addEventListener('click', async () => {
+        const del = db.from(join.table).delete()
+          .eq(join.fk, row.id).eq('creator_id', creator.id);
+        // role is part of the PK — match it exactly so we drop just this credit
+        const { error: delError } = await (c.role == null
+          ? del.is('role', null) : del.eq('role', c.role));
+        if (delError) { alert(delError.message); return; }
+        renderCreditSections(def, row);
+      });
+      li.append(rm);
+      list.append(li);
+    }
+    section.append(list);
+
+    // creator picker (searchable datalist over all creators)
+    const { data: creators } = await db.from('creators')
+      .select('id, name, slug').order('name');
+    const labelFor = (r) => `${r.name} · ${r.slug}`;
+    const byLabel = new Map((creators ?? []).map((r) => [labelFor(r), r.id]));
+
+    const listId = `dl-credit-${join.table}`;
+    const datalist = document.createElement('datalist');
+    datalist.id = listId;
+    datalist.replaceChildren(...(creators ?? []).map((r) => {
+      const o = document.createElement('option');
+      o.value = labelFor(r);
+      return o;
+    }));
+
+    const input = document.createElement('input');
+    input.setAttribute('list', listId);
+    input.placeholder = 'Creator — type to search…';
+
+    // role: suggested vocab via datalist, but free text is allowed (schema is text)
+    const roleListId = `dl-credit-role-${join.table}`;
+    const roleList = document.createElement('datalist');
+    roleList.id = roleListId;
+    roleList.replaceChildren(...(join.roles ?? []).map((r) => {
+      const o = document.createElement('option');
+      o.value = r;
+      return o;
+    }));
+    const roleInput = document.createElement('input');
+    roleInput.setAttribute('list', roleListId);
+    roleInput.placeholder = 'Role (e.g. writer)';
+
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.textContent = 'Add';
+    add.addEventListener('click', async () => {
+      const creatorId = byLabel.get(input.value);
+      const role = roleInput.value.trim();
+      if (!creatorId) { input.classList.add('invalid'); return; }
+      if (!role) { roleInput.classList.add('invalid'); return; }
+      const dup = (credits ?? []).some((c) => c.creator_id === creatorId && (c.role ?? '') === role);
+      if (dup) { roleInput.classList.add('invalid'); return; }
+      const { error: insError } = await db.from(join.table).insert({
+        [join.fk]: row.id, creator_id: creatorId, role,
+      });
+      if (insError) { alert(insError.message); return; }
+      renderCreditSections(def, row);
+    });
+
+    const adder = document.createElement('div');
+    adder.className = 'link-adder';
+    adder.append(input, roleInput, add, datalist, roleList);
+    section.append(adder);
+    box.append(section);
+  }
+}
+
 // ---- attached media (inside character/release drawers) ------------------
 const mediaLabel = (m) => `${m.caption || m.alt_text || 'untitled'} · ${m.credit} [${m.id.slice(0, 8)}]`;
 
@@ -948,12 +1118,15 @@ async function openDrawer(row) {
   $('drawer').hidden = false;
   window.scrollTo(0, 0);
   renderLinkSections(def, row);
+  renderCreditSections(def, row);
   renderMediaSection(def, row);
 }
 
 function closeDrawer() {
+  if (!$('bulk-panel').hidden) closeBulk();
   $('drawer').hidden = true;
   $('drawer-links').replaceChildren();
+  $('drawer-credits').replaceChildren();
   $('drawer-media').replaceChildren();
   $('list-panel').hidden = false;
   $('tabs').hidden = false;
@@ -1057,6 +1230,156 @@ $('delete').addEventListener('click', async () => {
     await db.storage.from('media').remove([row.storage_path]);
   }
   closeDrawer();
+  loadList();
+});
+
+// ---- bulk media upload --------------------------------------------------
+// Pick many files at once; shared type/credit/rights/source apply to all,
+// alt text is captured per file (non-negotiable #1). Each file becomes its
+// own media_assets row. Thumbnails preview locally before upload.
+const bulkFiles = []; // { file, thumbUrl, done }
+
+function fillEnumSelect(sel, values, initial) {
+  sel.replaceChildren(...values.map((v) => {
+    const o = document.createElement('option');
+    o.value = v;
+    o.textContent = v.replace(/_/g, ' ');
+    return o;
+  }));
+  if (initial) sel.value = initial;
+}
+
+function openBulk() {
+  const def = ENTITIES[state.entity];
+  const typeField = def.fields.find((f) => f.col === 'type');
+  const rightsField = def.fields.find((f) => f.col === 'rights');
+  fillEnumSelect($('bulk-type'), typeField?.values ?? ENUMS.media_type, typeField?.initial);
+  fillEnumSelect($('bulk-rights'), rightsField?.values ?? ENUMS.rights_status);
+  $('bulk-credit').value = '';
+  $('bulk-source').value = '';
+  $('bulk-files').value = '';
+  $('bulk-status').textContent = '';
+  clearBulkFiles();
+  $('list-panel').hidden = true;
+  $('tabs').hidden = true;
+  $('bulk-panel').hidden = false;
+  window.scrollTo(0, 0);
+}
+
+function closeBulk() {
+  $('bulk-panel').hidden = true;
+  clearBulkFiles();
+  $('list-panel').hidden = false;
+  $('tabs').hidden = false;
+}
+
+function clearBulkFiles() {
+  bulkFiles.forEach((b) => URL.revokeObjectURL(b.thumbUrl));
+  bulkFiles.length = 0;
+  $('bulk-grid').replaceChildren();
+}
+
+function renderBulkGrid() {
+  $('bulk-grid').replaceChildren(...bulkFiles.map((b, i) => {
+    const card = document.createElement('div');
+    card.className = 'bulk__card';
+    card.dataset.i = i;
+
+    const img = document.createElement('img');
+    img.src = b.thumbUrl;
+    img.alt = '';
+    if (!b.file.type.startsWith('image/')) img.style.visibility = 'hidden';
+
+    const name = document.createElement('div');
+    name.className = 'bulk__name';
+    name.textContent = b.file.name;
+
+    const alt = document.createElement('input');
+    alt.type = 'text';
+    alt.placeholder = 'Alt text * (required)';
+    alt.className = 'bulk-alt';
+
+    const cap = document.createElement('input');
+    cap.type = 'text';
+    cap.placeholder = 'Caption (optional)';
+    cap.className = 'bulk-caption';
+
+    card.append(img, name, alt, cap);
+    return card;
+  }));
+}
+
+$('bulk-upload').addEventListener('click', openBulk);
+$('bulk-close').addEventListener('click', closeBulk);
+
+$('bulk-files').addEventListener('change', (e) => {
+  clearBulkFiles();
+  for (const file of e.target.files) {
+    bulkFiles.push({ file, thumbUrl: URL.createObjectURL(file), done: false });
+  }
+  renderBulkGrid();
+});
+
+$('bulk-submit').addEventListener('click', async () => {
+  const def = ENTITIES[state.entity];
+  if (!bulkFiles.length) { $('bulk-status').textContent = 'Choose files first.'; return; }
+
+  const credit = $('bulk-credit').value.trim();
+  if (!credit) { $('bulk-status').textContent = 'Credit is required.'; return; }
+  const shared = {
+    type: $('bulk-type').value,
+    rights: $('bulk-rights').value,
+    credit,
+    source_url: $('bulk-source').value.trim() || null,
+  };
+
+  const cards = [...$('bulk-grid').children];
+  // validate every alt-text before uploading anything
+  for (let i = 0; i < bulkFiles.length; i++) {
+    if (bulkFiles[i].done) continue;
+    const alt = cards[i].querySelector('.bulk-alt').value.trim();
+    if (!alt) {
+      cards[i].classList.add('bulk__card--error');
+      $('bulk-status').textContent = 'Every file needs alt text.';
+      return;
+    }
+    cards[i].classList.remove('bulk__card--error');
+  }
+
+  $('bulk-submit').disabled = true;
+  let ok = 0;
+  let failed = 0;
+  for (let i = 0; i < bulkFiles.length; i++) {
+    const b = bulkFiles[i];
+    if (b.done) continue;
+    const card = cards[i];
+    $('bulk-status').textContent = `Uploading ${ok + failed + 1} of ${bulkFiles.length}…`;
+    try {
+      const { path, width, height } = await uploadFile(b.file);
+      const row = {
+        ...shared,
+        alt_text: card.querySelector('.bulk-alt').value.trim(),
+        caption: card.querySelector('.bulk-caption').value.trim() || null,
+        storage_path: path,
+        width,
+        height,
+      };
+      const { error } = await db.from(def.table).insert(row);
+      if (error) throw new Error(error.message);
+      b.done = true;
+      card.classList.add('bulk__card--done');
+      ok++;
+    } catch (err) {
+      card.classList.add('bulk__card--error');
+      card.title = err.message;
+      failed++;
+    }
+  }
+
+  $('bulk-submit').disabled = false;
+  $('bulk-status').textContent = failed
+    ? `Uploaded ${ok}, ${failed} failed (retry the highlighted ones).`
+    : `Uploaded ${ok} ✓`;
   loadList();
 });
 
