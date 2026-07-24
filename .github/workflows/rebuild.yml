@@ -5,10 +5,16 @@ name: Rebuild site
 # you can refresh the live site from anywhere without a local machine.
 #
 # Triggers:
+#   • On every push to main (rebuilds when you change code/templates/CSS)
 #   • Manually — Actions tab → "Rebuild site" → "Run workflow"
 #   • Nightly at 07:00 UTC (optional — delete the `schedule:` block to disable)
+#
+# No recursion: the commit-back below uses GITHUB_TOKEN, and GitHub does not
+# re-trigger workflows from GITHUB_TOKEN pushes.
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '0 7 * * *'
