@@ -11,7 +11,7 @@
 // docroot or build/serve.mjs).
 
 import { writeFile, readFile, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep as pathSep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
 
@@ -226,7 +226,19 @@ async function fetchMerchandise() {
 // `--all` forces every file to be rewritten (the admin "Rebuild all" switch).
 const FORCE_ALL = process.argv.includes('--all');
 
+// Rewrite root-absolute internal links (href/src="/…") to relative, based on
+// how deep the page sits, so the site works mounted at ANY path — a GitHub
+// Pages project subpath (/Super-Powers-Project/), a cPanel subfolder, or the
+// domain root. External URLs (https://…), anchors (#…), and protocol-relative
+// (//…) links are left untouched.
+function relativize(html, depth) {
+  const prefix = '../'.repeat(depth);          // '' at the root
+  return html.replace(/(href|src)="\/(?!\/)/g, `$1="${prefix}`);
+}
+
 async function writeIfChanged(path, content) {
+  const depth = relative(root, path).split(pathSep).length - 1;
+  content = relativize(content, depth);
   if (!FORCE_ALL) {
     try {
       if (await readFile(path, 'utf8') === content) return false;
