@@ -1,0 +1,59 @@
+name: Rebuild site
+
+# Regenerates the static pages from Supabase and publishes them to GitHub Pages
+# — the server-side equivalent of the admin's local "Rebuild site" button, so
+# you can refresh the live site from anywhere without a local machine.
+#
+# Triggers:
+#   • Manually — Actions tab → "Rebuild site" → "Run workflow"
+#   • Nightly at 07:00 UTC (optional — delete the `schedule:` block to disable)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 7 * * *'
+
+permissions:
+  contents: write   # commit the regenerated pages back to the repo
+  pages: write      # request a GitHub Pages build
+
+concurrency:
+  group: rebuild
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Reads from Supabase using the publishable key in js/config.js
+      # (public reads only — no secrets needed).
+      - name: Build pages from Supabase
+        run: node build/build-dossiers.mjs
+
+      - name: Commit regenerated pages
+        id: commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "Rebuild site from Supabase"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No content changes — nothing to publish."
+          fi
+
+      # Explicitly ask GitHub Pages to (re)build the branch, so publishing
+      # never depends on whether the bot push triggered it.
+      - name: Publish to GitHub Pages
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds"
