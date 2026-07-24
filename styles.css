@@ -33,6 +33,7 @@
   --font-display: "Futura", "Arial Black", "Helvetica Neue", Impact, sans-serif;
   --font-body:    Georgia, "Times New Roman", "Liberation Serif", serif;
   --font-mono:    "IBM Plex Mono", "Courier New", ui-monospace, monospace;
+  --font-marker:  "Marker Felt", "Comic Sans MS", "Chalkboard SE", cursive;
 
   --step--1: clamp(0.75rem, 0.72rem + 0.15vw, 0.85rem);
   --step-0:  clamp(0.95rem, 0.9rem + 0.25vw, 1.05rem);
@@ -1256,6 +1257,40 @@ a.aux__item { display: block; text-decoration: none; }
   max-width: 340px;
   margin: 0 auto 1.5rem;
   height: auto;
+}
+
+/* Power Action speech bubble — the Power Action feature text overlaid on the
+   bubble artwork. Sits at the top of the sidebar, above the hero portrait. */
+.power-bubble {
+  position: relative;
+  width: 100%;
+  max-width: 240px;
+  margin: 0 auto 0.5rem;
+  aspect-ratio: 83.83 / 85.2;   /* the SVG's own ratio */
+}
+.power-bubble__shape {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* Centered over the circular part of the bubble (its tail hangs lower-left),
+   in a marker hand and slightly tilted, like a comic sound effect. */
+.power-bubble__text {
+  position: absolute;
+  /* centered on the bubble's circle (~55% / 44%); its tail hangs lower-left */
+  inset: 10% 7% 22% 17%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-marker);
+  font-weight: 700;
+  font-size: clamp(1.44rem, 1.92vw + 0.96rem, 2rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: #013b7c;   /* matches the bubble's dark-blue outline */
+  transform: rotate(-6deg);
 }
 
 /* Text fallback when a character has no logo asset (generated pages) */

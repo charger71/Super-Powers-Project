@@ -18,7 +18,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Stand-in until real photography is attached (see CLAUDE.md conventions).
-const PLACEHOLDER = '../assets/sp-palceholder.jpeg';
+const PLACEHOLDER = '../assets/sp-palceholder.jpg';
 
 const MEDIA_EMBED = 'media_assets(storage_path,embed_url,alt_text,credit)';
 // Same, plus poster_path/caption/source_url — used where video posters,
@@ -545,6 +545,14 @@ function renderCharacterPage(c, releases, publications, enemyList, adj) {
     ? `<img class="powers-card__logo" src="${esc(mediaUrl(logoMedia))}" alt="${esc(logoMedia.alt_text ?? c.name + ' logo')}">`
     : `<h2 class="powers-card__name">${esc(c.name)}</h2>`;
 
+  // Power Action speech bubble — the figure's Power Action feature overlaid on
+  // the bubble artwork in dark blue. Sits at the top of the sidebar, above the
+  // character hero portrait.
+  const powerBubble = firstFigure?.action_feature ? `<div class="power-bubble">
+        <img class="power-bubble__shape" src="/assets/power_action_bubble.svg" alt="" aria-hidden="true">
+        <span class="power-bubble__text">${esc(firstFigure.action_feature)}</span>
+      </div>` : '';
+
   const powersCard = (c.powers || c.weaknesses || c.aka?.length || c.enemies || logoMedia) ? `
       <aside class="powers-card">
         ${powersHeader}
@@ -596,6 +604,7 @@ ${aboutSection}
       </article>
 
       <div class="dossier-sidebar">
+      ${powerBubble}
       <img class="dossier-portrait" src="${esc(portrait)}" alt="${esc(portraitAlt)}">
       ${portraitMedia?.credit ? `<p class="dek dek--sm">Photo: ${esc(portraitMedia.credit)}</p>` : ''}
 ${headshots}
