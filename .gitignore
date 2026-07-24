@@ -1,0 +1,8 @@
+# secrets — DB password lives here
+.env
+
+# supabase CLI local state
+supabase/.temp/
+
+# macOS
+.DS_Store

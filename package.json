@@ -1,0 +1,8 @@
+{
+  "name": "archive84",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build/build-dossiers.mjs"
+  }
+}

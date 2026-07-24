@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Border Test</title>
+
+    <style>
+.star-border-box {
+  /* 1. Sets a solid red fallback line in case an ancient browser fails to load the image */
+  border: 28px solid red; 
+  
+  /* 2. Base64 string containing a perfect 3x3 repeating star grid asset */
+  border-image-source: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCI+PHJlY3Qgd2lkdGg9IjkwIiBoZWlnaHQ9IjkwIiBmaWxsPSJyZWQiLz48ZyBmaWxsPSJ5ZWxsb3ciPjxwb2x5Z29uIHBvaW50cz0iMTUsMiAxOSwxMCAyOCwxMSAyMSwxOCAyMywyNyAxNSwyMiA3LDI3IDksMTggMiwxMSAxMSwxMCIvPjxwb2x5Z29uIHBvaW50cz0iNDUsMiA0OSwxMCA1OCwxMSA1MSwxOCA1MywyNyA0NSwyMiAzNywyNyAzOSwxOCAzMiwxMSA0MSwxMCIvPjxwb2x5Z29uIHBvaW50cz0iNzUsMiA3OSwxMCA4OCwxMSA4MSwxOCA4MywyNyA3NSwyMiA2NywyNyA2OSwxOCA2MiwxMSA3MSwxMCIvPjxwb2x5Z29uIHBvaW50cz0iMTUsMzIgMTksNDAgMjgsNDEgMjEsNDggMjMsNTcgMTUsNTIgNyw1NyA5LDQ4IDIsNDEgMTEsNDAiLz48cG9seWdvbiBwb2ludHM9IjQ1LDMyIDQ5LDQwIDU4LDQxIDUxLDQ4IDUzLDU3IDQ1LDUyIDM3LDU3IDM5LDQ4IDMyLDQxIDQxLDQwIi8+PHBvbHlnb24gcG9pbnRzPSI3NSwzMiA3OSw0MCA4OCw0MSA4MSw0OCA4Myw1NyA3NSw1MiA2Nyw1NyA2OSw0OCA2Miw0MSA3MSw0MCIvPjxwb2x5Z29uIHBvaW50cz0iMTUsNjIgMTksNzAgMjgsNzEgMjEsNzggMjMsODcgMTUsODIgNyw4NyA5LDc4IDIsNzEgMTEsNzAiLz48cG9seWdvbiBwb2ludHM9IjQ1LDYyIDQ5LDcwIDU4LDcxIDUxLDc4IDUzLDg3IDQ1LDgyIDM3LDg3IDM5LDc4IDMyLDcxIDQxLDcwIi8+PHBvbHlnb24gcG9pbnRzPSI3NSw2MiA3OSw3MCA4OCw3MSA4MSw3OCA4Myw4NyA3NSw4MiA2Nyw4NyA2OSw3OCA2Miw3MSA3MSw3MCIvPjwvZz48L3N2Zz4=");
+
+  /* 3. Slice exactly 30px (1/3 of the 90px grid) to separate corners from edges */
+  border-image-slice: 30;
+
+  /* 4. Keeps the stars clean and prevents them from cutting in half */
+  border-image-repeat: round;
+
+  /* Layout spacing inside your container */
+  padding: 40px;
+}
+
+    </style>
+
+</head>
+<body>
+    
+
+    <div class="star-border-box">
+
+        <div class="powers-card__section">
+          <h3>Powers</h3>
+          <p>Super-strength, super-vision (x-ray vision, telescopic vision, heat vision, microscopic vision), invulnerability, flight, super-speed, super-breath, super-senses, super-voice, super-intellect.</p>
+        </div>
+
+        <div class="powers-card__section">
+          <h3>Weaknesses</h3>
+          <p>Green Kryptonite can kill Superman, Red "K" affects him in bizarre ways, Gold "K" takes away his powers. Superman's invulnerability does not protect him against magic. Superman loses his powers in a solar system with a red sun.</p>
+        </div>
+
+        <div class="powers-card__section">
+          <h3>Enemies</h3>
+          <p>Lex Luthor, Brainiac, Mr. Mxyzptik, Metallo, Bizarro, Terra-Man, The Parasite, Toyman, The Prankster.</p>
+        </div>
+
+        <div class="powers-card__section">
+          <h3>Secret Identity</h3>
+          <p>Clark Kent</p>
+        </div>
+
+    </div>
+
+
+
+</body>
+</html>

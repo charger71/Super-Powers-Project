@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Admin · Archive84</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <header class="bar">
+    <span class="bar__brand">Archive84 · Admin</span>
+    <span class="bar__user" id="user-email"></span>
+    <label class="switch" id="rebuild-all-wrap" hidden title="Force-rewrite every page, not just changed ones">
+      <input type="checkbox" id="rebuild-all">
+      <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+      <span class="switch__text">Rebuild all</span>
+    </label>
+    <button id="rebuild" hidden>Rebuild site</button>
+    <button id="logout" hidden>Sign out</button>
+  </header>
+
+  <!-- LOGIN -->
+  <main class="login" id="login-view" hidden>
+    <form id="login-form" class="login__card">
+      <h1>Sign in</h1>
+      <label>Email <input type="email" id="login-email" autocomplete="username" required></label>
+      <label>Password <input type="password" id="login-password" autocomplete="current-password" required></label>
+      <button type="submit">Sign in</button>
+      <p class="login__error" id="login-error" hidden></p>
+    </form>
+  </main>
+
+  <!-- APP -->
+  <main class="app" id="app-view" hidden>
+    <nav class="tabs" id="tabs"></nav>
+
+    <section class="panel" id="list-panel">
+      <div class="panel__head">
+        <input type="search" id="list-filter" placeholder="Filter…">
+        <button id="new-record">+ New</button>
+      </div>
+      <table class="list" id="list"></table>
+    </section>
+
+    <!-- FULL-PAGE EDITOR -->
+    <section class="editor" id="drawer" hidden>
+      <div class="editor__head">
+        <button type="button" id="drawer-close" class="editor__back">&larr; Back to list</button>
+        <h2 id="drawer-title"></h2>
+      </div>
+      <form id="record-form">
+        <div class="drawer__fields" id="drawer-fields"></div>
+        <div class="drawer__links" id="drawer-links"></div>
+        <div class="drawer__media" id="drawer-media"></div>
+        <div class="drawer__actions">
+          <button type="submit" id="save">Save</button>
+          <button type="button" id="delete" class="danger" hidden>Delete</button>
+          <span class="drawer__status" id="form-status"></span>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <!-- Dev admin: import with a per-load cache-buster so editing admin.js and
+       reloading always runs the latest, never a browser-cached module. -->
+  <script type="module">import(`./admin.js?v=${Date.now()}`);</script>
+</body>
+</html>

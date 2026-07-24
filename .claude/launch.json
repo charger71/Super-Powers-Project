@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["build/serve.mjs"],
+      "port": 8084,
+      "autoPort": true
+    }
+  ]
+}
