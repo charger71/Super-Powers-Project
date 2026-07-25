@@ -143,6 +143,8 @@ The build order from `CLAUDE.md` is the authoritative "when"; this doc is the
   ("Dossiers", "Toy Database", "Comic Database") point at these too. Timeline
   and Search tiles remain inert (`#timeline`/`#search`) — no data/implementation
   yet.
+  - **Update (2026-07-25): both are now built** — see the Timeline + Search entry
+    below. The tiles are live.
   - Both the Character Index and Toy Database use the **roster** treatment: a
     color field bracketed top & bottom by red `.star-bar`s, with yellow,
     red-bordered cards (`.roster .figure-card`). Character Index field is blue
@@ -152,6 +154,31 @@ The build order from `CLAUDE.md` is the authoritative "when"; this doc is the
     sub-heads via `.toy-wave__head`).
   - Comic cards everywhere (index + dossier "Comic Appearances") now link to
     the new per-issue pages.
+
+- **Timeline + Search (built 2026-07-25)** — the last two inert homepage tiles now
+  land on real pages, both pre-rendered by `build-dossiers.mjs`.
+  - `/timeline/index.html` (`renderTimeline`): one chronological spine of every
+    dated record — toy releases (`release_year`), comic issues (`publications.year`),
+    and screen media (`screen_media.year`) — grouped by year, oldest first, reusing
+    the editorial `.timeline` component with a new `.timeline__events` list (left
+    rule coloured per section via `.timeline__kind[data-group]`). Static, no client
+    JS. Currently 92 events across 1984–2022.
+  - `/search/index.html` (`renderSearch`) + `search-index.json` (`buildSearchIndex`)
+    + `/js/search.js`: client-side search over a pre-built JSON index (no server —
+    fits the static/cPanel constraint). Full-text ranking (title-prefix > title >
+    keywords; every term must match), section filter pills (characters/toys/comics/
+    media/merch/creators), `?q=` deep links, browsable when the query is empty.
+    Index URLs are stored relative to `/search/` so they resolve under any mount
+    path — the JSON and its `fetch()` can't be reached by `relativize()`. 145
+    records indexed. New `.search-*` CSS documented in COMPONENTS.md.
+  - Homepage tiles + both footers (`renderHome`, `pageShell`) now link the two
+    pages instead of `#timeline`/`#search`.
+
+  This effectively closes the "Other pages to build" list — Character Index, Toy
+  Database, Comic Database, Timeline, and Search are all live. **Admin entity
+  coverage is also complete** (characters, releases, variations, comics, screen
+  media, interviews, merchandise, creators, media); only rarely-edited structural
+  lookups (lines / series / teams) remain hand-seeded, by choice.
 
 ## Character Dossier — additional sections to build
 

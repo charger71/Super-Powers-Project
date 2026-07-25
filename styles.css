@@ -2051,3 +2051,137 @@ a.video-card:focus-visible {
 @media (max-width: 640px) {
   .video-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- TIMELINE PAGE (multi-event years on the .timeline spine) ------- */
+/* Extends the editorial .timeline component: each year's body holds a list of
+   linked events (toy / comic / media) instead of a single paragraph. */
+.timeline__events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.timeline__event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  font-family: var(--font-brand);
+  font-size: var(--step-0);
+  line-height: 1.4;
+}
+.timeline__event a {
+  color: var(--color-blue);
+  font-weight: 700;
+  text-decoration: none;
+}
+.timeline__event a:hover { color: var(--color-red); text-decoration: underline; }
+.timeline__kind {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-mid);
+  border-left: 3px solid var(--color-rule);
+  padding-left: 0.5rem;
+}
+.timeline__kind[data-group="toy"]   { border-left-color: var(--color-red); }
+.timeline__kind[data-group="comic"] { border-left-color: var(--color-blue-lt); }
+.timeline__kind[data-group="media"] { border-left-color: var(--color-yellow-dk); }
+
+/* ---------- SEARCH PAGE (client-side query over search-index.json) --------- */
+.search-box { margin: 0 0 1rem; }
+.search-box input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.85rem 1rem;
+  font-family: var(--font-brand);
+  font-size: var(--step-1);
+  color: var(--color-ink);
+  background: var(--color-white);
+  border: 2px solid var(--color-blue);
+  border-radius: var(--radius);
+}
+.search-box input:focus-visible {
+  outline: 3px solid var(--color-yellow);
+  outline-offset: 1px;
+  border-color: var(--color-red);
+}
+.search-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.search-filter {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-blue);
+  background: var(--color-white);
+  border: 2px solid var(--color-blue);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+}
+.search-filter:hover { border-color: var(--color-red); color: var(--color-red); }
+.search-filter.is-active {
+  color: var(--color-white);
+  background: var(--color-red);
+  border-color: var(--color-red);
+}
+.search-status {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--color-ink-mid);
+  margin: 0 0 1rem;
+}
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.search-result {
+  display: grid;
+  grid-template-columns: minmax(140px, 190px) 1fr auto;
+  gap: 0.75rem 1rem;
+  align-items: baseline;
+  padding: 0.7rem 1rem;
+  background: var(--color-white);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--color-rule);
+  text-decoration: none;
+}
+.search-result:hover { border-left-color: var(--color-red); }
+.search-result__kind {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-mid);
+}
+.search-result__kind[data-group="character"] { color: var(--color-blue); }
+.search-result__kind[data-group="toy"]        { color: var(--color-red); }
+.search-result__kind[data-group="comic"]      { color: var(--color-blue); }
+.search-result__kind[data-group="media"]      { color: var(--color-red-dk); }
+.search-result__kind[data-group="merch"]      { color: var(--color-red); }
+.search-result__kind[data-group="creator"]    { color: var(--color-blue); }
+.search-result__title {
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: var(--step-0);
+  color: var(--color-ink);
+}
+.search-result:hover .search-result__title { color: var(--color-red); }
+.search-result__year {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--color-ink-mid);
+}
+@media (max-width: 640px) {
+  .search-result { grid-template-columns: 1fr; gap: 0.15rem; }
+}

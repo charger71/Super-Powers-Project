@@ -334,13 +334,13 @@ ${body}
           <ul>
             <li><a href="/characters/index.html">Dossiers</a></li>
             <li><a href="/characters/index.html">Character Index</a></li>
-            <li><a href="/index.html#timeline">Timeline</a></li>
+            <li><a href="/timeline/index.html">Timeline</a></li>
             <li><a href="/toys/index.html">Toy Database</a></li>
             <li><a href="/comics/index.html">Comic Database</a></li>
             <li><a href="/creators/index.html">Creators</a></li>
             <li><a href="/media/index.html">In the Media</a></li>
             <li><a href="/merchandise/index.html">Merchandise</a></li>
-            <li><a href="/index.html#search">Search</a></li>
+            <li><a href="/search/index.html">Search</a></li>
           </ul>
         </div>
         <div>
@@ -1908,7 +1908,7 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
           <span class="tile__arrow" aria-hidden="true">→</span>
         </a>
 
-        <a class="tile" data-accent="yellow" href="#timeline">
+        <a class="tile" data-accent="yellow" href="/timeline/index.html">
           <p class="tile__kicker">1984 → present</p>
           <h3 class="tile__title">Timeline</h3>
           <p class="tile__desc">Toy waves, comic issues, and animated appearances on a single scrollable spine.</p>
@@ -1943,7 +1943,7 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
           <span class="tile__arrow" aria-hidden="true">→</span>
         </a>
 
-        <a class="tile" data-accent="yellow" href="#search">
+        <a class="tile" data-accent="yellow" href="/search/index.html">
           <p class="tile__kicker">Cross-reference</p>
           <h3 class="tile__title">Search &amp; Filters</h3>
           <p class="tile__desc">Query across every section at once. Wave, publisher, year, allegiance, accessory.</p>
@@ -1985,12 +1985,12 @@ ${essaysSection}
           <ul>
             <li><a href="/characters/index.html">Dossiers</a></li>
             <li><a href="/characters/index.html">Character Index</a></li>
-            <li><a href="#timeline">Timeline</a></li>
+            <li><a href="/timeline/index.html">Timeline</a></li>
             <li><a href="/toys/index.html">Toy Database</a></li>
             <li><a href="/comics/index.html">Comic Database</a></li>
             <li><a href="/media/index.html">In the Media</a></li>
             <li><a href="/merchandise/index.html">Merchandise</a></li>
-            <li><a href="#search">Search</a></li>
+            <li><a href="/search/index.html">Search</a></li>
           </ul>
         </div>
         <div>
@@ -2016,6 +2016,213 @@ ${essaysSection}
 `;
 }
 
+// ---- timeline -----------------------------------------------------------
+
+// Human labels for the release `type` enum, used on the timeline spine.
+const RELEASE_TYPE_LABELS = {
+  figure: 'Figure', vehicle: 'Vehicle', playset: 'Playset',
+  accessory: 'Accessory', 'mini-comic': 'Mini-comic', other: 'Release',
+};
+
+// One scrollable spine: every dated record (toy releases, comic issues, screen
+// media) grouped by year, oldest first. Reuses the editorial `.timeline`
+// component. Purely static — no data lives client-side.
+function renderTimeline(releases, publications, screenMedia) {
+  const events = [];
+  for (const r of releases) {
+    if (!r.release_year) continue;
+    events.push({
+      year: r.release_year, group: 'toy',
+      kind: [r.lines?.name, RELEASE_TYPE_LABELS[r.type] ?? titleCase(r.type ?? 'Release')].filter(Boolean).join(' · '),
+      title: r.name, href: `/release/${r.slug}.html`,
+    });
+  }
+  for (const p of publications) {
+    if (!p.year) continue;
+    events.push({
+      year: p.year, group: 'comic',
+      kind: KIND_LABELS[p.kind] ?? titleCase((p.kind ?? 'comic').replaceAll('_', ' ')),
+      title: p.issue_number ? `${p.title} #${p.issue_number}` : p.title,
+      href: `/comics/${p.slug}.html`,
+    });
+  }
+  for (const s of screenMedia) {
+    if (!s.year) continue;
+    events.push({
+      year: s.year, group: 'media',
+      kind: KIND_LABELS[s.kind] ?? titleCase((s.kind ?? 'media').replaceAll('_', ' ')),
+      title: s.title, href: `/media/${s.slug}.html`,
+    });
+  }
+
+  const byYear = new Map();
+  for (const e of events) {
+    if (!byYear.has(e.year)) byYear.set(e.year, []);
+    byYear.get(e.year).push(e);
+  }
+  const groupRank = { toy: 0, comic: 1, media: 2 };
+  const years = [...byYear.keys()].sort((a, b) => a - b);
+
+  const items = years.map((y) => {
+    const evs = byYear.get(y).sort((a, b) =>
+      (groupRank[a.group] - groupRank[b.group]) || a.title.localeCompare(b.title));
+    const lis = evs.map((e) => `<li class="timeline__event">
+            <span class="timeline__kind" data-group="${e.group}">${esc(e.kind)}</span>
+            <a href="${e.href}">${esc(e.title)}</a>
+          </li>`).join('\n          ');
+    return `<li class="timeline__item">
+        <span class="timeline__year">${esc(y)}</span>
+        <div class="timeline__body">
+          <ul class="timeline__events">
+          ${lis}
+          </ul>
+        </div>
+      </li>`;
+  }).join('\n      ');
+
+  const span = years.length ? `${years[0]}–${years[years.length - 1]}` : '1984 → present';
+  const body = `${indexHead(
+    'Timeline',
+    '<span class="dossier-tag dossier-tag--yellow">The spine</span>',
+    'Timeline',
+    'Toy waves, comic issues, and screen appearances on one spine',
+  )}
+
+  <section class="dossier-body">
+    <div class="wrap">
+      <article class="dossier-lede media-lede">
+        <p class="dek">Overview</p>
+        <p>Every dated record in the archive — ${events.length} across ${years.length} years (${esc(span)}) — laid out oldest to newest. Toy releases, comic issues, and screen appearances share the same spine, so you can see the line unfold season by season.</p>
+      </article>
+    </div>
+  </section>
+
+  <div class="star-bar" aria-hidden="true"></div>
+  <section class="dossier-history">
+    <div class="wrap">
+      <ol class="timeline">
+      ${items}
+      </ol>
+    </div>
+  </section>
+  <div class="star-bar" aria-hidden="true"></div>`;
+
+  return pageShell({
+    title: 'Timeline',
+    description: `A chronological spine of the DC Super Powers universe — ${events.length} toy, comic, and screen records from ${esc(span)}.`,
+    ogImage: PLACEHOLDER,
+    body,
+  });
+}
+
+// ---- search -------------------------------------------------------------
+
+// Flat, compact index consumed by /js/search.js on the client. URLs are stored
+// relative to /search/index.html (one level deep) so they resolve correctly
+// wherever the site is mounted — matching the relativize() philosophy, which
+// can't reach a JSON file or a fetch() inside a static script.
+function buildSearchIndex(characters, releases, publications, screenMedia, merchandise, creators) {
+  const kw = (...parts) => parts.flat().filter(Boolean).join(' ').toLowerCase();
+  const idx = [];
+
+  for (const c of characters) {
+    idx.push({
+      t: c.name, u: `../dossier/${c.slug}.html`, g: 'character',
+      k: titleCase(c.alignment ?? '') || 'Character', y: '',
+      m: kw(c.aka ?? [], c.alignment, c.first_appearance, c.homeworld),
+    });
+  }
+  for (const r of releases) {
+    idx.push({
+      t: r.name, u: `../release/${r.slug}.html`, g: 'toy',
+      k: [r.lines?.name, RELEASE_TYPE_LABELS[r.type] ?? titleCase(r.type ?? 'Release')].filter(Boolean).join(' · '),
+      y: r.release_year ?? '',
+      m: kw(r.lines?.name, r.series?.name, r.type, r.status, r.region, r.characters?.name),
+    });
+  }
+  for (const p of publications) {
+    idx.push({
+      t: p.issue_number ? `${p.title} #${p.issue_number}` : p.title,
+      u: `../comics/${p.slug}.html`, g: 'comic',
+      k: KIND_LABELS[p.kind] ?? titleCase((p.kind ?? 'comic').replaceAll('_', ' ')),
+      y: p.year ?? '', m: kw(p.publisher, p.kind, p.language),
+    });
+  }
+  for (const s of screenMedia) {
+    idx.push({
+      t: s.title, u: `../media/${s.slug}.html`, g: 'media',
+      k: KIND_LABELS[s.kind] ?? titleCase((s.kind ?? 'media').replaceAll('_', ' ')),
+      y: s.year ?? '', m: kw(s.kind),
+    });
+  }
+  for (const m of merchandise) {
+    idx.push({
+      t: m.name, u: `../merchandise/${m.slug}.html`, g: 'merch',
+      k: MERCH_CATEGORY_LABELS[m.category] ?? titleCase((m.category ?? 'merchandise').replaceAll('_', ' ')),
+      y: m.year ?? '', m: kw(m.category, m.manufacturer),
+    });
+  }
+  for (const cr of creators) {
+    idx.push({
+      t: cr.name, u: `../creators/${cr.slug}.html`, g: 'creator',
+      k: 'Creator', y: '', m: kw(cr.role, cr.roles),
+    });
+  }
+  return idx;
+}
+
+// The search page: an input + section filters + a results region filled in by
+// /js/search.js. Works with JS off via a noscript fallback to the indexes.
+function renderSearch(indexCount) {
+  const filters = [
+    ['all', 'Everything'], ['character', 'Characters'], ['toy', 'Toys'],
+    ['comic', 'Comics'], ['media', 'Media'], ['merch', 'Merchandise'],
+    ['creator', 'Creators'],
+  ];
+  const filterBtns = filters.map(([g, label], i) =>
+    `<button type="button" class="search-filter${i === 0 ? ' is-active' : ''}" data-group="${g}">${esc(label)}</button>`
+  ).join('\n        ');
+
+  const body = `${indexHead(
+    'Search',
+    '<span class="dossier-tag dossier-tag--red">Cross-reference</span>',
+    'Search & Filters',
+    'Query every section of the archive at once',
+  )}
+
+  <section class="dossier-body">
+    <div class="wrap">
+      <form class="search-box" role="search" onsubmit="return false">
+        <input type="search" id="search-input" name="q" autocomplete="off"
+          placeholder="Search ${indexCount} records — characters, toys, comics, media…"
+          aria-label="Search the archive">
+      </form>
+      <div class="search-filters" role="group" aria-label="Filter by section">
+        ${filterBtns}
+      </div>
+      <p class="search-status" id="search-status" aria-live="polite"></p>
+      <div class="search-results" id="search-results"></div>
+      <noscript>
+        <p class="dossier-lede">Search needs JavaScript. Browse the sections directly:
+          <a href="/characters/index.html">Characters</a>,
+          <a href="/toys/index.html">Toys</a>,
+          <a href="/comics/index.html">Comics</a>,
+          <a href="/media/index.html">Media</a>,
+          <a href="/merchandise/index.html">Merchandise</a>,
+          <a href="/creators/index.html">Creators</a>.</p>
+      </noscript>
+    </div>
+  </section>
+  <script src="/js/search.js" defer></script>`;
+
+  return pageShell({
+    title: 'Search',
+    description: `Search the DC Super Powers archive — ${indexCount} characters, toys, comics, media, and merchandise records in one query.`,
+    ogImage: PLACEHOLDER,
+    body,
+  });
+}
+
 // ---- main ---------------------------------------------------------------
 
 const [characters, releases, pubsByChar, enemiesByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators] = await Promise.all([
@@ -2038,6 +2245,8 @@ await mkdir(join(root, 'characters'), { recursive: true });
 await mkdir(join(root, 'toys'), { recursive: true });
 await mkdir(join(root, 'comics'), { recursive: true });
 await mkdir(join(root, 'creators'), { recursive: true });
+await mkdir(join(root, 'timeline'), { recursive: true });
+await mkdir(join(root, 'search'), { recursive: true });
 
 const adjacent = (arr, i) => arr.length > 1
   ? { prev: arr[(i - 1 + arr.length) % arr.length], next: arr[(i + 1) % arr.length] }
@@ -2132,6 +2341,29 @@ for (const [dir, html] of [
   if (await writeIfChanged(join(root, dir, 'index.html'), html)) {
     written++;
     console.log(`built ${dir}/index.html`);
+  } else skipped++;
+}
+
+// Timeline — one chronological spine of every dated record
+{
+  const html = renderTimeline(releases, allPublications, screenMedia);
+  if (await writeIfChanged(join(root, 'timeline', 'index.html'), html)) {
+    written++;
+    console.log('built timeline/index.html');
+  } else skipped++;
+}
+
+// Search — client-side index (JSON) + the search page that queries it
+{
+  const index = buildSearchIndex(characters, releases, allPublications, screenMedia, merchandise, creators);
+  if (await writeIfChanged(join(root, 'search-index.json'), JSON.stringify(index))) {
+    written++;
+    console.log(`built search-index.json (${index.length} records)`);
+  } else skipped++;
+  const html = renderSearch(index.length);
+  if (await writeIfChanged(join(root, 'search', 'index.html'), html)) {
+    written++;
+    console.log('built search/index.html');
   } else skipped++;
 }
 
