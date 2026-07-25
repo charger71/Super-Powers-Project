@@ -166,7 +166,7 @@ async function fetchVariationsByRelease() {
 
 async function fetchReleases() {
   const list = await rest(
-    'releases?select=*,series(name,year),lines(name,slug,sort_order),' +
+    'releases?select=*,series(name,year,sort_order),lines(name,slug,sort_order),' +
     'characters!releases_character_id_fkey(name,slug),' +
     'release_characters(character_id,characters(name,slug)),' +
     'release_creators(role,creators(name,slug)),' +
@@ -1585,14 +1585,19 @@ function renderToyIndex(releases) {
     // no-series releases (vehicles, playsets, prototypes) always sort last and
     // show no year — hence the 9999 sentinel rather than a real release year
     const waveYear = r.series?.name ? (r.series.year ?? r.release_year ?? 9999) : 9999;
-    if (!lineGroup.waves.has(waveName)) lineGroup.waves.set(waveName, { year: waveYear, releases: [] });
+    // Tie-break waves that share a year (e.g. McFarlane ships several waves in
+    // one year) by the series' own sort_order; the no-series "Other" bucket
+    // sorts last.
+    const waveSort = r.series?.name ? (r.series.sort_order ?? 999) : 9999;
+    if (!lineGroup.waves.has(waveName)) lineGroup.waves.set(waveName, { year: waveYear, sort: waveSort, releases: [] });
     const w = lineGroup.waves.get(waveName);
     w.releases.push(r);
     w.year = Math.min(w.year, waveYear);
+    w.sort = Math.min(w.sort, waveSort);
   }
 
   const sections = byLine.map((lg) => {
-    const waves = [...lg.waves.entries()].sort((a, b) => a[1].year - b[1].year);
+    const waves = [...lg.waves.entries()].sort((a, b) => a[1].year - b[1].year || a[1].sort - b[1].sort);
     const waveBlocks = waves.map(([wn, w]) => `
       <div class="toy-wave">
         <h3 class="toy-wave__head">${esc(wn)}${w.year < 9999 ? ` · ${esc(w.year)}` : ''}</h3>
