@@ -96,9 +96,36 @@ Priority order:
 
 ---
 
+## Front-end design system
+
+The public site has one design system, already implemented in `styles.css` (a
+token-driven, component-organized stylesheet). **Before writing any front-end markup or
+CSS, read these and reuse what's there — don't reinvent or hardcode:**
+
+- **`STYLE-GUIDE.md`** — foundations: the five-color palette + tokens, the four type
+  families and the fluid step scale, layout tokens (`--page-max`, `--gutter`, `--radius`),
+  voice conventions, motifs (star / stripe / halftone), imagery and accessibility rules.
+- **`COMPONENTS.md`** — catalog of every reusable block (`.strip`, `.masthead`, `.hero`,
+  `.tile`, `.figure-card`, `.dossier-*`, `.powers-card`, `.lightbox`, media/roster cards,
+  utilities) with copy-paste markup.
+- **`components.html`** — the **live pattern library**: open it in a browser to see every
+  component rendered straight from `styles.css`. It's the fastest way to eyeball a block,
+  and if something looks wrong there it's wrong on the site. Internal reference only
+  (`noindex`), not a public page.
+
+Rules of the road: use the CSS custom-property tokens (no raw hexes, no raw font-sizes
+for display text, one `--radius`); reach for an existing component before adding CSS; if
+you must add CSS, put it under a commented section in `styles.css` and document it in
+`COMPONENTS.md`. The `admin/` styles are intentionally outside this system — keep them
+plain.
+
+---
+
 ## Conventions
 
 - Vanilla JS, no build framework. Keep dependencies few and justified.
+- **Front end follows the design system — see `STYLE-GUIDE.md` + `COMPONENTS.md`.** Use
+  tokens, reuse components, no ad-hoc hexes or font sizes.
 - Postgres enums for controlled vocab; `ALTER TYPE ... ADD VALUE` to extend.
 - Every table: uuid pk, unique slug, `created_at`/`updated_at` (trigger-maintained).
 - Front end reads via the Supabase JS client (anon key, RLS-protected).

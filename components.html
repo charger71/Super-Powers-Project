@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pattern Library — ARCHIVE84 Design System</title>
+  <meta name="description" content="Live pattern library rendering every component in the ARCHIVE84 design system, straight from styles.css.">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Pattern-library chrome only. Namespaced .pl-* so it never touches the
+       design system. Uses the system's own tokens. Not for production pages. -->
+  <style>
+    .pl-toc {
+      position: sticky; top: 0; z-index: 20;
+      background: var(--color-blue); color: var(--color-white);
+      font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    .pl-toc__inner {
+      display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem;
+      padding-block: 0.7rem; align-items: center;
+    }
+    .pl-toc a { color: var(--color-white); text-decoration: none; opacity: 0.8; }
+    .pl-toc a:hover { color: var(--color-yellow); opacity: 1; }
+    .pl-toc strong { color: var(--color-yellow); margin-right: auto; letter-spacing: 0.05em; }
+
+    .pl-section { padding-block: clamp(2rem, 4vw, 3.25rem); border-top: 1px solid var(--color-rule); }
+    .pl-section:target { scroll-margin-top: 3rem; }
+    .pl-section__head { margin-bottom: 1.5rem; }
+    .pl-section__head h2 {
+      font-family: var(--font-brand); font-weight: 900; font-size: var(--step-3);
+      text-transform: uppercase; letter-spacing: -0.02em; color: var(--color-blue);
+      margin: 0.25rem 0 0;
+    }
+    .pl-section__head p {
+      font-family: var(--font-body); font-size: var(--step-0);
+      color: var(--color-ink-mid); max-width: 68ch; margin: 0.5rem 0 0;
+    }
+    /* Label stamped above each rendered example — shows the class(es) to copy */
+    .pl-label {
+      font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-red);
+      margin: 2rem 0 0.6rem; display: block;
+    }
+    .pl-label:first-of-type { margin-top: 0; }
+    .pl-note { font-family: var(--font-body); font-size: var(--step--1); color: var(--color-ink-mid); margin: 0.4rem 0 0; }
+
+    /* Color swatches */
+    .pl-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; }
+    .pl-swatch { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--color-rule); }
+    .pl-swatch__chip { height: 84px; }
+    .pl-swatch__meta {
+      padding: 0.6rem 0.75rem; background: var(--color-white);
+      font-family: var(--font-mono); font-size: 11px; line-height: 1.5;
+      letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink);
+    }
+    .pl-swatch__meta b { display: block; color: var(--color-blue); letter-spacing: 0.08em; }
+
+    /* Type scale rows */
+    .pl-type-row { display: grid; grid-template-columns: 96px 1fr; gap: 1rem; align-items: baseline; padding: 0.6rem 0; border-bottom: 1px solid var(--color-rule); }
+    .pl-type-row code { font-family: var(--font-mono); font-size: 12px; color: var(--color-red); }
+    .pl-fam { margin: 0 0 0.75rem; }
+    .pl-fam code { font-family: var(--font-mono); font-size: 12px; color: var(--color-red); }
+
+    /* Neutral padded stage so light components don't float on white */
+    .pl-stage { background: var(--color-white); border: 1px dashed var(--color-rule); border-radius: var(--radius); padding: 1.25rem; }
+    .pl-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; align-items: start; }
+  </style>
+</head>
+<body>
+
+  <!-- Pattern-library table of contents (not a site component) -->
+  <nav class="pl-toc">
+    <div class="wrap pl-toc__inner">
+      <strong>◆ Pattern Library</strong>
+      <a href="#foundations">Foundations</a>
+      <a href="#chrome">Chrome</a>
+      <a href="#home">Home</a>
+      <a href="#dossier">Dossier</a>
+      <a href="#release">Release</a>
+      <a href="#media">Media</a>
+      <a href="#utilities">Utilities</a>
+    </div>
+  </nav>
+
+  <!-- Live site chrome, used as this page's own header -->
+  <div class="strip">
+    <div class="wrap strip__inner">
+      <span class="strip__brand"><span class="star" aria-hidden="true"></span> ARCHIVE84</span>
+      <span>Design System · Live Pattern Library</span>
+    </div>
+  </div>
+  <header class="masthead">
+    <div class="wrap">
+      <h1 class="wordmark">Patterns</h1>
+      <p class="masthead__dek">
+        Every reusable component, rendered live from <em>styles.css</em>. If it looks wrong here, it's wrong on the site. Pair with <em>STYLE-GUIDE.md</em> and <em>COMPONENTS.md</em>.
+      </p>
+    </div>
+  </header>
+  <div class="star-bar" aria-hidden="true"></div>
+
+  <main class="wrap">
+
+    <!-- ============================ FOUNDATIONS ============================ -->
+    <section class="pl-section" id="foundations">
+      <div class="pl-section__head">
+        <p class="dek">Foundations</p>
+        <h2>Color &amp; Type</h2>
+        <p>Five brand colors only; black is reserved for illustration. Body ink is dark blue. Use the tokens — never a raw hex or a raw font size for display text.</p>
+      </div>
+
+      <span class="pl-label">Brand palette</span>
+      <div class="pl-swatches">
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#4EB6E3"></div><div class="pl-swatch__meta"><b>Blue LT</b>--color-blue-lt · #4EB6E3</div></div>
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#33327A"></div><div class="pl-swatch__meta"><b>Blue (ink)</b>--color-blue · #33327A</div></div>
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#EE4C41"></div><div class="pl-swatch__meta"><b>Red</b>--color-red · #EE4C41</div></div>
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#FBEC3E"></div><div class="pl-swatch__meta"><b>Yellow</b>--color-yellow · #FBEC3E</div></div>
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#F4F4EE"></div><div class="pl-swatch__meta"><b>White</b>--color-white · #F4F4EE</div></div>
+      </div>
+
+      <span class="pl-label">Supporting &amp; semantic</span>
+      <div class="pl-swatches">
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#232265"></div><div class="pl-swatch__meta"><b>Blue DK</b>--color-blue-dk</div></div>
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#B93A31"></div><div class="pl-swatch__meta"><b>Red DK</b>--color-red-dk</div></div>
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#D6C830"></div><div class="pl-swatch__meta"><b>Yellow DK</b>--color-yellow-dk</div></div>
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#EE9B2E"></div><div class="pl-swatch__meta"><b>Orange</b>--color-orange</div></div>
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#55547E"></div><div class="pl-swatch__meta"><b>Ink mid</b>--color-ink-mid</div></div>
+        <div class="pl-swatch"><div class="pl-swatch__chip" style="background:#D6D6DE"></div><div class="pl-swatch__meta"><b>Rule</b>--color-rule</div></div>
+      </div>
+
+      <span class="pl-label">Type families</span>
+      <div class="pl-stage">
+        <p class="pl-fam" style="font-family:var(--font-brand);font-weight:900;font-size:var(--step-2);text-transform:uppercase;color:var(--color-blue)">Brand — Futura stack <code>--font-brand</code></p>
+        <p class="pl-fam" style="font-family:var(--font-display);font-weight:900;font-size:var(--step-2);text-transform:uppercase;color:var(--color-blue)">Display — Futura / Impact <code>--font-display</code></p>
+        <p class="pl-fam" style="font-family:var(--font-body);font-size:var(--step-1);color:var(--color-ink)">Body — Georgia serif for running text. <code>--font-body</code></p>
+        <p class="pl-fam" style="font-family:var(--font-mono);font-size:var(--step-0);letter-spacing:0.1em;text-transform:uppercase;color:var(--color-blue)">Mono — Kickers &amp; labels <code>--font-mono</code></p>
+        <p class="pl-fam" style="font-family:var(--font-marker);font-size:var(--step-1);color:var(--color-blue);margin:0">Marker — Power Action only <code>--font-marker</code></p>
+      </div>
+
+      <span class="pl-label">Type scale — <code>--step--1</code> → <code>--step-6</code></span>
+      <div>
+        <div class="pl-type-row"><code>step--1</code><span style="font-family:var(--font-brand);font-weight:900;font-size:var(--step--1);text-transform:uppercase;color:var(--color-blue)">Kickers &amp; captions</span></div>
+        <div class="pl-type-row"><code>step-0</code><span style="font-family:var(--font-body);font-size:var(--step-0);color:var(--color-ink)">Body copy — the base reading size</span></div>
+        <div class="pl-type-row"><code>step-1</code><span style="font-family:var(--font-body);font-size:var(--step-1);color:var(--color-ink)">Ledes &amp; sub-headers</span></div>
+        <div class="pl-type-row"><code>step-2</code><span style="font-family:var(--font-brand);font-weight:900;font-size:var(--step-2);text-transform:uppercase;color:var(--color-blue)">Card titles</span></div>
+        <div class="pl-type-row"><code>step-3</code><span style="font-family:var(--font-display);font-weight:900;font-size:var(--step-3);text-transform:uppercase;color:var(--color-blue)">Section titles</span></div>
+        <div class="pl-type-row"><code>step-4</code><span style="font-family:var(--font-brand);font-weight:900;font-size:var(--step-4);text-transform:uppercase;color:var(--color-blue)">Masthead</span></div>
+        <div class="pl-type-row"><code>step-5</code><span style="font-family:var(--font-display);font-weight:900;font-size:var(--step-5);text-transform:uppercase;color:var(--color-blue);line-height:0.9">Hero</span></div>
+      </div>
+    </section>
+
+    <!-- ============================ CHROME ============================ -->
+    <section class="pl-section" id="chrome">
+      <div class="pl-section__head">
+        <p class="dek">Every page</p>
+        <h2>Page Chrome</h2>
+        <p>Strip, masthead, star bar, and footer. The strip + masthead + star bar at the top of this page are live examples; the footer renders at the very bottom.</p>
+      </div>
+
+      <span class="pl-label">.masthead--compact + .wordmark--link (subpage header)</span>
+      <header class="masthead masthead--compact">
+        <div class="wrap"><a class="wordmark wordmark--link" href="#">ARCHIVE84</a></div>
+      </header>
+
+      <span class="pl-label">.star-bar</span>
+      <div class="star-bar" aria-hidden="true"></div>
+    </section>
+
+    <!-- ============================ HOME ============================ -->
+    <section class="pl-section" id="home">
+      <div class="pl-section__head">
+        <p class="dek">Home page</p>
+        <h2>Home Components</h2>
+      </div>
+
+      <span class="pl-label">.hero-section → .hero + .aux</span>
+    </section>
+  </main>
+
+  <!-- Hero renders full-bleed (color field), outside .wrap -->
+  <section class="hero-section">
+    <div class="hero-grid wrap">
+      <article class="hero">
+        <span class="hero__eyebrow"><span class="tag">Featured Dossier</span> Updated July 2026</span>
+        <img class="hero__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Superman — DC Super Powers Collection">
+        <h2 class="hero__title">Superman</h2>
+        <p class="hero__dek">Kal-El · Clark Kent · The Last Son of Krypton</p>
+        <p class="hero__lede">Superman launched the Super Powers Collection in the spring of 1984 — the figure that opened the pegboard and set the tone for everything Kenner released across the next two years.</p>
+        <div class="hero__meta">
+          <span><strong>First figure</strong> Series 1 · 1984</span>
+          <span><strong>Power action</strong> Power Action Punch</span>
+        </div>
+        <a href="#" class="hero__cta">Read the Dossier</a>
+      </article>
+      <aside class="aux">
+        <p class="dek dek--sm">In this issue —</p>
+        <h2 class="aux__heading">New in the Archive</h2>
+        <ul class="aux__list">
+          <li><div class="thumb thumb--blue">B</div><a class="aux__item" href="#"><strong>Batman</strong><small>Character Dossier</small></a></li>
+          <li><div class="thumb thumb--red">S</div><a class="aux__item" href="#"><strong>Superman</strong><small>Toy Database</small></a></li>
+          <li><div class="thumb thumb--yellow">W</div><a class="aux__item" href="#"><strong>Wonder Woman</strong><small>Character Dossier</small></a></li>
+        </ul>
+        <a class="aux__more" href="#">More additions</a>
+      </aside>
+    </div>
+  </section>
+
+  <div class="directory wrap">
+    <span class="pl-label" style="color:var(--color-red)">.directory → .tiles → .tile[data-accent]</span>
+    <div class="tiles">
+      <a class="tile" data-accent="blue" href="#"><p class="tile__kicker">Section</p><h3 class="tile__title">Characters</h3><p class="tile__desc">Canonical DC identities across every line.</p><span class="tile__arrow">→</span></a>
+      <a class="tile" data-accent="red" href="#"><p class="tile__kicker">Section</p><h3 class="tile__title">Toy Database</h3><p class="tile__desc">Every figure, vehicle, and playset.</p><span class="tile__arrow">→</span></a>
+      <a class="tile" data-accent="yellow" href="#"><p class="tile__kicker">Section</p><h3 class="tile__title">Comics</h3><p class="tile__desc">Mini-comics and the Super Powers series.</p><span class="tile__arrow">→</span></a>
+    </div>
+  </div>
+
+  <section class="stats"><p class="wrap stats__line"><span><b>34</b> Figures</span><span><b>8</b> Vehicles</span><span><b>3</b> Playsets</span><span><b>2</b> Waves</span></p></section>
+
+  <section class="featured">
+    <div class="wrap">
+      <div class="featured__head"><h2 class="featured__title">Featured</h2></div>
+      <div class="featured__grid">
+        <article class="essay">
+          <img class="essay__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Placeholder">
+          <p class="essay__kicker">History</p>
+          <h3><a href="#">Opening the Doors on 1984</a></h3>
+          <p>How Kenner turned a licensing deal into the definitive DC action-figure line.</p>
+          <div class="essay__foot"><span>Feature</span><span>8 min</span></div>
+        </article>
+        <article class="essay">
+          <img class="essay__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Placeholder">
+          <p class="essay__kicker">Prototypes</p>
+          <h3><a href="#">The Man-Bat That Never Shipped</a></h3>
+          <p>Inside the unproduced Series 3 figures and their surviving hardcopies.</p>
+          <div class="essay__foot"><span>Feature</span><span>6 min</span></div>
+        </article>
+        <article class="essay">
+          <img class="essay__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Placeholder">
+          <p class="essay__kicker">Interview</p>
+          <h3><a href="#">Drawing the Card Backs</a></h3>
+          <p>José Luis García-López on the art that defined the collection.</p>
+          <div class="essay__foot"><span>Q&amp;A</span><span>12 min</span></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="pullquote"><div class="wrap pullquote__inner"><blockquote>Search is the product. Collectors arrive Googling.</blockquote><cite>— The one architectural rule</cite></div></section>
+  <section class="pullquote pullquote--red"><div class="wrap pullquote__inner"><blockquote>Trust everyone. Publish direct.</blockquote><cite>— Access model, .pullquote--red</cite></div></section>
+
+  <main class="wrap">
+    <!-- ============================ DOSSIER ============================ -->
+    <section class="pl-section" id="dossier">
+      <div class="pl-section__head">
+        <p class="dek">Character page</p>
+        <h2>Dossier Components</h2>
+      </div>
+
+      <span class="pl-label">.breadcrumb</span>
+      <nav class="breadcrumb"><a href="#">Home</a> <span aria-hidden="true">/</span> <a href="#">Characters</a> <span aria-hidden="true">/</span> <span aria-current="page">Superman</span></nav>
+
+      <span class="pl-label">.dossier-head__tags → .dossier-tag / .dossier-title / .dossier-aliases</span>
+      <div class="pl-stage">
+        <div class="dossier-head__tags">
+          <span class="dossier-tag dossier-tag--blue">Hero</span>
+          <span class="dossier-tag dossier-tag--yellow">Series 1</span>
+          <span class="dossier-tag dossier-tag--red">1984</span>
+        </div>
+        <h1 class="dossier-title">Superman</h1>
+        <p class="dossier-aliases">Kal-El · Clark Kent</p>
+      </div>
+
+      <span class="pl-label">.dossier-spec (Vital Stats)</span>
+      <div class="dossier-spec">
+        <p class="dek">Vital Stats</p>
+        <dl>
+          <div class="spec-row"><dt>Series</dt><dd>Series 1 (1984)</dd></div>
+          <div class="spec-row"><dt>Power Action</dt><dd>Power Action Punch</dd></div>
+          <div class="spec-row"><dt>Accessory</dt><dd>Mini-comic</dd></div>
+          <div class="spec-row"><dt>First Appearance</dt><dd>Action Comics #1</dd></div>
+        </dl>
+      </div>
+
+      <span class="pl-label">.figure-card (hover to flip) &amp; .comic-card</span>
+      <div class="pl-grid-2">
+        <a class="figure-card" href="#">
+          <div class="figure-card__flip">
+            <img class="figure-card__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Superman figure, front">
+            <img class="figure-card__photo figure-card__photo--back" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Card back">
+          </div>
+          <h3>Superman</h3>
+          <p class="figure-card__meta">Kenner · 1984</p>
+        </a>
+        <a class="comic-card" href="#">
+          <img class="comic-card__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Mini-comic cover">
+          <h3>Superman Mini-Comic</h3>
+          <p class="comic-card__meta">Kenner · 1984</p>
+        </a>
+      </div>
+
+      <span class="pl-label">.enemies-list → .enemy-link</span>
+      <ul class="enemies-list">
+        <li><a class="enemy-link" href="#">Lex Luthor</a></li>
+        <li><a class="enemy-link" href="#">Brainiac</a></li>
+        <li><a class="enemy-link" href="#">Darkseid</a></li>
+      </ul>
+
+      <span class="pl-label">.timeline → .timeline__item</span>
+      <ul class="timeline">
+        <li class="timeline__item"><span class="timeline__year">1984</span><div class="timeline__body"><h3 class="timeline__title">Series 1 Ships</h3><p>The first twelve figures open the collection.</p></div></li>
+        <li class="timeline__item"><span class="timeline__year">1986</span><div class="timeline__body"><h3 class="timeline__title">The Line Closes</h3><p>Series 3 becomes the rarest wave.</p></div></li>
+      </ul>
+
+      <span class="pl-label">.powers-card (fixed 1984 dossier card)</span>
+      <div style="max-width:340px">
+        <div class="powers-card">
+          <p class="powers-card__name">Superman</p>
+          <div class="powers-card__section"><h3>Power</h3><p>Super strength, flight, invulnerability.</p></div>
+          <div class="powers-card__section"><h3>Power Action</h3><p>Power Action Punch</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ RELEASE ============================ -->
+    <section class="pl-section" id="release">
+      <div class="pl-section__head">
+        <p class="dek">Product page</p>
+        <h2>Release Components</h2>
+      </div>
+
+      <span class="pl-label">.release-gallery → figure + figcaption</span>
+      <div class="release-gallery-block">
+        <div class="release-gallery">
+          <figure><img src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Front"><figcaption>Carded front · collector photo</figcaption></figure>
+          <figure><img src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Back"><figcaption>Card back</figcaption></figure>
+          <figure><img src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Loose"><figcaption>Loose figure</figcaption></figure>
+        </div>
+      </div>
+
+      <span class="pl-label">.release-charlink / .release-sources</span>
+      <div class="pl-stage">
+        <a class="release-charlink" href="#">← See the Superman character dossier</a>
+        <div class="release-sources"><p class="dek">Sources</p><ul><li>https://example.com/super-powers-superman</li></ul></div>
+      </div>
+    </section>
+
+    <!-- ============================ MEDIA ============================ -->
+    <section class="pl-section" id="media">
+      <div class="pl-section__head">
+        <p class="dek">Media &amp; merch</p>
+        <h2>Media Components</h2>
+      </div>
+
+      <span class="pl-label">.video-grid → .video-card</span>
+      <div class="video-grid">
+        <a class="video-card" href="#">
+          <div class="video-card__frame"><img src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Poster"><span class="video-card__badge">▶</span></div>
+          <h3>The 1985 Toy Fair Reel</h3>
+          <p class="video-card__meta">Archival · 4:12</p>
+          <p class="video-card__desc">Kenner's dealer presentation for the second wave.</p>
+        </a>
+        <a class="video-card" href="#">
+          <div class="video-card__frame video-card__frame--empty"><img src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1784824536691-garcia-lopez-superman2.png" alt="Pending"><span class="video-card__pending">Pending</span></div>
+          <h3>Commercial Break, 1984</h3>
+          <p class="video-card__meta">TV Spot · 0:30</p>
+          <p class="video-card__desc">Awaiting a clean transfer.</p>
+        </a>
+      </div>
+
+      <span class="pl-label">.media-empty (empty state)</span>
+      <p class="media-empty">Nothing catalogued here yet — check back as the archive grows.</p>
+    </section>
+
+    <!-- ============================ UTILITIES ============================ -->
+    <section class="pl-section" id="utilities">
+      <div class="pl-section__head">
+        <p class="dek">Small parts</p>
+        <h2>Utilities</h2>
+      </div>
+
+      <span class="pl-label">.star (+ variants) on a dark stage</span>
+      <div class="pl-stage" style="background:var(--color-blue);display:flex;gap:1.25rem;align-items:center;font-size:2rem">
+        <span class="star" aria-hidden="true"></span>
+        <span class="star star--white" aria-hidden="true"></span>
+        <span class="star star--red" aria-hidden="true"></span>
+      </div>
+
+      <span class="pl-label">.dek / .dek--sm / .edition / .tag</span>
+      <div class="pl-stage">
+        <p class="dek">Kicker label — .dek</p>
+        <p class="dek dek--sm">Smaller kicker — .dek--sm</p>
+        <p class="edition">Vol. 1 · Issue 01 — .edition</p>
+        <p><span class="tag" style="color:var(--color-white)">.tag</span></p>
+      </div>
+
+      <span class="pl-label">.hero__cta button</span>
+      <div class="pl-stage"><a href="#" class="hero__cta">Read the Dossier</a></div>
+
+      <span class="pl-label">Legacy — do not use for new work</span>
+      <p class="pl-note">The <code>.photo-well</code> placeholder blocks remain in the stylesheet for legacy support only. New work always uses real <code>&lt;img&gt;</code> with <code>alt</code> text (see STYLE-GUIDE.md → Imagery).</p>
+    </section>
+  </main>
+
+  <!-- Live footer as this page's footer -->
+  <footer class="foot">
+    <div class="wrap foot__grid">
+      <div>
+        <p class="foot__brand">ARCHIVE<span>84</span></p>
+        <p>The DC Super Powers reference archive. This pattern library renders live from <em>styles.css</em>.</p>
+      </div>
+      <div><h4>Docs</h4><ul><li><a href="STYLE-GUIDE.md">STYLE-GUIDE.md</a></li><li><a href="COMPONENTS.md">COMPONENTS.md</a></li></ul></div>
+      <div><h4>Source</h4><ul><li><a href="styles.css">styles.css</a></li><li><a href="index.html">Home</a></li></ul></div>
+    </div>
+    <div class="wrap foot__legal"><span>Internal design reference</span><span>Not a public page</span></div>
+  </footer>
+
+</body>
+</html>
