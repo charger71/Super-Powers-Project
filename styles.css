@@ -174,8 +174,115 @@ button { font: inherit; cursor: pointer; }
 }
 
 .masthead {
+  position: relative;
   background: var(--color-blue-lt);
   padding-block: clamp(0.75rem, 1.5vw, 1.25rem) clamp(1.5rem, 3vw, 2.5rem);
+}
+
+/* ---------- SITE NAV (in the masthead — Futura links; ☰ toggle on mobile) ---------- */
+/* Wordmark on the left, nav to its right on one row (compact subpages center
+   it against the single-line wordmark). */
+.masthead__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  flex-wrap: wrap;
+}
+/* Home masthead: wordmark + dek as a left block, nav top-aligned to their right. */
+.masthead:not(.masthead--compact) .masthead__inner { align-items: flex-start; }
+.masthead__head { flex: 1 1 auto; }
+.site-nav { display: flex; align-items: center; }
+.site-nav__menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-nav__menu a {
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: var(--step--1);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-blue);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  padding-bottom: 2px;
+  white-space: nowrap;
+}
+.site-nav__menu a:hover,
+.site-nav__menu a:focus-visible { border-bottom-color: var(--color-red); }
+.site-nav__menu [aria-current] { border-bottom-color: var(--color-red); }
+
+/* Hamburger toggle — hidden on desktop, revealed once the menu collapses */
+.site-nav__toggle {
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: var(--step--1);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-blue);
+  cursor: pointer;
+}
+.site-nav__bars {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: currentColor;
+}
+.site-nav__bars::before,
+.site-nav__bars::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 22px;
+  height: 2px;
+  background: currentColor;
+}
+.site-nav__bars::before { top: -7px; }
+.site-nav__bars::after  { top:  7px; }
+
+@media (max-width: 760px) {
+  .site-nav__toggle { display: inline-flex; }
+  .site-nav__menu {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 30;
+    flex-direction: column;
+    gap: 0;
+    background: var(--color-blue-lt);
+    border-top: 2px solid var(--color-blue);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  }
+  .site-nav__toggle[aria-expanded="true"] + .site-nav__menu { display: flex; }
+  .site-nav__menu li { border-top: 1px solid rgba(11, 61, 145, 0.15); }
+  .site-nav__menu li:first-child { border-top: 0; }
+  .site-nav__menu a {
+    display: block;
+    padding: 0.85rem var(--gutter);
+    border-bottom: 0;
+    white-space: normal;
+  }
+  .site-nav__menu a:hover,
+  .site-nav__menu a:focus-visible {
+    border-bottom: 0;
+    background: var(--color-blue);
+    color: var(--color-white);
+  }
 }
 .wordmark {
   font-family: var(--font-brand);

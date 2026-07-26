@@ -13,17 +13,32 @@
   <div class="strip">
     <div class="wrap strip__inner">
       <span class="strip__brand"><span class="star" aria-hidden="true"></span> ARCHIVE84</span>
-      <span>Vol. 1 · Issue 01 · Summer 2026</span>
     </div>
   </div>
 
   <!-- MASTHEAD -->
   <header class="masthead">
-    <div class="wrap">
-      <h1 class="wordmark">ARCHIVE84</h1>
-      <p class="masthead__dek">
-        A visual reference to the <em>DC Super Powers Collection</em> — the characters, comics, and toys that opened the doors on 1984.
-      </p>
+    <div class="wrap masthead__inner">
+      <div class="masthead__head">
+        <h1 class="wordmark">ARCHIVE84</h1>
+        <p class="masthead__dek">
+          A visual reference to the <em>DC Super Powers Collection</em> — the characters, comics, and toys that opened the doors on 1984.
+        </p>
+      </div>
+      <nav class="site-nav" aria-label="Sections">
+        <button class="site-nav__toggle" type="button" aria-expanded="false" aria-controls="site-menu">
+          <span class="site-nav__bars" aria-hidden="true"></span>Menu
+        </button>
+        <ul class="site-nav__menu" id="site-menu">
+          <li><a href="characters/index.html">Characters</a></li>
+          <li><a href="toys/index.html">Toys</a></li>
+          <li><a href="comics/index.html">Comics</a></li>
+          <li><a href="media/index.html">Media</a></li>
+          <li><a href="merchandise/index.html">Merch</a></li>
+          <li><a href="timeline/index.html">Timeline</a></li>
+          <li><a href="search/index.html">Search</a></li>
+        </ul>
+      </nav>
     </div>
   </header>
 
@@ -61,6 +76,27 @@
 
       <ul class="aux__list">
         <li>
+          <div class="thumb thumb--yellow">SP</div>
+          <a class="aux__item" href="media/super-powers-warner-home-video.html">
+            <strong>Super Powers — Warner Home Video (VHS/Betamax)</strong>
+            <small>In the Media</small>
+          </a>
+        </li>
+        <li>
+          <div class="thumb thumb--red">S</div>
+          <a class="aux__item" href="release/supermobile-kenner-1984.html">
+            <strong>Supermobile</strong>
+            <small>Toy Database</small>
+          </a>
+        </li>
+        <li>
+          <div class="thumb thumb--yellow">ZS</div>
+          <a class="aux__item" href="media/zayre-batman-christmas.html">
+            <strong>Zayre's Batman Christmas Commercial</strong>
+            <small>In the Media</small>
+          </a>
+        </li>
+        <li>
           <div class="thumb thumb--blue">S</div>
           <a class="aux__item" href="dossier/steppenwolf.html">
             <strong>Steppenwolf</strong>
@@ -72,27 +108,6 @@
           <a class="aux__item" href="release/steppenwolf-kenner-1985.html">
             <strong>Steppenwolf</strong>
             <small>Toy Database</small>
-          </a>
-        </li>
-        <li>
-          <div class="thumb thumb--red">SC</div>
-          <a class="aux__item" href="release/superman-cape-mail-away.html">
-            <strong>Superman Cape - Mail Away</strong>
-            <small>Toy Database</small>
-          </a>
-        </li>
-        <li>
-          <div class="thumb thumb--blue">AS</div>
-          <a class="aux__item" href="dossier/alan-scott.html">
-            <strong>Alan Scott</strong>
-            <small>Character Dossier</small>
-          </a>
-        </li>
-        <li>
-          <div class="thumb thumb--blue">AM</div>
-          <a class="aux__item" href="dossier/animal-man.html">
-            <strong>Animal Man</strong>
-            <small>Character Dossier</small>
           </a>
         </li>
       </ul>
@@ -204,6 +219,13 @@
 
       <div class="featured__grid">
         <article class="essay">
+          <img class="essay__photo" src="../assets/sp-palceholder.jpg" alt="Super Powers — Warner Home Video (VHS/Betamax)">
+          <p class="essay__kicker">In the Media · Home Video</p>
+          <h3><a href="media/super-powers-warner-home-video.html">Super Powers — Warner Home Video (VHS/Betamax)</a></h3>
+          <p>In 1985 Warner Home Video reissued 1960s Filmation DC cartoons (Superman, Batman, Superboy, Aquaman) under the Super Powers label — part of DC's 50th-</p>
+          <div class="essay__foot"><span>Home video · 1985</span><span>Read →</span></div>
+        </article>
+        <article class="essay">
           <img class="essay__photo" src="../assets/sp-palceholder.jpg" alt="1986 Zayre Christmas Commercial">
           <p class="essay__kicker">In the Media · Television Commercials</p>
           <h3><a href="media/zayre-batman-christmas.html">Zayre's Batman Christmas Commercial</a></h3>
@@ -216,13 +238,6 @@
           <h3><a href="media/superfriends-legendary-super-powers-show.html">SuperFriends: The Legendary Super Powers Show</a></h3>
           <p>Hanna-Barbera's long-running Super Friends was retitled in 1984 to sync with Kenner's new toy line — the animated engine that drove the Super Powers b</p>
           <div class="essay__foot"><span>Series · 1984</span><span>Read →</span></div>
-        </article>
-        <article class="essay">
-          <img class="essay__photo" src="../assets/sp-palceholder.jpg" alt="Kenner Super Powers TV Commercials">
-          <p class="essay__kicker">In the Media · Television Commercials</p>
-          <h3><a href="media/kenner-super-powers-tv-commercials.html">Kenner Super Powers TV Commercials</a></h3>
-          <p>The vintage Kenner television spots that sold the line — stop-motion and live-action ads showcasing the Power Action features wave by wave (1984–1986)</p>
-          <div class="essay__foot"><span>Commercial · 1984</span><span>Read →</span></div>
         </article>
       </div>
     </div>
@@ -278,6 +293,8 @@
       </div>
     </div>
   </footer>
+
+  <script src="js/nav.js" defer></script>
 
 </body>
 </html>

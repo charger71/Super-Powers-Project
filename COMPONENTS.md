@@ -17,29 +17,65 @@ fill real content.
 ## Page chrome (every page)
 
 ### Edition strip — `.strip`
-Thin light-blue bar at the very top: brand mark on the left, edition line on the right.
+Thin light-blue bar at the very top: just the brand mark. On subpages the brand is a link home
+(`<a class="strip__brand" href="/index.html">`).
 
 ```html
 <div class="strip">
   <div class="wrap strip__inner">
     <span class="strip__brand"><span class="star" aria-hidden="true"></span> ARCHIVE84</span>
-    <span>Vol. 1 · Issue 01 · Summer 2026</span>
   </div>
 </div>
 ```
 
 ### Masthead — `.masthead` / `.wordmark`
-The big wordmark block. `.masthead--compact` + `.wordmark--link` is the subpage version
-(smaller, links home).
+The big wordmark block, with the section nav (below). On the home masthead the nav is a row under
+the dek; the compact subpage version (`.masthead--compact` + `.wordmark--link`) uses
+`.masthead__inner` to sit the wordmark and nav on one row.
 
 ```html
 <header class="masthead">
   <div class="wrap">
     <h1 class="wordmark">ARCHIVE84</h1>
     <p class="masthead__dek">A visual reference to the <em>DC Super Powers Collection</em>…</p>
+    <!-- section nav — see below -->
+  </div>
+</header>
+
+<header class="masthead masthead--compact">
+  <div class="wrap masthead__inner">
+    <a href="/index.html" class="wordmark wordmark--link">Archive84</a>
+    <!-- section nav — see below -->
   </div>
 </header>
 ```
+
+### Section nav — `.site-nav`
+Primary site nav, lives in the masthead. Futura-uppercase links inline on desktop; below 760px they
+collapse behind a `☰ Menu` button into a full-width dropdown anchored to the masthead (toggled by
+`/js/nav.js`, which flips `aria-expanded` on the button — the CSS reveals the menu off that). Keep
+the `id="site-menu"` / `aria-controls="site-menu"` pairing so the toggle and the script find each
+other. Add `aria-current="page"` to the link for the current section to underline it.
+
+```html
+<nav class="site-nav" aria-label="Sections">
+  <button class="site-nav__toggle" type="button" aria-expanded="false" aria-controls="site-menu">
+    <span class="site-nav__bars" aria-hidden="true"></span>Menu
+  </button>
+  <ul class="site-nav__menu" id="site-menu">
+    <li><a href="/characters/index.html">Characters</a></li>
+    <li><a href="/toys/index.html">Toys</a></li>
+    <li><a href="/comics/index.html">Comics</a></li>
+    <li><a href="/media/index.html">Media</a></li>
+    <li><a href="/merchandise/index.html">Merch</a></li>
+    <li><a href="/timeline/index.html">Timeline</a></li>
+    <li><a href="/search/index.html">Search</a></li>
+  </ul>
+</nav>
+```
+
+Generated pages build this from `siteMenu()` in `build/build-dossiers.mjs` — edit the section
+list there, not the emitted HTML.
 
 ### Star bar — `.star-bar`
 Full-width red row stamped with repeating yellow stars. A section divider. Decorative:

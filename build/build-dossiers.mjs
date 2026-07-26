@@ -290,6 +290,32 @@ ${items}
       </nav>`;
 }
 
+// Primary section menu shown in the masthead on every page. Inline Futura links
+// on desktop; collapses to a ☰ toggle + dropdown on narrow screens (see
+// /js/nav.js and the SITE NAV rules in styles.css).
+const SITE_SECTIONS = [
+  ['/characters/index.html', 'Characters'],
+  ['/toys/index.html', 'Toys'],
+  ['/comics/index.html', 'Comics'],
+  ['/media/index.html', 'Media'],
+  ['/merchandise/index.html', 'Merch'],
+  ['/timeline/index.html', 'Timeline'],
+  ['/search/index.html', 'Search'],
+];
+function siteMenu() {
+  const items = SITE_SECTIONS
+    .map(([href, label]) => `<li><a href="${href}">${label}</a></li>`)
+    .join('\n          ');
+  return `<nav class="site-nav" aria-label="Sections">
+        <button class="site-nav__toggle" type="button" aria-expanded="false" aria-controls="site-menu">
+          <span class="site-nav__bars" aria-hidden="true"></span>Menu
+        </button>
+        <ul class="site-nav__menu" id="site-menu">
+          ${items}
+        </ul>
+      </nav>`;
+}
+
 function pageShell({ title, description, ogImage, body }) {
   return `<!doctype html>
 <html lang="en">
@@ -309,13 +335,13 @@ function pageShell({ title, description, ogImage, body }) {
   <div class="strip">
     <div class="wrap strip__inner">
       <a class="strip__brand" href="/index.html"><span class="star" aria-hidden="true"></span> Archive84</a>
-      <span>Vol. 1 · Issue 01 · Summer 2026</span>
     </div>
   </div>
 
   <header class="masthead masthead--compact">
-    <div class="wrap">
+    <div class="wrap masthead__inner">
       <a href="/index.html" class="wordmark wordmark--link">Archive84</a>
+      ${siteMenu()}
     </div>
   </header>
 
@@ -376,6 +402,7 @@ ${body}
     </div>
   </dialog>
   <script src="/js/lightbox.js" defer></script>
+  <script src="/js/nav.js" defer></script>
 
 </body>
 </html>
@@ -1845,17 +1872,19 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
   <div class="strip">
     <div class="wrap strip__inner">
       <span class="strip__brand"><span class="star" aria-hidden="true"></span> ARCHIVE84</span>
-      <span>Vol. 1 · Issue 01 · Summer 2026</span>
     </div>
   </div>
 
   <!-- MASTHEAD -->
   <header class="masthead">
-    <div class="wrap">
-      <h1 class="wordmark">ARCHIVE84</h1>
-      <p class="masthead__dek">
-        A visual reference to the <em>DC Super Powers Collection</em> — the characters, comics, and toys that opened the doors on 1984.
-      </p>
+    <div class="wrap masthead__inner">
+      <div class="masthead__head">
+        <h1 class="wordmark">ARCHIVE84</h1>
+        <p class="masthead__dek">
+          A visual reference to the <em>DC Super Powers Collection</em> — the characters, comics, and toys that opened the doors on 1984.
+        </p>
+      </div>
+      ${siteMenu()}
     </div>
   </header>
 
@@ -2015,6 +2044,8 @@ ${essaysSection}
       </div>
     </div>
   </footer>
+
+  <script src="/js/nav.js" defer></script>
 
 </body>
 </html>
