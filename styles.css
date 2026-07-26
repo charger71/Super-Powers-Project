@@ -362,7 +362,7 @@ button { font: inherit; cursor: pointer; }
 .hero__photo {
   aspect-ratio: 21 / 9;
   width: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   margin-bottom: 1.5rem;
 }
@@ -692,7 +692,7 @@ button { font: inherit; cursor: pointer; }
   padding: clamp(1rem, 1.75vw, 1.25rem);
 }
 .essay__photo { aspect-ratio: 4 / 3; }
-img.essay__photo { width: 100%; object-fit: cover; display: block; }
+img.essay__photo { width: 100%; object-fit: contain; display: block; }
 /* generated homepage: latest-addition rows link to their record */
 a.aux__item { display: block; text-decoration: none; }
 .essay h3 a { color: inherit; text-decoration: none; }
@@ -970,7 +970,7 @@ a.aux__item { display: block; text-decoration: none; }
   display: block;
   width: 100%;
   aspect-ratio: 21 / 9;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 /* Overview + spec (2-col) */
@@ -1182,7 +1182,7 @@ a.aux__item { display: block; text-decoration: none; }
   display: block;
   width: 100%;
   aspect-ratio: 3 / 4;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: var(--radius);
 }
 /* Release hero photo — product shots are usually squarer than portraits */
@@ -1205,7 +1205,7 @@ a.aux__item { display: block; text-decoration: none; }
 .dossier-headshots img {
   width: 100%;
   aspect-ratio: 1;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: var(--radius);
   background: var(--color-white);
 }
@@ -1504,7 +1504,7 @@ a.figure-card:focus-visible {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   border-radius: calc(var(--radius) - 2px);
   -webkit-backface-visibility: hidden;
@@ -1699,7 +1699,7 @@ a.figure-card:focus-visible {
   display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 0;
 }
 .gallery__cap {
@@ -1869,7 +1869,7 @@ a.figure-card:focus-visible {
   display: block;
   width: 100%;
   aspect-ratio: 2 / 3;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: var(--radius);
 }
 .comic-card h3 {
@@ -2056,7 +2056,7 @@ a.video-card:focus-visible {
   width: 100%;
   height: 100%;
   border: 0;
-  object-fit: cover;
+  object-fit: contain;
 }
 .media-player--empty img { opacity: 0.5; }
 
@@ -2073,7 +2073,7 @@ a.video-card:focus-visible {
   width: 100%;
   height: 100%;
   border: 0;
-  object-fit: cover;
+  object-fit: contain;
 }
 .video-card__frame--empty img { opacity: 0.5; }
 .video-card__badge {

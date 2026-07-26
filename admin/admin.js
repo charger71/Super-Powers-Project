@@ -59,7 +59,10 @@ const ENTITIES = {
     label: 'Releases',
     table: 'releases',
     listCols: ['name', 'slug', 'type', 'status', 'release_year'],
-    mediaJoin: { table: 'media_releases', fk: 'release_id' },
+    // roles split a release's photos by where they surface: 'artwork' (packaged
+    // / card art) shows on the character dossier; 'loose' (out of package) shows
+    // in the Toy Database. Default 'artwork' — see the media_releases migration.
+    mediaJoin: { table: 'media_releases', fk: 'release_id', roles: ['artwork', 'loose'] },
     fields: [
       { col: 'name',             label: 'Name',            kind: 'text', required: true },
       { col: 'slug',             label: 'Slug',            kind: 'slug', required: true },

@@ -210,7 +210,7 @@ input.invalid { border-color: var(--danger); }
 .thumb {
   width: 48px;
   height: 48px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 3px;
   display: block;
 }
@@ -312,7 +312,7 @@ input.invalid { border-color: var(--danger); }
 .media-card img, .media-card__embed {
   width: 100%;
   aspect-ratio: 1;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 3px;
   background: var(--paper);
 }

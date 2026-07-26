@@ -234,8 +234,10 @@ create table media_releases (
   release_id uuid references releases(id)     on delete cascade,
   sort_order smallint default 0,
   is_primary boolean default false,           -- hero image
+  role       text not null default 'artwork', -- artwork|loose (dossier vs Toy Database)
   primary key (media_id, release_id)
 );
+create index on media_releases (release_id, role);
 create table media_characters (
   media_id     uuid references media_assets(id) on delete cascade,
   character_id uuid references characters(id)   on delete cascade,

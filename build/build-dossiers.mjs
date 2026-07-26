@@ -165,13 +165,21 @@ async function fetchVariationsByRelease() {
 }
 
 async function fetchReleases() {
-  const list = await rest(
+  const base =
     'releases?select=*,series(name,year,sort_order),lines(name,slug,sort_order),' +
     'characters!releases_character_id_fkey(name,slug),' +
     'release_characters(character_id,characters(name,slug)),' +
-    'release_creators(role,creators(name,slug)),' +
-    `media_releases(is_primary,sort_order,${MEDIA_EMBED})`
-  );
+    'release_creators(role,creators(name,slug)),';
+  // Prefer role-tagged release media (artwork vs loose). Tolerate the column
+  // not existing yet — until the media_releases role migration is applied the
+  // build still runs, and figureCard's fallback shows whatever photo there is.
+  let list;
+  try {
+    list = await rest(base + `media_releases(role,is_primary,sort_order,${MEDIA_EMBED})`);
+  } catch (err) {
+    console.warn('Release media role unavailable (is the media_releases role migration applied?) — building without per-role release photos.');
+    list = await rest(base + `media_releases(is_primary,sort_order,${MEDIA_EMBED})`);
+  }
   return list.sort(releaseOrder);
 }
 
@@ -358,8 +366,7 @@ ${body}
         <div>
           <h4>Sections</h4>
           <ul>
-            <li><a href="/characters/index.html">Dossiers</a></li>
-            <li><a href="/characters/index.html">Character Index</a></li>
+            <li><a href="/characters/index.html">Characters</a></li>
             <li><a href="/timeline/index.html">Timeline</a></li>
             <li><a href="/toys/index.html">Toy Database</a></li>
             <li><a href="/comics/index.html">Comic Database</a></li>
@@ -435,8 +442,13 @@ function pager(kind, prev, next) {
 
 // ---- fragments ----------------------------------------------------------
 
-function figureCard(r) {
-  const media = sortedMedia(r.media_releases);
+// `roles` (optional) picks release photos of a given role — 'artwork' on the
+// dossier page, 'loose' in the Toy Database. Falls back to all release media so
+// a release without a role-specific photo still shows its best available image
+// rather than a placeholder.
+function figureCard(r, roles) {
+  const roleMedia = roles ? pickMedia(r.media_releases, roles) : [];
+  const media = roleMedia.length ? roleMedia : sortedMedia(r.media_releases);
   const front = mediaUrl(media[0]) ?? PLACEHOLDER;
   const back = mediaUrl(media[1]);
   const frontAlt = media[0]?.alt_text ?? `${r.name} — ${r.lines?.name ?? ''}${r.release_year ? `, ${r.release_year}` : ''}`;
@@ -552,7 +564,7 @@ function renderCharacterPage(c, releases, publications, enemyList, adj) {
         <h2>${esc(line.name)}</h2>
       </div>
       <div class="figures-grid">
-        ${rs.map(figureCard).join('\n        ')}
+        ${rs.map((r) => figureCard(r, ['artwork'])).join('\n        ')}
       </div>
     </div>
   </section>`).join('\n');
@@ -621,7 +633,7 @@ function renderCharacterPage(c, releases, publications, enemyList, adj) {
     <div class="wrap">
 ${backAndCrumb([
   { label: 'Home', href: '/index.html' },
-  { label: 'Dossiers', href: '/characters/index.html' },
+  { label: 'Characters', href: '/characters/index.html' },
   { label: c.name },
 ])}
 
@@ -1629,7 +1641,7 @@ function renderToyIndex(releases) {
       <div class="toy-wave">
         <h3 class="toy-wave__head">${esc(wn)}${w.year < 9999 ? ` · ${esc(w.year)}` : ''}</h3>
         <div class="figures-grid">
-          ${w.releases.map(figureCard).join('\n          ')}
+          ${w.releases.map((r) => figureCard(r, ['loose'])).join('\n          ')}
         </div>
       </div>`).join('\n');
     return `
@@ -1930,15 +1942,8 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
       <nav class="tiles" aria-label="Primary sections">
         <a class="tile" data-accent="blue" href="/characters/index.html">
           <p class="tile__kicker">Character files</p>
-          <h3 class="tile__title">Dossiers</h3>
-          <p class="tile__desc">Full-page reference on every hero and villain in the Super Powers universe.</p>
-          <span class="tile__arrow" aria-hidden="true">→</span>
-        </a>
-
-        <a class="tile" data-accent="red" href="/characters/index.html">
-          <p class="tile__kicker">The roster</p>
-          <h3 class="tile__title">Character Index</h3>
-          <p class="tile__desc">Sortable by name, wave, allegiance, or debut year. The quickest way in.</p>
+          <h3 class="tile__title">Characters</h3>
+          <p class="tile__desc">Full-page reference on every hero and villain — sortable by name, wave, allegiance, or debut year.</p>
           <span class="tile__arrow" aria-hidden="true">→</span>
         </a>
 
@@ -2017,8 +2022,7 @@ ${essaysSection}
         <div>
           <h4>Sections</h4>
           <ul>
-            <li><a href="/characters/index.html">Dossiers</a></li>
-            <li><a href="/characters/index.html">Character Index</a></li>
+            <li><a href="/characters/index.html">Characters</a></li>
             <li><a href="/timeline/index.html">Timeline</a></li>
             <li><a href="/toys/index.html">Toy Database</a></li>
             <li><a href="/comics/index.html">Comic Database</a></li>
