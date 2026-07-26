@@ -1250,6 +1250,11 @@ a.aux__item { display: block; text-decoration: none; }
   background-clip: padding-box;
   padding: clamp(1.25rem, 2.25vw, 1.75rem);
   align-self: start;
+  /* "Cut it out" line: a dark-blue dashed rule 4px outside the star border */
+  outline: 2px dashed var(--color-blue-dk);
+  outline-offset: 4px;
+  /* leave room so the offset outline isn't clipped by the sidebar edge */
+  margin: 6px;
 }
 .powers-card__logo {
   display: block;

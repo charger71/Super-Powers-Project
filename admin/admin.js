@@ -18,7 +18,7 @@ const ENUMS = {
   rarity_level:   ['common', 'uncommon', 'rare', 'very_rare', 'grail'],
   variation_type: ['card', 'paint', 'mold', 'accessory', 'packaging', 'country'],
   media_type:     ['photo', 'video', 'scan', 'audio'],
-  rights_status:  ['owned', 'permission_granted', 'fair_use_editorial', 'link_only'],
+  rights_status:  ['owned', 'permission_granted', 'creative_commons', 'fair_use_editorial', 'link_only', 'unknown'],
   publication_kind: ['mini_series', 'pack_in_mini', 'book', 'rpg'],
 };
 
@@ -232,7 +232,7 @@ const ENTITIES = {
 };
 
 // ---- state --------------------------------------------------------------
-const state = { entity: 'characters', rows: [], editing: null };
+const state = { entity: 'characters', rows: [], editing: null, sort: null };
 
 const $ = (id) => document.getElementById(id);
 
@@ -302,7 +302,26 @@ async function loadList() {
     .order(order.col, { ascending: order.ascending });
   if (error) { alert(error.message); return; }
   state.rows = data;
+  state.sort = null;               // clear any per-column sort when switching entities
   renderList();
+}
+
+// Every list carries a trailing "updated" column so sorting by latest edited
+// is always available, whatever the entity's own columns are.
+const EDITED_COL = 'updated_at';
+
+// Mixed-type compare: nulls last, numbers numerically, dates by timestamp,
+// everything else case-insensitive string. `dir` is 1 (asc) or -1 (desc).
+function compareRows(a, b, col, dir) {
+  const av = a[col], bv = b[col];
+  const aEmpty = av == null || av === '';
+  const bEmpty = bv == null || bv === '';
+  if (aEmpty || bEmpty) return aEmpty === bEmpty ? 0 : (aEmpty ? 1 : -1);
+  if (col === EDITED_COL || col === 'created_at') {
+    return (new Date(av) - new Date(bv)) * dir;
+  }
+  if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+  return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' }) * dir;
 }
 
 function listCell(row, col) {
@@ -317,6 +336,10 @@ function listCell(row, col) {
     } else if (row.embed_url) {
       td.textContent = '▶ embed';
     }
+  } else if ((col === EDITED_COL || col === 'created_at') && row[col]) {
+    const d = new Date(row[col]);
+    td.textContent = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    td.title = d.toLocaleString();
   } else {
     td.textContent = Array.isArray(row[col]) ? row[col].join(', ') : (row[col] ?? '');
   }
@@ -327,21 +350,35 @@ function renderList() {
   const def = ENTITIES[state.entity];
   $('bulk-upload').hidden = !def.upload;
   const filter = $('list-filter').value.trim().toLowerCase();
-  const cols = def.listCols.filter((c) => c !== '_thumb');
+  const displayCols = [...def.listCols, EDITED_COL];
+  const cols = displayCols.filter((c) => c !== '_thumb');
   const rows = filter
     ? state.rows.filter((r) => cols.some((c) => String(r[c] ?? '').toLowerCase().includes(filter)))
-    : state.rows;
+    : state.rows.slice();
+
+  // Active sort: an explicit header click, otherwise the entity's default.
+  const sort = state.sort ?? def.orderBy ?? { col: 'name', ascending: true };
+  const dir = sort.ascending ? 1 : -1;
+  rows.sort((a, b) => compareRows(a, b, sort.col, dir));
 
   const head = document.createElement('tr');
-  head.replaceChildren(...def.listCols.map((c) => {
+  head.replaceChildren(...displayCols.map((c) => {
     const th = document.createElement('th');
-    th.textContent = c === '_thumb' ? '' : c.replace(/_/g, ' ');
+    if (c === '_thumb') { th.textContent = ''; return th; }
+    const active = sort.col === c;
+    th.textContent = (c === EDITED_COL ? 'edited' : c.replace(/_/g, ' '))
+      + (active ? (sort.ascending ? ' ▲' : ' ▼') : '');
+    th.className = 'sortable' + (active ? ' sorted' : '');
+    th.addEventListener('click', () => {
+      state.sort = { col: c, ascending: active ? !sort.ascending : true };
+      renderList();
+    });
     return th;
   }));
 
   const body = rows.map((row) => {
     const tr = document.createElement('tr');
-    tr.replaceChildren(...def.listCols.map((c) => listCell(row, c)));
+    tr.replaceChildren(...displayCols.map((c) => listCell(row, c)));
     tr.addEventListener('click', () => openDrawer(row));
     return tr;
   });

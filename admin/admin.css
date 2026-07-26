@@ -155,6 +155,9 @@ input.invalid { border-color: var(--danger); }
   color: var(--ink-mid);
 }
 .list tr:hover td { background: #f0f0fa; cursor: pointer; }
+.list th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.list th.sortable:hover { color: var(--ink); }
+.list th.sorted { color: var(--ink); }
 
 /* full-page editor (replaces the list while editing) */
 .editor {

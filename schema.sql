@@ -18,7 +18,7 @@ create type release_type   as enum ('figure','vehicle','playset','accessory','bo
 create type release_status as enum ('released','mail_away','international_variant','prototype','cancelled','reissue');
 create type alignment      as enum ('hero','villain','ally','neutral');
 create type media_type     as enum ('photo','video','scan','audio');
-create type rights_status  as enum ('owned','permission_granted','fair_use_editorial','link_only');
+create type rights_status  as enum ('owned','permission_granted','creative_commons','fair_use_editorial','link_only','unknown');
 create type artwork_type   as enum ('style_guide','card_art','box_art','comic_cover','comic_interior','concept','prototype_render');
 create type rarity_level   as enum ('common','uncommon','rare','very_rare','grail');
 create type variation_type as enum ('card','paint','mold','accessory','packaging','country');
