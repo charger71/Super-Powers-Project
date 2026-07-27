@@ -57,7 +57,7 @@ Semantic aliases — **prefer these in component CSS**:
 
 ## Typography
 
-Four families, each with a fixed job. Don't mix these roles.
+Five families, each with a fixed job. Don't mix these roles.
 
 | Token | Stack | Used for |
 |---|---|---|
@@ -73,7 +73,8 @@ Use the step tokens — never a raw `rem`/`px` font-size for display text.
 
 | Token | Range | Typical use |
 |---|---|---|
-| `--step--1` | 0.75–0.85rem | kickers, captions, fine print |
+| `--step--2` | 0.68–0.72rem | micro labels: kickers, figcaptions, card meta |
+| `--step--1` | 0.75–0.85rem | secondary captions, fine print |
 | `--step-0` | 0.95–1.05rem | body copy (base) |
 | `--step-1` | 1.1–1.35rem | ledes, sub-headers |
 | `--step-2` | 1.4–1.9rem | card titles, section subheads |

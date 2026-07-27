@@ -21,20 +21,28 @@
   --color-ink:        var(--color-blue);
   --color-ink-mid:    #55547E;
   --color-rule:       #D6D6DE;
+  --color-paper:      #FCFCF8; /* raised near-white reading surface (.dossier-about) */
+  --color-bubble-ink: #013b7c; /* dark blue matching the power-action bubble SVG outline */
 
-  /* Type: three families
-     brand    → the ARCHIVE84 wordmark, Kenner tile titles (Futura family)
-     display  → editorial serif headlines & deks (Baskerville stack)
-     body     → running text (Georgia)
-     mono     → edition marks, captions (IBM Plex Mono / Courier) */
-  /* One chunky sans for wordmark + display (Kenner card-back energy).
-     Georgia stays for readable body copy. Mono for small kickers/labels. */
+  /* Palette channels — for rgba() overlays, hairlines and shadows so tints
+     stay derived from the palette instead of hand-written channel triples. */
+  --rgb-blue:    51, 50, 122;   /* --color-blue    #33327A */
+  --rgb-blue-dk: 35, 34, 101;   /* --color-blue-dk #232265 */
+  --rgb-white:   244, 244, 238; /* --color-white   #F4F4EE */
+
+  /* Type: five families, each with a fixed job (see STYLE-GUIDE.md).
+     brand    → wordmark, Kenner tile/card titles, spec labels (chunky Futura)
+     display  → big editorial headlines & deks — hero title, pullquotes (Futura/Arial Black)
+     body     → running text, ledes, article copy (Georgia)
+     mono     → kickers, labels, eyebrows, tags, captions, edition marks (IBM Plex Mono)
+     marker   → the Power Action speech bubble only (Marker Felt) */
   --font-brand:   "Futura", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
   --font-display: "Futura", "Arial Black", "Helvetica Neue", Impact, sans-serif;
   --font-body:    Georgia, "Times New Roman", "Liberation Serif", serif;
   --font-mono:    "IBM Plex Mono", "Courier New", ui-monospace, monospace;
   --font-marker:  "Marker Felt", "Comic Sans MS", "Chalkboard SE", cursive;
 
+  --step--2: clamp(0.68rem, 0.66rem + 0.08vw, 0.72rem); /* micro: kickers, captions, meta */
   --step--1: clamp(0.75rem, 0.72rem + 0.15vw, 0.85rem);
   --step-0:  clamp(0.95rem, 0.9rem + 0.25vw, 1.05rem);
   --step-1:  clamp(1.1rem, 1rem + 0.5vw, 1.35rem);
@@ -47,6 +55,9 @@
   --page-max: 1240px;
   --gutter:   clamp(1rem, 2.5vw, 2.5rem);
   --radius:   6px;
+
+  --dur:      150ms; /* standard UI transition */
+  --dur-slow: 550ms; /* figure-card flip */
 }
 
 /* ---------- RESET / BASE ---------- */
@@ -78,7 +89,7 @@ button { font: inherit; cursor: pointer; }
   font-size: var(--step--1);
   margin: 0 0 0.5rem;
 }
-.dek--sm { font-size: 11px; letter-spacing: 0.18em; }
+.dek--sm { font-size: var(--step--2); letter-spacing: 0.18em; }
 
 /* Small edition line — used sparingly */
 .edition {
@@ -142,7 +153,7 @@ button { font: inherit; cursor: pointer; }
 .photo-well__caption {
   position: absolute; bottom: 12px; left: 14px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--step--2);
   letter-spacing: 0.14em;
   color: var(--color-white);
   text-transform: uppercase;
@@ -269,7 +280,7 @@ button { font: inherit; cursor: pointer; }
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
   }
   .site-nav__toggle[aria-expanded="true"] + .site-nav__menu { display: flex; }
-  .site-nav__menu li { border-top: 1px solid rgba(11, 61, 145, 0.15); }
+  .site-nav__menu li { border-top: 1px solid rgba(var(--rgb-blue), 0.15); }
   .site-nav__menu li:first-child { border-top: 0; }
   .site-nav__menu a {
     display: block;
@@ -434,7 +445,7 @@ button { font: inherit; cursor: pointer; }
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-size: var(--step-0);
-  transition: background 120ms ease, color 120ms ease;
+  transition: background var(--dur) ease, color var(--dur) ease;
 }
 .hero__cta::after { content: "→"; font-weight: 400; }
 .hero__cta:hover { background: var(--color-yellow); color: var(--color-blue); }
@@ -504,7 +515,7 @@ button { font: inherit; cursor: pointer; }
 }
 .aux__item small {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--step--2);
   color: var(--color-ink-mid);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -558,7 +569,7 @@ button { font: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  transition: background 160ms ease, color 160ms ease;
+  transition: background var(--dur) ease, color var(--dur) ease;
   overflow: hidden;
 }
 .tile[data-accent="blue"]   { background: var(--color-blue-lt); color: var(--color-blue); }
@@ -583,7 +594,7 @@ button { font: inherit; cursor: pointer; }
 .tile__kicker {
   font-family: var(--font-mono);
   font-weight: 900;
-  font-size: 11px;
+  font-size: var(--step--2);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   opacity: 0.85;
@@ -643,7 +654,7 @@ button { font: inherit; cursor: pointer; }
   vertical-align: -0.05em;
 }
 .stats__line span { display: inline-block; padding-inline: 0.9rem; opacity: 0.95; }
-.stats__line span + span { border-left: 1px solid rgba(241,241,241,0.25); }
+.stats__line span + span { border-left: 1px solid rgba(var(--rgb-white),0.25); }
 
 /* ---------- FEATURED ESSAYS ---------- */
 .featured {
@@ -781,7 +792,7 @@ a.aux__item { display: block; text-decoration: none; }
 .foot__legal {
   margin-top: 2rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(241,241,241,0.18);
+  border-top: 1px solid rgba(var(--rgb-white),0.18);
   display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;
   font-family: var(--font-mono);
   font-size: var(--step--1);
@@ -1028,7 +1039,7 @@ a.aux__item { display: block; text-decoration: none; }
   gap: 1rem;
   align-items: baseline;
   padding-block: 0.4rem;
-  border-bottom: 1px solid rgba(51, 50, 122, 0.22);
+  border-bottom: 1px solid rgba(var(--rgb-blue), 0.22);
 }
 .dossier-spec dt {
   font-family: var(--font-brand);
@@ -1054,7 +1065,7 @@ a.aux__item { display: block; text-decoration: none; }
 
 /* About — character biography in its own container, smaller reading text */
 .dossier-about {
-  background: #FCFCF8;
+  background: var(--color-paper);
   border: 1px solid var(--color-rule);
   border-radius: var(--radius);
   padding: clamp(1.25rem, 2vw, 1.75rem);
@@ -1128,7 +1139,7 @@ a.aux__item { display: block; text-decoration: none; }
   font-size: var(--step--1);
   letter-spacing: 0.03em;
 }
-.dossier-about tbody tr:nth-child(even) { background: rgba(51, 50, 122, 0.04); }
+.dossier-about tbody tr:nth-child(even) { background: rgba(var(--rgb-blue), 0.04); }
 
 /* Horizontal rule — an in-article section divider */
 .dossier-lede hr, .dossier-about hr {
@@ -1211,7 +1222,7 @@ a.aux__item { display: block; text-decoration: none; }
 }
 .dossier-headshots figcaption {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--step--2);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-ink-mid);
@@ -1282,7 +1293,7 @@ a.aux__item { display: block; text-decoration: none; }
 }
 .variation-card__gallery figcaption {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--step--2);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-ink-mid);
@@ -1338,7 +1349,7 @@ a.aux__item { display: block; text-decoration: none; }
 }
 .release-gallery figcaption {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--step--2);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-ink-mid);
@@ -1401,7 +1412,7 @@ a.aux__item { display: block; text-decoration: none; }
   line-height: 1.05;
   letter-spacing: -0.03em;
   text-transform: uppercase;
-  color: #013b7c;   /* matches the bubble's dark-blue outline */
+  color: var(--color-bubble-ink);   /* matches the bubble's dark-blue outline */
   transform: rotate(-6deg);
 }
 
@@ -1480,11 +1491,11 @@ a.aux__item { display: block; text-decoration: none; }
   /* cards are links to the release detail page */
   text-decoration: none;
   color: inherit;
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition: transform var(--dur) ease, box-shadow var(--dur) ease;
 }
 a.figure-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(35, 34, 101, 0.15);
+  box-shadow: 0 8px 20px rgba(var(--rgb-blue-dk), 0.15);
 }
 a.figure-card:focus-visible {
   outline: 3px solid var(--color-blue);
@@ -1496,7 +1507,7 @@ a.figure-card:focus-visible {
   width: 100%;
   aspect-ratio: 3 / 4;
   transform-style: preserve-3d;
-  transition: transform 550ms cubic-bezier(.6, .05, .28, 1);
+  transition: transform var(--dur-slow) cubic-bezier(.6, .05, .28, 1);
 }
 .figure-card:hover .figure-card__flip,
 .figure-card:focus-within .figure-card__flip {
@@ -1580,7 +1591,7 @@ a.figure-card:focus-visible {
   background: var(--color-red);
   border-radius: var(--radius);
   text-decoration: none;
-  transition: transform 150ms ease, background 150ms ease;
+  transition: transform var(--dur) ease, background var(--dur) ease;
 }
 .enemy-link:hover {
   background: var(--color-blue);
@@ -1689,7 +1700,7 @@ a.figure-card:focus-visible {
   border-radius: var(--radius);
   overflow: hidden;
   font: inherit;
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition: transform var(--dur) ease, box-shadow var(--dur) ease;
 }
 .gallery__item:hover,
 .gallery__item:focus-visible {
@@ -1761,7 +1772,7 @@ a.figure-card:focus-visible {
   color: var(--color-blue);
 }
 .lightbox::backdrop {
-  background: rgba(35, 34, 101, 0.88);
+  background: rgba(var(--rgb-blue-dk), 0.88);
 }
 .lightbox__inner {
   position: relative;
@@ -1831,7 +1842,7 @@ a.figure-card:focus-visible {
   font-size: 1.3rem;
   line-height: 1;
   border-radius: 50%;
-  transition: transform 120ms ease, background 120ms ease;
+  transition: transform var(--dur) ease, background var(--dur) ease;
 }
 /* blue on the yellow modal so the controls stay visible */
 .lightbox__close,
@@ -1887,7 +1898,7 @@ a.figure-card:focus-visible {
 }
 .comic-card__meta {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--step--2);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-ink-mid);
@@ -1924,7 +1935,7 @@ a.figure-card:focus-visible {
   color: var(--color-blue);
   text-decoration: none;
   border-radius: var(--radius);
-  transition: background 150ms ease, color 150ms ease;
+  transition: background var(--dur) ease, color var(--dur) ease;
 }
 .dossier-pager a:hover { background: var(--color-blue); color: var(--color-yellow); }
 .dossier-pager__next { text-align: right; }
@@ -2028,11 +2039,11 @@ a.figure-card:focus-visible {
   flex-direction: column;
   text-decoration: none;
   color: inherit;
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition: transform var(--dur) ease, box-shadow var(--dur) ease;
 }
 a.video-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(35, 34, 101, 0.15);
+  box-shadow: 0 8px 20px rgba(var(--rgb-blue-dk), 0.15);
 }
 a.video-card:focus-visible {
   outline: 3px solid var(--color-blue);
@@ -2098,14 +2109,14 @@ a.video-card:focus-visible {
   left: 0.6rem;
   bottom: 0.6rem;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--step--2);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-blue);
   background: var(--color-yellow);
   padding: 0.2rem 0.5rem;
-  border-radius: 3px;
+  border-radius: calc(var(--radius) - 3px);
 }
 .video-card > h3,
 .video-card > .video-card__meta,
