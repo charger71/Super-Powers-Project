@@ -11,10 +11,11 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 const publicUrl = (path) => `${SUPABASE_URL}/storage/v1/object/public/media/${path}`;
 
 // ---- controlled vocab (mirrors the Postgres enums) ----------------------
+// release_status is no longer an enum — it's the editable release_statuses
+// lookup table, edited in its own tab and picked via kind:'lookup'.
 const ENUMS = {
   alignment:      ['hero', 'villain', 'ally', 'neutral'],
   release_type:   ['figure', 'vehicle', 'playset', 'accessory', 'box_set'],
-  release_status: ['released', 'mail_away', 'international_variant', 'prototype', 'cancelled', 'reissue'],
   rarity_level:   ['common', 'uncommon', 'rare', 'very_rare', 'grail'],
   variation_type: ['card', 'paint', 'mold', 'accessory', 'packaging', 'country'],
   media_type:     ['photo', 'video', 'scan', 'audio'],
@@ -39,6 +40,7 @@ const ENTITIES = {
     // many-to-many links edited as searchable pickers, never hand-typed ids
     linkJoins: [
       { label: 'Enemies', table: 'character_enemies', fk: 'character_id', targetFk: 'enemy_id', targetTable: 'characters' },
+      { label: 'Teams', table: 'character_teams', fk: 'character_id', targetFk: 'team_id', targetTable: 'teams' },
     ],
     fields: [
       { col: 'name',               label: 'Name',                kind: 'text', required: true },
@@ -67,7 +69,7 @@ const ENTITIES = {
       { col: 'name',             label: 'Name',            kind: 'text', required: true },
       { col: 'slug',             label: 'Slug',            kind: 'slug', required: true },
       { col: 'type',             label: 'Type',            kind: 'enum', values: ENUMS.release_type, required: true },
-      { col: 'status',           label: 'Status',          kind: 'enum', values: ENUMS.release_status, required: true, initial: 'released' },
+      { col: 'status',           label: 'Status',          kind: 'lookup', table: 'release_statuses', required: true, initial: 'released' },
       { col: 'line_id',          label: 'Line',            kind: 'fk', table: 'lines', required: true },
       { col: 'series_id',        label: 'Series',          kind: 'fk', table: 'series' },
       { col: 'character_id',     label: 'Character',       kind: 'fk', table: 'characters' },
@@ -83,6 +85,56 @@ const ENTITIES = {
       { col: 'est_value_carded', label: 'Est. value carded ($)', kind: 'number', step: '0.01' },
       { col: 'notes',            label: 'Notes',           kind: 'rich' },
       { col: 'sources',          label: 'Sources (comma-separated URLs)', kind: 'array' },
+    ],
+  },
+  lines: {
+    label: 'Lines',
+    table: 'lines',
+    orderBy: { col: 'sort_order', ascending: true },
+    listCols: ['name', 'slug', 'manufacturer', 'year_start', 'year_end'],
+    fields: [
+      { col: 'name',         label: 'Name',         kind: 'text', required: true },
+      { col: 'slug',         label: 'Slug',         kind: 'slug', required: true },
+      { col: 'manufacturer', label: 'Manufacturer', kind: 'text' },
+      { col: 'year_start',   label: 'Year start',   kind: 'number' },
+      { col: 'year_end',     label: 'Year end (blank = ongoing)', kind: 'number' },
+      { col: 'description',  label: 'Description',   kind: 'rich' },
+      { col: 'sort_order',   label: 'Sort order',   kind: 'number' },
+    ],
+  },
+  series: {
+    label: 'Series',
+    table: 'series',
+    orderBy: { col: 'sort_order', ascending: true },
+    listCols: ['name', 'slug', 'year'],
+    fields: [
+      { col: 'line_id',     label: 'Line',        kind: 'fk', table: 'lines', required: true },
+      { col: 'name',        label: 'Name',        kind: 'text', required: true },
+      { col: 'slug',        label: 'Slug',        kind: 'slug', required: true },
+      { col: 'year',        label: 'Year',        kind: 'number' },
+      { col: 'description', label: 'Description', kind: 'textarea' },
+      { col: 'sort_order',  label: 'Sort order',  kind: 'number' },
+    ],
+  },
+  statuses: {
+    label: 'Statuses',
+    table: 'release_statuses',
+    orderBy: { col: 'sort_order', ascending: true },
+    listCols: ['name', 'slug', 'sort_order'],
+    fields: [
+      { col: 'name',        label: 'Name',        kind: 'text', required: true },
+      { col: 'slug',        label: 'Slug',        kind: 'slug', required: true },
+      { col: 'description', label: 'Description', kind: 'text' },
+      { col: 'sort_order',  label: 'Sort order',  kind: 'number' },
+    ],
+  },
+  teams: {
+    label: 'Teams',
+    table: 'teams',
+    listCols: ['name', 'slug'],
+    fields: [
+      { col: 'name', label: 'Name', kind: 'text', required: true },
+      { col: 'slug', label: 'Slug', kind: 'slug', required: true },
     ],
   },
   variations: {
@@ -676,6 +728,34 @@ async function buildFkField(field, value) {
   return wrap;
 }
 
+// ---- lookup picker ------------------------------------------------------
+// A <select> populated from a small lookup table (e.g. release_statuses),
+// storing a chosen column — the slug — rather than a uuid. Unlike an fk
+// picker the value is a human-readable slug the schema references directly,
+// so it behaves like an enum whose options are editable in their own tab.
+async function buildLookupField(field, value) {
+  const valueCol = field.valueCol ?? 'slug';
+  const labelCol = field.labelCol ?? 'name';
+  const order = field.lookupOrder ?? 'sort_order';
+  const select = document.createElement('select');
+  select.name = field.col;
+  if (field.required) select.required = true;
+
+  const { data, error } = await db.from(field.table)
+    .select(`${valueCol}, ${labelCol}`).order(order);
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = error ? error.message : '—';
+  select.replaceChildren(blank, ...(data ?? []).map((r) => {
+    const o = document.createElement('option');
+    o.value = r[valueCol];
+    o.textContent = r[labelCol] ?? r[valueCol];
+    return o;
+  }));
+  select.value = value ?? '';
+  return select;
+}
+
 // ---- many-to-many links (inside drawers) --------------------------------
 // Add/remove write through immediately, like attached media — so they need a
 // saved row to hang off. New records show a hint until saved once.
@@ -1053,6 +1133,144 @@ async function renderMediaSection(def, row) {
 
   pickerWrap.append(input, ...(roleSelect ? [roleSelect] : []), attachBtn, dl);
   box.append(pickerWrap);
+
+  // inline upload — create a new media_assets row and attach it in one step,
+  // so you never have to leave the record you're editing to visit the Media
+  // tab. Credit/rights/alt are captured here too (see CLAUDE.md non-negotiable
+  // #1) — the same required fields the Media editor and bulk upload enforce.
+  box.append(renderInlineUpload(def, row, join, links.length === 0));
+}
+
+// Shared credit/rights/type/source carried between consecutive inline uploads,
+// so attaching several assets from the same photographer doesn't re-type them.
+// Reset when a fresh record opens (see openDrawer).
+let stickyMedia = {};
+
+// Build the collapsible "Upload new media" block for renderMediaSection.
+// isFirst → the created asset becomes this record's primary attachment.
+function renderInlineUpload(def, row, join, isFirst) {
+  const details = document.createElement('details');
+  details.className = 'media-upload';
+  // stay expanded after an upload so the next file is one click away
+  if (stickyMedia.credit) details.open = true;
+  const summary = document.createElement('summary');
+  summary.textContent = 'Upload new media';
+  details.append(summary);
+
+  const fields = document.createElement('div');
+  fields.className = 'media-upload__fields';
+
+  // labeled control helper — mirrors the plain <label>{caption}{control} the
+  // rest of the drawer uses.
+  const field = (caption, control, span) => {
+    const l = document.createElement('label');
+    if (span) l.className = 'span-2';
+    l.append(caption + ' ', control);
+    return l;
+  };
+  const enumSelect = (values, initial) => {
+    const s = document.createElement('select');
+    fillEnumSelect(s, values, initial);
+    return s;
+  };
+  const textInput = (placeholder) => {
+    const i = document.createElement('input');
+    i.type = 'text';
+    if (placeholder) i.placeholder = placeholder;
+    return i;
+  };
+
+  const typeSel   = enumSelect(ENUMS.media_type, stickyMedia.type ?? 'photo');
+  const rightsSel = enumSelect(ENUMS.rights_status, stickyMedia.rights);
+  const creditIn  = textInput('e.g. Photo © Jane Collector, used with permission');
+  const altIn     = textInput('Describe the image for a11y + SEO');
+  const captionIn = textInput('Optional');
+  const sourceIn  = textInput('Optional');
+  // carry the last-used shared attribution into this upload
+  creditIn.value = stickyMedia.credit ?? '';
+  sourceIn.value = stickyMedia.source_url ?? '';
+  const embedIn   = textInput('For video instead of a file');
+  const fileIn    = document.createElement('input');
+  fileIn.type = 'file';
+  fileIn.accept = 'image/*,.pdf';
+
+  let roleSel = null;
+  if (join.roles) roleSel = enumSelect(join.roles);
+
+  fields.append(
+    field('Type', typeSel),
+    field('Rights *', rightsSel),
+    field('Credit *', creditIn, true),
+    field('Alt text *', altIn, true),
+    field('Caption', captionIn),
+    field('Source URL', sourceIn),
+    field('Embed URL', embedIn, true),
+    field('File', fileIn, true),
+    ...(roleSel ? [field('Role', roleSel)] : []),
+  );
+  details.append(fields);
+
+  const actions = document.createElement('div');
+  actions.className = 'media-upload__actions';
+  const uploadBtn = document.createElement('button');
+  uploadBtn.type = 'button';
+  uploadBtn.textContent = 'Upload & attach';
+  const status = document.createElement('span');
+  status.className = 'drawer__status';
+  actions.append(uploadBtn, status);
+  details.append(actions);
+
+  uploadBtn.addEventListener('click', async () => {
+    const file = fileIn.files[0];
+    const embed = embedIn.value.trim();
+    const credit = creditIn.value.trim();
+    const alt = altIn.value.trim();
+    if (!file && !embed) { status.textContent = 'Pick a file or provide an embed URL.'; return; }
+    if (!credit) { status.textContent = 'Credit is required.'; return; }
+    if (!alt) { status.textContent = 'Alt text is required.'; return; }
+
+    uploadBtn.disabled = true;
+    status.textContent = 'Uploading…';
+    try {
+      const asset = {
+        type: typeSel.value,
+        rights: rightsSel.value,
+        credit,
+        alt_text: alt,
+        caption: captionIn.value.trim() || null,
+        source_url: sourceIn.value.trim() || null,
+        embed_url: embed || null,
+      };
+      if (file) {
+        const { path, width, height } = await uploadFile(file);
+        asset.storage_path = path;
+        asset.width = width;
+        asset.height = height;
+      }
+      const { data: created, error: assetError } =
+        await db.from('media_assets').insert(asset).select('id').single();
+      if (assetError) throw new Error(assetError.message);
+
+      const link = { media_id: created.id, [join.fk]: row.id, is_primary: isFirst };
+      if (roleSel) link.role = roleSel.value;
+      const { error: linkError } = await db.from(join.table).insert(link);
+      if (linkError) throw new Error(linkError.message);
+
+      // remember shared attribution for the next upload on this record
+      stickyMedia = {
+        type: typeSel.value,
+        rights: rightsSel.value,
+        credit,
+        source_url: sourceIn.value.trim() || null,
+      };
+      renderMediaSection(def, row);
+    } catch (err) {
+      uploadBtn.disabled = false;
+      status.textContent = err.message;
+    }
+  });
+
+  return details;
 }
 
 // ---- form ---------------------------------------------------------------
@@ -1061,6 +1279,7 @@ const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-
 async function openDrawer(row) {
   const def = ENTITIES[state.entity];
   state.editing = row;
+  stickyMedia = {}; // shared media attribution is scoped to one open record
   const title = row ? (row[def.titleCol ?? 'name'] || '(untitled)') : `New ${def.label.replace(/s$/, '').toLowerCase()}`;
   $('drawer-title').textContent = row ? `Edit: ${title}` : title;
   $('delete').hidden = !row;
@@ -1088,6 +1307,8 @@ async function openDrawer(row) {
     let input;
     if (f.kind === 'fk') {
       input = await buildFkField(f, value);
+    } else if (f.kind === 'lookup') {
+      input = await buildLookupField(f, value);
     } else if (f.kind === 'enum') {
       input = document.createElement('select');
       input.name = f.col;

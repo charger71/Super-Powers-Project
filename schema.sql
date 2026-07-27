@@ -15,7 +15,8 @@ create extension if not exists "pg_trgm";       -- fuzzy search
 -- expect co-authors to manage these values themselves.
 -- ============================================================
 create type release_type   as enum ('figure','vehicle','playset','accessory','box_set');
-create type release_status as enum ('released','mail_away','international_variant','prototype','cancelled','reissue');
+-- release status used to be an enum; it's now the editable release_statuses
+-- lookup table (defined below) so co-authors can add statuses themselves.
 create type alignment      as enum ('hero','villain','ally','neutral');
 create type media_type     as enum ('photo','video','scan','audio');
 create type rights_status  as enum ('owned','permission_granted','creative_commons','fair_use_editorial','link_only','unknown');
@@ -66,6 +67,30 @@ create table series (
 create index on series (line_id);
 
 -- ============================================================
+-- Release statuses (controlled vocab as an editable lookup table)
+-- Was a Postgres enum; promoted to a table so co-authors can add
+-- statuses from the admin without a migration. releases.status holds
+-- the slug (see the FK below), so anything reading status as a string
+-- ('released', 'prototype', ...) is unaffected.
+-- ============================================================
+create table release_statuses (
+  id            uuid primary key default gen_random_uuid(),
+  slug          text unique not null,          -- 'international_variant'
+  name          text not null,                 -- 'International variant'
+  description   text,
+  sort_order    smallint default 0,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+insert into release_statuses (slug, name, sort_order) values
+  ('released',              'Released',              0),
+  ('mail_away',             'Mail-away',             1),
+  ('international_variant', 'International variant',  2),
+  ('prototype',             'Prototype',             3),
+  ('cancelled',             'Cancelled',             4),
+  ('reissue',               'Reissue',               5);
+
+-- ============================================================
 -- Characters (canonical identity — line-agnostic)
 -- ============================================================
 create table characters (
@@ -98,6 +123,7 @@ create table teams (
 create table character_teams (
   character_id uuid references characters(id) on delete cascade,
   team_id      uuid references teams(id)      on delete cascade,
+  sort_order   smallint default 0,   -- editorial order, like character_enemies
   primary key (character_id, team_id)
 );
 
@@ -136,7 +162,11 @@ create table releases (
   slug              text unique not null,      -- 'cyborg-kenner-1986'
   name              text not null,
   type              release_type not null,
-  status            release_status not null default 'released',
+  -- slug FK into release_statuses; on update cascade so renaming a status flows
+  -- through, on delete restrict so an in-use status can't be removed.
+  status            text not null default 'released'
+                      references release_statuses(slug)
+                      on update cascade on delete restrict,
 
   line_id           uuid not null references lines(id)   on delete restrict,
   series_id         uuid references series(id)           on delete set null,
@@ -385,7 +415,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'lines','series','characters','teams','creators','releases','release_variations','media_assets',
+    'lines','series','release_statuses','characters','teams','creators','releases','release_variations','media_assets',
     'artwork','publications','screen_media','interviews','merchandise'
   ] loop
     execute format(
@@ -405,7 +435,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'lines','series','characters','teams','character_teams','creators',
+    'lines','series','release_statuses','characters','teams','character_teams','creators',
     'releases','release_creators','release_characters','release_variations',
     'media_assets','media_releases','media_characters','media_creators','media_variations',
     'artwork','artwork_creators','artwork_characters',

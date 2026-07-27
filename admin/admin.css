@@ -351,6 +351,39 @@ input.invalid { border-color: var(--danger); }
 .media-attach { display: flex; gap: 0.5rem; }
 .media-attach__role { flex: 0 0 8rem; }
 
+/* inline "upload new media" block inside the attached-media section — lets you
+   create + attach an asset without leaving the record you're editing */
+.media-upload {
+  margin-top: 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+.media-upload summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--ink-mid);
+}
+.media-upload__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+.media-upload__fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+}
+.media-upload__fields .span-2 { grid-column: 1 / -1; }
+.media-upload__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
 /* rich text field wrapper — a <div>, not a <label>, so clicks in the editor
    aren't forwarded to the first toolbar button (which would toggle bold) */
 .field-rich {
