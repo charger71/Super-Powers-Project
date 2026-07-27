@@ -823,7 +823,7 @@ a.aux__item { display: block; text-decoration: none; }
 .pullquote blockquote {
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: clamp(1.7rem, 3.5vw, 2.6rem);
+  font-size: var(--step-3);
   line-height: 1;
   letter-spacing: -0.025em;
   text-transform: uppercase;
