@@ -10,23 +10,16 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const publicUrl = (path) => `${SUPABASE_URL}/storage/v1/object/public/media/${path}`;
 
-// ---- controlled vocab (mirrors the Postgres enums) ----------------------
-// release_status is no longer an enum — it's the editable release_statuses
-// lookup table, edited in its own tab and picked via kind:'lookup'.
-const ENUMS = {
-  alignment:      ['hero', 'villain', 'ally', 'neutral'],
-  release_type:   ['figure', 'vehicle', 'playset', 'accessory', 'box_set'],
-  rarity_level:   ['common', 'uncommon', 'rare', 'very_rare', 'grail'],
-  variation_type: ['card', 'paint', 'mold', 'accessory', 'packaging', 'country'],
-  media_type:     ['photo', 'video', 'scan', 'audio'],
-  rights_status:  ['owned', 'permission_granted', 'creative_commons', 'fair_use_editorial', 'link_only', 'unknown'],
-  publication_kind: ['mini_series', 'pack_in_mini', 'book', 'rpg'],
-};
+// ---- controlled vocab ---------------------------------------------------
+// Every controlled vocabulary is now an editable lookup table (see the
+// VOCAB_TABLES block below and migration 20260727000000). There are no
+// hardcoded enum lists left; fields pick their values via kind:'lookup'.
 
 // ---- entity definitions -------------------------------------------------
-// kind: text | slug | textarea | number | enum | array | fk
+// kind: text | slug | textarea | number | lookup | array | fk
 // fk fields render as a searchable picker backed by the referenced table;
 // the stored value is always the row's uuid, never hand-typed.
+// lookup fields render a <select> of an editable vocab table's slugs.
 // mediaJoin wires the "attached media" section into the edit drawer.
 const ENTITIES = {
   characters: {
@@ -46,7 +39,7 @@ const ENTITIES = {
       { col: 'name',               label: 'Name',                kind: 'text', required: true },
       { col: 'slug',               label: 'Slug',                kind: 'slug', required: true },
       { col: 'aka',                label: 'AKA (comma-separated)', kind: 'array' },
-      { col: 'alignment',          label: 'Alignment',           kind: 'enum', values: ENUMS.alignment },
+      { col: 'alignment',          label: 'Alignment',           kind: 'lookup', table: 'alignments' },
       { col: 'first_appearance',   label: 'First appearance',    kind: 'text' },
       { col: 'homeworld',          label: 'Homeworld',           kind: 'text' },
       { col: 'base_of_operations', label: 'Base of operations',  kind: 'text' },
@@ -68,7 +61,7 @@ const ENTITIES = {
     fields: [
       { col: 'name',             label: 'Name',            kind: 'text', required: true },
       { col: 'slug',             label: 'Slug',            kind: 'slug', required: true },
-      { col: 'type',             label: 'Type',            kind: 'enum', values: ENUMS.release_type, required: true },
+      { col: 'type',             label: 'Type',            kind: 'lookup', table: 'release_types', required: true },
       { col: 'status',           label: 'Status',          kind: 'lookup', table: 'release_statuses', required: true, initial: 'released' },
       { col: 'line_id',          label: 'Line',            kind: 'fk', table: 'lines', required: true },
       { col: 'series_id',        label: 'Series',          kind: 'fk', table: 'series' },
@@ -80,7 +73,7 @@ const ENTITIES = {
       { col: 'accessories',      label: 'Accessories (comma-separated)', kind: 'array' },
       { col: 'features',         label: 'Features (comma-separated)',    kind: 'array' },
       { col: 'card_type',        label: 'Card type',       kind: 'text' },
-      { col: 'rarity',           label: 'Rarity',          kind: 'enum', values: ENUMS.rarity_level },
+      { col: 'rarity',           label: 'Rarity',          kind: 'lookup', table: 'rarity_levels' },
       { col: 'est_value_loose',  label: 'Est. value loose ($)',  kind: 'number', step: '0.01' },
       { col: 'est_value_carded', label: 'Est. value carded ($)', kind: 'number', step: '0.01' },
       { col: 'notes',            label: 'Notes',           kind: 'rich' },
@@ -147,9 +140,9 @@ const ENTITIES = {
       { col: 'release_id',       label: 'Release',         kind: 'fk', table: 'releases', required: true },
       { col: 'name',             label: 'Name',            kind: 'text', required: true },
       { col: 'slug',             label: 'Slug',            kind: 'slug', required: true },
-      { col: 'variation_type',   label: 'Variation type',  kind: 'enum', values: ENUMS.variation_type },
+      { col: 'variation_type',   label: 'Variation type',  kind: 'lookup', table: 'variation_types' },
       { col: 'description',      label: 'Description',     kind: 'textarea' },
-      { col: 'rarity',           label: 'Rarity',          kind: 'enum', values: ENUMS.rarity_level },
+      { col: 'rarity',           label: 'Rarity',          kind: 'lookup', table: 'rarity_levels' },
       { col: 'est_value_loose',  label: 'Est. value loose ($)',  kind: 'number', step: '0.01' },
       { col: 'est_value_carded', label: 'Est. value carded ($)', kind: 'number', step: '0.01' },
       { col: 'sort_order',       label: 'Sort order',      kind: 'number' },
@@ -180,7 +173,7 @@ const ENTITIES = {
     fields: [
       { col: 'title',        label: 'Title',        kind: 'text', required: true },
       { col: 'slug',         label: 'Slug',         kind: 'slug', required: true },
-      { col: 'kind',         label: 'Kind',         kind: 'enum', values: ENUMS.publication_kind },
+      { col: 'kind',         label: 'Kind',         kind: 'lookup', table: 'publication_kinds' },
       { col: 'publisher',    label: 'Publisher',    kind: 'text' },
       { col: 'year',         label: 'Year',         kind: 'number' },
       { col: 'issue_number', label: 'Issue number', kind: 'text' },
@@ -198,7 +191,7 @@ const ENTITIES = {
     fields: [
       { col: 'title',       label: 'Title',       kind: 'text', required: true },
       { col: 'slug',        label: 'Slug',        kind: 'slug', required: true },
-      { col: 'kind',        label: 'Kind',        kind: 'enum', values: ['series', 'episode', 'commercial', 'home_video'] },
+      { col: 'kind',        label: 'Kind',        kind: 'lookup', table: 'screen_media_kinds' },
       { col: 'year',        label: 'Year',        kind: 'number' },
       { col: 'parent_id',   label: 'Parent (series → episode)', kind: 'fk', table: 'screen_media',
         fkCols: 'id, title, slug', fkOrder: 'title', fkLabel: (r) => `${r.title} · ${r.slug}` },
@@ -222,7 +215,7 @@ const ENTITIES = {
       { col: 'subject_id',  label: 'Subject (creator)', kind: 'fk', table: 'creators' },
       { col: 'interviewer', label: 'Interviewer', kind: 'text' },
       { col: 'date',        label: 'Date (YYYY-MM-DD)', kind: 'text' },
-      { col: 'format',      label: 'Format',      kind: 'enum', values: ['text', 'audio', 'video'] },
+      { col: 'format',      label: 'Format',      kind: 'lookup', table: 'interview_formats' },
       { col: 'body',        label: 'Body',        kind: 'rich' },
       { col: 'source_url',  label: 'Source URL',  kind: 'text' },
       { col: 'media_id',    label: 'Media asset', kind: 'fk', table: 'media_assets',
@@ -243,7 +236,7 @@ const ENTITIES = {
     fields: [
       { col: 'name',         label: 'Name',         kind: 'text', required: true },
       { col: 'slug',         label: 'Slug',         kind: 'slug', required: true },
-      { col: 'category',     label: 'Category',     kind: 'enum', values: ['apparel', 'housewares', 'party', 'publishing'] },
+      { col: 'category',     label: 'Category',     kind: 'lookup', table: 'merchandise_categories' },
       { col: 'manufacturer', label: 'Manufacturer', kind: 'text' },
       { col: 'year',         label: 'Year',         kind: 'number' },
       { col: 'description',  label: 'Description',   kind: 'rich' },
@@ -275,9 +268,9 @@ const ENTITIES = {
     // Attribution is captured AT upload — credit/rights/alt are required
     // here on purpose (see CLAUDE.md non-negotiable #1).
     fields: [
-      { col: 'type',       label: 'Type',       kind: 'enum', values: ENUMS.media_type, required: true, initial: 'photo' },
+      { col: 'type',       label: 'Type',       kind: 'lookup', table: 'media_types', required: true, initial: 'photo' },
       { col: 'credit',     label: 'Credit *',   kind: 'text', required: true },
-      { col: 'rights',     label: 'Rights *',   kind: 'enum', values: ENUMS.rights_status, required: true },
+      { col: 'rights',     label: 'Rights *',   kind: 'lookup', table: 'rights_statuses', required: true },
       { col: 'alt_text',   label: 'Alt text *', kind: 'text', required: true },
       { col: 'caption',    label: 'Caption',    kind: 'text' },
       { col: 'source_url', label: 'Source URL', kind: 'text' },
@@ -285,6 +278,40 @@ const ENTITIES = {
     ],
   },
 };
+
+// ---- controlled-vocabulary lookup tables --------------------------------
+// The editable vocabularies (converted from enums in 20260727000000) all share
+// release_statuses' shape — slug + display name + sort order — so define them
+// from a compact map instead of repeating the field list 11 times. Each becomes
+// its own admin tab; the matching field elsewhere picks from it via
+// kind:'lookup'. Keep this in sync with the migration + MENU_GROUPS.
+const VOCAB_TABLES = {
+  alignments:             'Alignments',
+  release_types:          'Release types',
+  rarity_levels:          'Rarity levels',
+  variation_types:        'Variation types',
+  media_types:            'Media types',
+  rights_statuses:        'Rights statuses',
+  artwork_types:          'Artwork types',
+  publication_kinds:      'Comic kinds',
+  screen_media_kinds:     'Screen media kinds',
+  interview_formats:      'Interview formats',
+  merchandise_categories: 'Merchandise categories',
+};
+for (const [table, label] of Object.entries(VOCAB_TABLES)) {
+  ENTITIES[table] = {
+    label,
+    table,
+    orderBy: { col: 'sort_order', ascending: true },
+    listCols: ['name', 'slug', 'sort_order'],
+    fields: [
+      { col: 'name',        label: 'Name',        kind: 'text', required: true },
+      { col: 'slug',        label: 'Slug',        kind: 'slug', required: true },
+      { col: 'description', label: 'Description', kind: 'text' },
+      { col: 'sort_order',  label: 'Sort order',  kind: 'number' },
+    ],
+  };
+}
 
 // ---- state --------------------------------------------------------------
 const state = { entity: 'characters', rows: [], editing: null, sort: null };
@@ -344,9 +371,12 @@ db.auth.onAuthStateChange(() => refreshAuth());
 // touched lookup tables. Keys must match ENTITIES; any entity left out of a
 // group would simply not appear, so keep this in sync when adding tables.
 const MENU_GROUPS = [
-  { label: 'Content',  keys: ['characters', 'releases', 'variations'] },
-  { label: 'Taxonomy', keys: ['lines', 'series', 'statuses', 'teams'] },
-  { label: 'Media',    keys: ['publications', 'screen_media', 'interviews', 'merchandise', 'creators', 'media'] },
+  { label: 'Content',      keys: ['characters', 'releases', 'variations'] },
+  { label: 'Media',        keys: ['publications', 'screen_media', 'interviews', 'merchandise', 'creators', 'media'] },
+  { label: 'Structure',    keys: ['lines', 'series', 'teams'] },
+  { label: 'Vocabularies', keys: ['statuses', 'alignments', 'release_types', 'rarity_levels', 'variation_types',
+                                  'media_types', 'rights_statuses', 'artwork_types', 'publication_kinds',
+                                  'screen_media_kinds', 'interview_formats', 'merchandise_categories'] },
 ];
 
 function renderMenu() {
@@ -1230,8 +1260,10 @@ function renderInlineUpload(def, row, join, isFirst) {
     return i;
   };
 
-  const typeSel   = enumSelect(ENUMS.media_type, stickyMedia.type ?? 'photo');
-  const rightsSel = enumSelect(ENUMS.rights_status, stickyMedia.rights);
+  const typeSel   = document.createElement('select');
+  const rightsSel = document.createElement('select');
+  fillLookupSelect(typeSel, 'media_types', stickyMedia.type ?? 'photo');
+  fillLookupSelect(rightsSel, 'rights_statuses', stickyMedia.rights);
   const creditIn  = textInput('e.g. Photo © Jane Collector, used with permission');
   const altIn     = textInput('Describe the image for a11y + SEO');
   const captionIn = textInput('Optional');
@@ -1549,6 +1581,8 @@ $('delete').addEventListener('click', async () => {
 // own media_assets row. Thumbnails preview locally before upload.
 const bulkFiles = []; // { file, thumbUrl, done }
 
+// fills a <select> from a fixed string array — still used for the media-attach
+// role pickers (roles remain hardcoded per join table, not a lookup).
 function fillEnumSelect(sel, values, initial) {
   sel.replaceChildren(...values.map((v) => {
     const o = document.createElement('option');
@@ -1559,12 +1593,29 @@ function fillEnumSelect(sel, values, initial) {
   if (initial) sel.value = initial;
 }
 
+// fills a pre-existing <select> from a lookup table (slug value, name label) —
+// the bulk + inline media-upload shortcuts, whose Type/Rights are now editable
+// vocab tables. Async, fire-and-forget: the options land a moment after render.
+async function fillLookupSelect(sel, table, initial) {
+  const { data, error } = await db.from(table).select('slug, name').order('sort_order');
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = error ? error.message : '—';
+  sel.replaceChildren(blank, ...(data ?? []).map((r) => {
+    const o = document.createElement('option');
+    o.value = r.slug;
+    o.textContent = r.name ?? r.slug;
+    return o;
+  }));
+  if (initial) sel.value = initial;
+}
+
 function openBulk() {
   const def = ENTITIES[state.entity];
   const typeField = def.fields.find((f) => f.col === 'type');
   const rightsField = def.fields.find((f) => f.col === 'rights');
-  fillEnumSelect($('bulk-type'), typeField?.values ?? ENUMS.media_type, typeField?.initial);
-  fillEnumSelect($('bulk-rights'), rightsField?.values ?? ENUMS.rights_status);
+  fillLookupSelect($('bulk-type'), typeField?.table ?? 'media_types', typeField?.initial);
+  fillLookupSelect($('bulk-rights'), rightsField?.table ?? 'rights_statuses');
   $('bulk-credit').value = '';
   $('bulk-source').value = '';
   $('bulk-files').value = '';

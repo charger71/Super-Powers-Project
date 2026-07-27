@@ -14,15 +14,14 @@ create extension if not exists "pg_trgm";       -- fuzzy search
 -- ALTER TYPE ... ADD VALUE. Use lookup tables instead if you
 -- expect co-authors to manage these values themselves.
 -- ============================================================
-create type release_type   as enum ('figure','vehicle','playset','accessory','box_set');
--- release status used to be an enum; it's now the editable release_statuses
--- lookup table (defined below) so co-authors can add statuses themselves.
-create type alignment      as enum ('hero','villain','ally','neutral');
-create type media_type     as enum ('photo','video','scan','audio');
-create type rights_status  as enum ('owned','permission_granted','creative_commons','fair_use_editorial','link_only','unknown');
-create type artwork_type   as enum ('style_guide','card_art','box_art','comic_cover','comic_interior','concept','prototype_render');
-create type rarity_level   as enum ('common','uncommon','rare','very_rare','grail');
-create type variation_type as enum ('card','paint','mold','accessory','packaging','country');
+-- There are no controlled-vocabulary enums left. Every one graduated to an
+-- editable lookup table (defined in the next section): release_statuses,
+-- alignments, release_types, rarity_levels, variation_types, media_types,
+-- rights_statuses, artwork_types, publication_kinds, screen_media_kinds,
+-- interview_formats, merchandise_categories. Each consuming column stores the
+-- slug and FKs into its lookup, so anything reading the value as a string is
+-- unaffected. Co-authors add values in the admin, not via a migration.
+-- See migration 20260727000000_vocab_lookups (and _release_status_lookup).
 
 -- ============================================================
 -- Shared bits
@@ -90,6 +89,65 @@ insert into release_statuses (slug, name, sort_order) values
   ('cancelled',             'Cancelled',             4),
   ('reissue',               'Reissue',               5);
 
+-- The other controlled vocabularies, all the same shape as release_statuses.
+-- Created in a loop to keep the boilerplate down; each gets an updated_at
+-- trigger + RLS from the shared arrays at the bottom of this file, and its
+-- values seeded just below. Defined here (before any consuming table) so the
+-- FKs that follow resolve.
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'alignments', 'release_types', 'rarity_levels', 'variation_types',
+    'media_types', 'rights_statuses', 'artwork_types',
+    'publication_kinds', 'screen_media_kinds', 'interview_formats', 'merchandise_categories'
+  ] loop
+    execute format($f$
+      create table %I (
+        id          uuid primary key default gen_random_uuid(),
+        slug        text unique not null,
+        name        text not null,
+        description text,
+        sort_order  smallint default 0,
+        created_at  timestamptz default now(),
+        updated_at  timestamptz default now()
+      )$f$, t);
+  end loop;
+end $$;
+
+insert into alignments (slug, name, sort_order) values
+  ('hero','Hero',0), ('villain','Villain',1), ('ally','Ally',2), ('neutral','Neutral',3);
+insert into release_types (slug, name, sort_order) values
+  ('figure','Figure',0), ('vehicle','Vehicle',1), ('playset','Playset',2),
+  ('accessory','Accessory',3), ('box_set','Box set',4);
+insert into rarity_levels (slug, name, sort_order) values
+  ('common','Common',0), ('uncommon','Uncommon',1), ('rare','Rare',2),
+  ('very_rare','Very rare',3), ('grail','Grail',4);
+insert into variation_types (slug, name, sort_order) values
+  ('card','Card',0), ('paint','Paint',1), ('mold','Mold',2),
+  ('accessory','Accessory',3), ('packaging','Packaging',4), ('country','Country',5);
+insert into media_types (slug, name, sort_order) values
+  ('photo','Photo',0), ('video','Video',1), ('scan','Scan',2), ('audio','Audio',3);
+insert into rights_statuses (slug, name, sort_order) values
+  ('owned','Owned',0), ('permission_granted','Permission granted',1),
+  ('creative_commons','Creative Commons',2), ('fair_use_editorial','Fair use (editorial)',3),
+  ('link_only','Link only',4), ('unknown','Unknown',5);
+insert into artwork_types (slug, name, sort_order) values
+  ('style_guide','Style guide',0), ('card_art','Card art',1), ('box_art','Box art',2),
+  ('comic_cover','Comic cover',3), ('comic_interior','Comic interior',4),
+  ('concept','Concept',5), ('prototype_render','Prototype render',6);
+insert into publication_kinds (slug, name, sort_order) values
+  ('mini_series','Mini-series',0), ('pack_in_mini','Pack-in mini',1),
+  ('book','Book',2), ('rpg','RPG',3);
+insert into screen_media_kinds (slug, name, sort_order) values
+  ('series','Series',0), ('episode','Episode',1),
+  ('commercial','Commercial',2), ('home_video','Home video',3);
+insert into interview_formats (slug, name, sort_order) values
+  ('text','Text',0), ('audio','Audio',1), ('video','Video',2);
+insert into merchandise_categories (slug, name, sort_order) values
+  ('apparel','Apparel',0), ('housewares','Housewares',1),
+  ('party','Party',2), ('publishing','Publishing',3);
+
 -- ============================================================
 -- Characters (canonical identity — line-agnostic)
 -- ============================================================
@@ -98,7 +156,7 @@ create table characters (
   slug              text unique not null,      -- 'cyborg'
   name              text not null,
   aka               text[] default '{}',
-  alignment         alignment,
+  alignment         text references alignments(slug) on update cascade on delete restrict,
   first_appearance  text,                      -- 'DC Comics Presents #26 (1980)'
   bio               text,                      -- character biography (About section)
   overview          text,                      -- toy-line editorial (dossier Overview)
@@ -161,7 +219,7 @@ create table releases (
   id                uuid primary key default gen_random_uuid(),
   slug              text unique not null,      -- 'cyborg-kenner-1986'
   name              text not null,
-  type              release_type not null,
+  type              text not null references release_types(slug) on update cascade on delete restrict,
   -- slug FK into release_statuses; on update cascade so renaming a status flows
   -- through, on delete restrict so an in-use status can't be removed.
   status            text not null default 'released'
@@ -179,7 +237,7 @@ create table releases (
   accessories       text[] default '{}',       -- {'drill hand','claw hand'}
   features          text[] default '{}',       -- vehicles/playsets
   card_type         text,                      -- '23-back'
-  rarity            rarity_level,
+  rarity            text references rarity_levels(slug) on update cascade on delete restrict,
   est_value_loose   numeric(10,2),
   est_value_carded  numeric(10,2),
   notes             text,
@@ -202,9 +260,9 @@ create table release_variations (
   slug              text unique not null,          -- 'cyborg-kenner-1986-31-back'
   release_id        uuid not null references releases(id) on delete cascade,
   name              text not null,                 -- '31-back card'
-  variation_type    variation_type,
+  variation_type    text references variation_types(slug) on update cascade on delete restrict,
   description       text,
-  rarity            rarity_level,
+  rarity            text references rarity_levels(slug) on update cascade on delete restrict,
   est_value_loose   numeric(10,2),
   est_value_carded  numeric(10,2),
   notes             text,
@@ -235,7 +293,7 @@ create table release_characters (
 -- ============================================================
 create table media_assets (
   id             uuid primary key default gen_random_uuid(),
-  type           media_type not null,
+  type           text not null references media_types(slug) on update cascade on delete restrict,
   storage_path   text,                         -- Supabase Storage object path (photos/scans)
   embed_url      text,                         -- YouTube/Vimeo (video)
   poster_path    text,                         -- video thumbnail
@@ -245,7 +303,7 @@ create table media_assets (
   alt_text       text,                         -- capture at upload; a11y + SEO
   credit         text not null,                -- '© J. Collector'
   source_url     text,
-  rights         rights_status not null,       -- never nullable. attribution travels with the asset.
+  rights         text not null references rights_statuses(slug) on update cascade on delete restrict, -- never nullable; attribution travels with the asset
   uploaded_by    uuid references auth.users(id) on delete set null,
   created_at     timestamptz default now(),
   updated_at     timestamptz default now(),
@@ -299,7 +357,7 @@ create table artwork (
   id            uuid primary key default gen_random_uuid(),
   slug          text unique not null,
   title         text not null,
-  type          artwork_type not null,
+  type          text not null references artwork_types(slug) on update cascade on delete restrict,
   year          smallint,
   description   text,
   media_id      uuid references media_assets(id) on delete set null,
@@ -324,7 +382,7 @@ create table publications (
   id            uuid primary key default gen_random_uuid(),
   slug          text unique not null,
   title         text not null,
-  kind          text,                          -- 'mini_series','pack_in_mini','book','rpg'
+  kind          text references publication_kinds(slug) on update cascade on delete restrict,
   publisher     text,
   year          smallint,
   issue_number  text,
@@ -361,7 +419,7 @@ create table screen_media (
   id            uuid primary key default gen_random_uuid(),
   slug          text unique not null,
   title         text not null,
-  kind          text,                          -- 'series','episode','commercial','home_video'
+  kind          text references screen_media_kinds(slug) on update cascade on delete restrict,
   year          smallint,
   parent_id     uuid references screen_media(id) on delete cascade, -- episode -> series
   description   text,
@@ -380,7 +438,7 @@ create table interviews (
   subject_id   uuid references creators(id) on delete set null,
   interviewer  text,
   date         date,
-  format       text,                           -- 'text','audio','video'
+  format       text references interview_formats(slug) on update cascade on delete restrict,
   body         text,                           -- markdown for text interviews
   media_id     uuid references media_assets(id) on delete set null,
   source_url   text,
@@ -395,7 +453,7 @@ create table merchandise (
   id           uuid primary key default gen_random_uuid(),
   slug         text unique not null,
   name         text not null,
-  category     text,                           -- 'apparel','housewares','party','publishing'
+  category     text references merchandise_categories(slug) on update cascade on delete restrict,
   manufacturer text,
   year         smallint,
   description  text,
@@ -416,7 +474,9 @@ declare t text;
 begin
   foreach t in array array[
     'lines','series','release_statuses','characters','teams','creators','releases','release_variations','media_assets',
-    'artwork','publications','screen_media','interviews','merchandise'
+    'artwork','publications','screen_media','interviews','merchandise',
+    'alignments','release_types','rarity_levels','variation_types','media_types','rights_statuses',
+    'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories'
   ] loop
     execute format(
       'create trigger trg_%s_updated before update on %I
@@ -440,7 +500,9 @@ begin
     'media_assets','media_releases','media_characters','media_creators','media_variations',
     'artwork','artwork_creators','artwork_characters',
     'publications','media_publications','publication_creators','publication_characters',
-    'screen_media','interviews','merchandise','merchandise_characters'
+    'screen_media','interviews','merchandise','merchandise_characters',
+    'alignments','release_types','rarity_levels','variation_types','media_types','rights_statuses',
+    'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format(
