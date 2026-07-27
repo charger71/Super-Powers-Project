@@ -823,7 +823,7 @@ a.aux__item { display: block; text-decoration: none; }
 .pullquote blockquote {
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: clamp(1.9rem, 4.5vw, 3.25rem);
+  font-size: clamp(1.7rem, 3.5vw, 2.6rem);
   line-height: 1;
   letter-spacing: -0.025em;
   text-transform: uppercase;
@@ -949,7 +949,7 @@ a.aux__item { display: block; text-decoration: none; }
 .dossier-title {
   font-family: var(--font-brand);
   font-weight: 900;
-  font-size: clamp(3.5rem, 10vw, 8rem);
+  font-size: clamp(2.75rem, 7vw, 5.5rem);
   line-height: 0.85;
   letter-spacing: -0.035em;
   text-transform: uppercase;
@@ -1461,9 +1461,9 @@ a.aux__item { display: block; text-decoration: none; }
 .dossier-figures .dossier-section-head h2 { color: var(--color-blue); }
 .figures-grid {
   display: grid;
-  /* six across on wide viewports; auto-fill (not auto-fit) keeps the empty
+  /* five across on wide viewports; auto-fill (not auto-fit) keeps the empty
      tracks, so a lone release renders at the same card size as a full row */
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.75rem;
 }
 @media (max-width: 900px) {
