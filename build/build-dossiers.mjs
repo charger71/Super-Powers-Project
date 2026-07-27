@@ -21,9 +21,14 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PLACEHOLDER = '../assets/sp-palceholder.jpg';
 
 const MEDIA_EMBED = 'media_assets(storage_path,embed_url,alt_text,credit)';
-// Same, plus poster_path/caption/source_url — used where video posters,
-// captions, and attribution links render (the media hub + detail pages).
-const MEDIA_EMBED_FULL = 'media_assets(storage_path,embed_url,poster_path,alt_text,caption,credit,source_url)';
+// The screen-media VIDEO asset, plus poster_path/caption/source_url — used where
+// video embeds, captions, and attribution links render (the media hub + detail
+// pages). The !media_id hint is required because screen_media now has a second
+// FK to media_assets (poster_media_id), so the relationship must be named.
+const MEDIA_EMBED_FULL = 'media_assets!media_id(storage_path,embed_url,poster_path,alt_text,caption,credit,source_url)';
+// The optional dedicated poster still, embedded via the poster_media_id FK and
+// aliased to `poster` so it sits beside the video asset (`media_assets`).
+const POSTER_EMBED = 'poster:media_assets!poster_media_id(storage_path,poster_path,alt_text)';
 
 async function rest(path) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: { apikey: SUPABASE_KEY } });
@@ -45,6 +50,10 @@ const mediaUrl = (m) => m?.storage_path
 
 // A video poster: explicit poster_path, else a stored image, else null.
 const posterUrl = (m) => storageUrl(m?.poster_path) ?? storageUrl(m?.storage_path);
+
+// A screen-media row's poster: prefer its dedicated poster asset
+// (poster_media_id), else fall back to the video asset's own poster/still.
+const screenPoster = (sm) => posterUrl(sm?.poster) ?? posterUrl(sm?.media_assets);
 
 // Normalize a YouTube/Vimeo watch URL into its embeddable form. Anything else
 // (already-an-embed, other host) is returned untouched.
@@ -206,7 +215,7 @@ async function fetchPublicationsByCharacter() {
 async function fetchScreenMedia() {
   try {
     return await rest(
-      'screen_media?select=*,' + MEDIA_EMBED_FULL + '&order=year.asc'
+      'screen_media?select=*,' + MEDIA_EMBED_FULL + ',' + POSTER_EMBED + '&order=year.asc'
     );
   } catch {
     console.warn('Screen media unavailable (is the schema applied?) — building without the media hub.');
@@ -870,7 +879,7 @@ const KIND_ORDER = ['series', 'episode', 'commercial', 'home_video'];
 function videoCard(sm) {
   const m = sm.media_assets;
   const meta = [titleCase((sm.kind ?? '').replaceAll('_', ' ')), sm.year].filter(Boolean).join(' · ');
-  const poster = posterUrl(m) ?? PLACEHOLDER;
+  const poster = screenPoster(sm) ?? PLACEHOLDER;
   const teaser = stripTags(sm.description ?? '').slice(0, 160);
   return `<a class="video-card" href="/media/${esc(sm.slug)}.html">
           <div class="video-card__frame video-card__frame--poster">
@@ -889,7 +898,7 @@ function videoCard(sm) {
 function renderScreenMediaPage(sm, parent, adj) {
   const m = sm.media_assets;
   const embed = embedSrc(m?.embed_url);
-  const poster = posterUrl(m) ?? PLACEHOLDER;
+  const poster = screenPoster(sm) ?? PLACEHOLDER;
 
   const player = embed
     ? `<div class="media-player">
@@ -1836,7 +1845,7 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
     .sort((a, b) => new Date(b.updated_at ?? 0) - new Date(a.updated_at ?? 0))
     .slice(0, 3);
   const essaysBlock = essays.map((s) => {
-    const poster = posterUrl(s.media_assets) ?? PLACEHOLDER;
+    const poster = screenPoster(s) ?? PLACEHOLDER;
     const kindLabel = KIND_LABELS[s.kind] ?? titleCase((s.kind ?? 'media').replaceAll('_', ' '));
     const teaser = stripTags(s.description ?? '').slice(0, 150);
     const foot = [titleCase((s.kind ?? '').replaceAll('_', ' ')), s.year].filter(Boolean).join(' · ');
