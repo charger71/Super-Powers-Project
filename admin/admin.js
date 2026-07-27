@@ -30,6 +30,8 @@ const ENTITIES = {
     // text name), a headshot, or an alter-ego headshot — vs. the default
     // artwork pool the portrait is chosen from.
     mediaJoin: { table: 'media_characters', fk: 'character_id', roles: ['artwork', 'logo', 'headshot', 'alter_ego'] },
+    // curated cross-type "Related" links (related_items) — this record's source type
+    relatedType: 'character',
     // many-to-many links edited as searchable pickers, never hand-typed ids
     linkJoins: [
       { label: 'Enemies', table: 'character_enemies', fk: 'character_id', targetFk: 'enemy_id', targetTable: 'characters' },
@@ -58,6 +60,7 @@ const ENTITIES = {
     // / card art) shows on the character dossier; 'loose' (out of package) shows
     // in the Toy Database. Default 'artwork' — see the media_releases migration.
     mediaJoin: { table: 'media_releases', fk: 'release_id', roles: ['artwork', 'loose'] },
+    relatedType: 'release',
     fields: [
       { col: 'name',             label: 'Name',            kind: 'text', required: true },
       { col: 'slug',             label: 'Slug',            kind: 'slug', required: true },
@@ -159,6 +162,7 @@ const ENTITIES = {
     // cover + interior scans attach like any other media (media_publications);
     // the "attached media" section marks one is_primary as the cover.
     mediaJoin: { table: 'media_publications', fk: 'publication_id' },
+    relatedType: 'publication',
     // which canonical characters appear in this comic — the "Comic Appearances"
     // the front end renders on dossiers and comic pages, now editable.
     linkJoins: [
@@ -188,6 +192,7 @@ const ENTITIES = {
     titleCol: 'title',
     orderBy: { col: 'year', ascending: true },
     listCols: ['title', 'slug', 'kind', 'year'],
+    relatedType: 'screen_media',
     fields: [
       { col: 'title',       label: 'Title',       kind: 'text', required: true },
       { col: 'slug',        label: 'Slug',        kind: 'slug', required: true },
@@ -252,6 +257,7 @@ const ENTITIES = {
     listCols: ['name', 'slug', 'role_summary'],
     // the creator's photo/headshot — mark one attachment primary for the page portrait
     mediaJoin: { table: 'media_creators', fk: 'creator_id' },
+    relatedType: 'creator',
     fields: [
       { col: 'name',         label: 'Name',         kind: 'text', required: true },
       { col: 'slug',         label: 'Slug',         kind: 'slug', required: true },
@@ -302,6 +308,19 @@ const VOCAB_TABLES = {
   interview_formats:      'Interview formats',
   merchandise_categories: 'Merchandise categories',
 };
+// Curated "Related" links live in one polymorphic table (related_items) — see
+// its migration. Each linkable type maps a related_items type slug to the table
+// its rows live in and the column that titles them (comics/media use `title`).
+// Kept in lockstep with the entity_types seed and the build's resolver.
+const RELATED_TYPES = [
+  { slug: 'character',    label: 'Character', table: 'characters',   titleCol: 'name'  },
+  { slug: 'release',      label: 'Toy',       table: 'releases',     titleCol: 'name'  },
+  { slug: 'publication',  label: 'Comic',     table: 'publications', titleCol: 'title' },
+  { slug: 'screen_media', label: 'Media',     table: 'screen_media', titleCol: 'title' },
+  { slug: 'creator',      label: 'Creator',   table: 'creators',     titleCol: 'name'  },
+];
+const RELATED_BY_SLUG = new Map(RELATED_TYPES.map((t) => [t.slug, t]));
+
 for (const [table, label] of Object.entries(VOCAB_TABLES)) {
   ENTITIES[table] = {
     label,
@@ -323,6 +342,48 @@ const state = { entity: 'characters', rows: [], editing: null, sort: null };
 const $ = (id) => document.getElementById(id);
 
 // ---- auth ---------------------------------------------------------------
+// ---- routing ------------------------------------------------------------
+// The current view lives in the URL hash so a refresh restores it:
+//   #<entity>            → that entity's list
+//   #<entity>/<id>       → that record open in the editor
+//   #<entity>/new        → a blank new-record editor
+// We write the hash on every navigation; a guard flag stops our own writes
+// from bouncing back through the hashchange handler.
+let suppressHashChange = false;
+let routed = false;   // first authed load restores the hash; later auth events don't
+
+function setHash(h) {
+  if (location.hash.slice(1) === h) return;   // unchanged → no event, leave guard alone
+  suppressHashChange = true;
+  location.hash = h;
+}
+
+function parseHash() {
+  const [entity, recordId] = decodeURIComponent(location.hash.slice(1)).split('/');
+  return { entity: ENTITIES[entity] ? entity : null, recordId: recordId || null };
+}
+
+// Apply whatever the hash names: switch entity, load its list, then (re)open a
+// record if one is named. Used on first authed load and on external hash edits.
+async function applyRoute() {
+  const { entity, recordId } = parseHash();
+  if (entity) state.entity = entity;
+  renderMenu();
+  await loadList();
+  if (recordId === 'new') {
+    openDrawer(null);
+  } else if (recordId) {
+    const row = state.rows.find((r) => r.id === recordId);
+    if (row) openDrawer(row);
+    else setHash(state.entity);   // stale id (deleted / different entity) → list
+  }
+}
+
+window.addEventListener('hashchange', () => {
+  if (suppressHashChange) { suppressHashChange = false; return; }  // our own write
+  if (!$('app-view').hidden) applyRoute();                         // external edit / back-forward
+});
+
 async function refreshAuth() {
   const { data: { session } } = await db.auth.getSession();
   $('login-view').hidden = !!session;
@@ -332,7 +393,13 @@ async function refreshAuth() {
   $('rebuild-all-wrap').hidden = !session;
   $('menu').hidden = !session;
   $('user-email').textContent = session?.user?.email ?? '';
-  if (session) loadList();
+  // First authed load restores the hash (entity + open record). Later auth
+  // events (token refresh) must NOT reopen/reset an editor you're using, so
+  // they just refresh the list data underneath.
+  if (session) {
+    if (!routed) { routed = true; applyRoute(); }
+    else loadList();
+  }
 }
 
 // ---- rebuild (local dev server only — see build/serve.mjs) --------------
@@ -422,6 +489,7 @@ function renderMenu() {
         if (key === state.entity) return;
         state.entity = key;
         closeDrawer();
+        setHash(state.entity);  // record the new entity's list in the URL
         renderMenu();
         loadList();
       });
@@ -553,6 +621,9 @@ const RTE_ALLOWED = {
   P: [], BR: [], HR: [], STRONG: [], B: [], EM: [], I: [], U: [], SMALL: [],
   H2: [], H3: [], H4: [], UL: [], OL: [], LI: [], BLOCKQUOTE: [], A: ['href'],
   TABLE: [], THEAD: [], TBODY: [], TR: [], TH: [], TD: [],
+  // images are picked from the media library and inserted as lightbox triggers;
+  // credit/caption ride along as data-* so the front-end lightbox shows them
+  IMG: ['src', 'alt', 'class', 'data-gallery', 'data-credit', 'data-caption'],
 };
 
 const INLINE_FMT = new Set(['B', 'STRONG', 'I', 'EM', 'U']);
@@ -604,12 +675,21 @@ function sanitizeHtml(html) {
         if (!/^(https?:|mailto:|\/)/i.test(href)) child.removeAttribute('href');
         else { child.setAttribute('rel', 'noopener'); child.setAttribute('target', '_blank'); }
       }
+      if (tag === 'IMG') {
+        // drop images with no usable src; ensure alt exists (a11y — never null)
+        const src = child.getAttribute('src') || '';
+        if (!/^(https?:|\/)/i.test(src)) { child.remove(); continue; }
+        if (child.getAttribute('alt') == null) child.setAttribute('alt', '');
+        // 'lb-trigger' is the only class we emit — normalize whatever's here to it
+        if (child.hasAttribute('class')) child.setAttribute('class', 'lb-trigger');
+      }
       clean(child);
     }
   };
   clean(root);
   root.querySelectorAll('p').forEach((p) => {
-    if (!p.textContent.trim() && !p.querySelector('br')) p.remove();
+    // keep a <p> that holds an image even when it has no text (image-only line)
+    if (!p.textContent.trim() && !p.querySelector('br, img')) p.remove();
   });
   return root.innerHTML.trim();
 }
@@ -638,6 +718,7 @@ const RTE_TOOLS = [
   { cmd: 'formatBlock', arg: 'blockquote', label: '❝', title: 'Quote' },
   { cmd: 'insertHorizontalRule', label: '―',      title: 'Horizontal rule — divider' },
   { cmd: 'insertTable',         label: 'Table',   title: 'Insert table' },
+  { cmd: 'insertImage',         label: 'Image',   title: 'Insert image — from media library' },
   { cmd: 'small',               label: 'Sm',      title: 'Small text — citations, footers' },
   { cmd: 'createLink',          label: 'Link',    title: 'Add link' },
   { cmd: 'removeFormat',        label: 'Clear',   title: 'Clear formatting' },
@@ -658,6 +739,86 @@ function insertTable(editor) {
   const html = `<table><thead><tr>${cells('th', cols)}</tr></thead><tbody>${bodyRows}</tbody></table><p><br></p>`;
   editor.focus();
   document.execCommand('insertHTML', false, html);
+}
+
+// Insert an image at the caret by PICKING from the media library — so credit,
+// rights, and alt text (captured at upload, non-negotiable #1) travel with the
+// asset instead of being re-entered. The inserted <img> is a lightbox trigger
+// (class 'lb-trigger' + data-gallery), and carries credit/caption as data-*
+// so the front-end lightbox can show attribution. The static build emits this
+// HTML directly; js/lightbox.js wires the click. The caret is captured before
+// the modal steals focus and restored before insertion.
+async function insertImage(editor) {
+  const sel = window.getSelection();
+  let savedRange = null;
+  if (sel.rangeCount) {
+    const r = sel.getRangeAt(0);
+    if (editor.contains(r.commonAncestorContainer)) savedRange = r.cloneRange();
+  }
+
+  // image assets only: those backed by a stored file (photos/scans), newest first
+  const { data: assets, error } = await db.from('media_assets')
+    .select('id, caption, alt_text, credit, storage_path')
+    .not('storage_path', 'is', null)
+    .order('created_at', { ascending: false });
+  if (error) { alert(error.message); return; }
+  if (!assets?.length) { alert('No image media yet — upload images in the Media tab first.'); return; }
+
+  const byLabel = new Map(assets.map((m) => [mediaLabel(m), m]));
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'rte-img-dialog';
+  const listId = 'dl-rte-img';
+  dialog.innerHTML = `
+    <form method="dialog">
+      <h3>Insert image</h3>
+      <p class="hint">Pick from the media library — credit and alt travel with the asset.</p>
+      <input id="rte-img-input" list="${listId}" placeholder="Type to search…" autocomplete="off">
+      <datalist id="${listId}"></datalist>
+      <div class="rte-img-dialog__actions">
+        <button type="button" id="rte-img-cancel">Cancel</button>
+        <button type="submit" value="insert" class="primary">Insert</button>
+      </div>
+    </form>`;
+  dialog.querySelector('datalist').replaceChildren(...assets.map((m) => {
+    const o = document.createElement('option');
+    o.value = mediaLabel(m);
+    return o;
+  }));
+
+  const input = dialog.querySelector('#rte-img-input');
+  dialog.querySelector('#rte-img-cancel').addEventListener('click', () => dialog.close('cancel'));
+
+  dialog.addEventListener('close', () => {
+    const asset = dialog.returnValue === 'insert' ? byLabel.get(input.value) : null;
+    dialog.remove();
+    if (!asset) return;   // cancelled, or nothing valid typed
+
+    const img = document.createElement('img');
+    img.className = 'lb-trigger';
+    img.setAttribute('data-gallery', 'prose');
+    img.src = publicUrl(asset.storage_path);
+    img.alt = asset.alt_text || '';
+    if (asset.credit) img.setAttribute('data-credit', asset.credit);
+    if (asset.caption) img.setAttribute('data-caption', asset.caption);
+
+    editor.focus();
+    if (savedRange) {
+      sel.removeAllRanges();
+      sel.addRange(savedRange);
+    } else {                                   // no prior caret → append at the end
+      const end = document.createRange();
+      end.selectNodeContents(editor);
+      end.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(end);
+    }
+    document.execCommand('insertHTML', false, `${img.outerHTML}<p><br></p>`);
+  });
+
+  document.body.append(dialog);
+  dialog.showModal();
+  input.focus();
 }
 
 // Tab / Shift-Tab moves between cells while editing a table; Tab out of the
@@ -771,6 +932,8 @@ function buildRichField(field, value) {
         wrapSelection('small', editor);
       } else if (t.cmd === 'insertTable') {
         insertTable(editor);
+      } else if (t.cmd === 'insertImage') {
+        insertImage(editor);
       } else if (t.cmd === 'formatBlock') {
         document.execCommand('formatBlock', false, t.arg);
       } else {
@@ -1082,6 +1245,147 @@ async function renderCreditSections(def, row) {
   }
 }
 
+// ---- curated related items ("Related" cross-type see-also) ---------------
+// One polymorphic table (related_items) links this record to any other record.
+// Unlike renderLinkSections (single fixed target table), the target TYPE is
+// chosen first (a <select>), then a searchable picker of that type's rows. The
+// id columns carry no FK, so we resolve each existing link's label by querying
+// its type's table — grouped so it's one query per distinct type, not per row.
+async function renderRelatedSection(def, row) {
+  const box = $('drawer-related');
+  box.replaceChildren();
+  if (!def.relatedType) return;
+
+  const section = document.createElement('div');
+  const h = document.createElement('h3');
+  h.textContent = 'Related (curated “see also”)';
+  section.append(h);
+
+  if (!row) {
+    const hint = document.createElement('p');
+    hint.className = 'hint';
+    hint.textContent = 'Save this record first, then add related items.';
+    section.append(hint);
+    box.append(section);
+    return;
+  }
+
+  const { data: links, error } = await db.from('related_items')
+    .select('target_type, target_id, note, sort_order')
+    .eq('source_type', def.relatedType).eq('source_id', row.id)
+    .order('sort_order');
+
+  if (error) {
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = error.message;
+    section.append(p);
+    box.append(section);
+    return;
+  }
+
+  // Resolve labels: one query per distinct target type, then look each up.
+  const labels = new Map();  // `${type}:${id}` -> "Name · slug"
+  const idsByType = new Map();
+  for (const l of links ?? []) {
+    if (!idsByType.has(l.target_type)) idsByType.set(l.target_type, []);
+    idsByType.get(l.target_type).push(l.target_id);
+  }
+  for (const [type, ids] of idsByType) {
+    const t = RELATED_BY_SLUG.get(type);
+    if (!t) continue;
+    const { data: rows } = await db.from(t.table)
+      .select(`id, ${t.titleCol}, slug`).in('id', ids);
+    for (const r of rows ?? []) labels.set(`${type}:${r.id}`, `${r[t.titleCol]} · ${r.slug}`);
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'link-list';
+  for (const l of links ?? []) {
+    const t = RELATED_BY_SLUG.get(l.target_type);
+    const label = labels.get(`${l.target_type}:${l.target_id}`) ?? `(missing ${l.target_type})`;
+    const li = document.createElement('li');
+    li.textContent = `${t ? t.label : l.target_type}: ${label}${l.note ? ` — ${l.note}` : ''}`;
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'danger';
+    rm.textContent = 'Remove';
+    rm.addEventListener('click', async () => {
+      const { error: delError } = await db.from('related_items').delete()
+        .eq('source_type', def.relatedType).eq('source_id', row.id)
+        .eq('target_type', l.target_type).eq('target_id', l.target_id);
+      if (delError) { alert(delError.message); return; }
+      renderRelatedSection(def, row);
+    });
+    li.append(rm);
+    list.append(li);
+  }
+  section.append(list);
+
+  // adder: type <select> → searchable datalist of that type's rows → note.
+  const typeSel = document.createElement('select');
+  typeSel.replaceChildren(...RELATED_TYPES.map((t) => {
+    const o = document.createElement('option');
+    o.value = t.slug; o.textContent = t.label;
+    return o;
+  }));
+
+  const listId = 'dl-related-target';
+  const datalist = document.createElement('datalist');
+  datalist.id = listId;
+
+  const input = document.createElement('input');
+  input.setAttribute('list', listId);
+  input.placeholder = 'Type to search…';
+
+  const noteInput = document.createElement('input');
+  noteInput.placeholder = 'Note (optional)';
+
+  const taken = new Set((links ?? []).map((l) => `${l.target_type}:${l.target_id}`));
+  let byLabel = new Map();
+
+  // (re)load the datalist for the selected target type, excluding self + linked
+  const loadOptions = async () => {
+    const t = RELATED_BY_SLUG.get(typeSel.value);
+    input.value = '';
+    const { data: rows } = await db.from(t.table)
+      .select(`id, ${t.titleCol}, slug`).order(t.titleCol);
+    const labelFor = (r) => `${r[t.titleCol]} · ${r.slug}`;
+    const available = (rows ?? []).filter((r) =>
+      !(t.slug === def.relatedType && r.id === row.id) && !taken.has(`${t.slug}:${r.id}`));
+    byLabel = new Map(available.map((r) => [labelFor(r), r.id]));
+    datalist.replaceChildren(...available.map((r) => {
+      const o = document.createElement('option');
+      o.value = labelFor(r);
+      return o;
+    }));
+  };
+  typeSel.addEventListener('change', loadOptions);
+  await loadOptions();
+
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.textContent = 'Add';
+  add.addEventListener('click', async () => {
+    const targetId = byLabel.get(input.value);
+    if (!targetId) { input.classList.add('invalid'); return; }
+    const { error: insError } = await db.from('related_items').insert({
+      source_type: def.relatedType, source_id: row.id,
+      target_type: typeSel.value, target_id: targetId,
+      note: noteInput.value.trim() || null,
+      sort_order: links?.length ?? 0,
+    });
+    if (insError) { alert(insError.message); return; }
+    renderRelatedSection(def, row);
+  });
+
+  const adder = document.createElement('div');
+  adder.className = 'link-adder';
+  adder.append(typeSel, input, noteInput, add, datalist);
+  section.append(adder);
+  box.append(section);
+}
+
 // ---- attached media (inside character/release drawers) ------------------
 const mediaLabel = (m) => `${m.caption || m.alt_text || 'untitled'} · ${m.credit} [${m.id.slice(0, 8)}]`;
 
@@ -1379,6 +1683,18 @@ function renderInlineUpload(def, row, join, isFirst) {
 // ---- form ---------------------------------------------------------------
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+// Admin entities whose records have a public page → the built page's directory.
+// Drives the editor's "View page" link (href ../<dir>/<slug>.html — relative so
+// it works wherever the site is mounted). Entities absent here have no page.
+const VIEW_DIRS = {
+  characters:   'dossier',
+  releases:     'release',
+  publications: 'comics',
+  screen_media: 'media',
+  creators:     'creators',
+  merchandise:  'merchandise',
+};
+
 async function openDrawer(row) {
   const def = ENTITIES[state.entity];
   state.editing = row;
@@ -1387,6 +1703,18 @@ async function openDrawer(row) {
   $('drawer-title').textContent = row ? `Edit: ${title}` : title;
   $('delete').hidden = !row;
   $('form-status').textContent = '';
+
+  // "View page" link — only for a saved record of an entity that has a public
+  // page (a slug is required to build the URL).
+  const viewLink = $('drawer-view');
+  const viewDir = VIEW_DIRS[state.entity];
+  if (row && viewDir && row.slug) {
+    viewLink.href = `../${viewDir}/${row.slug}.html`;
+    viewLink.hidden = false;
+  } else {
+    viewLink.hidden = true;
+    viewLink.removeAttribute('href');
+  }
 
   const fields = await Promise.all(def.fields.map(async (f) => {
     const value = row ? row[f.col] : (f.initial ?? null);
@@ -1481,19 +1809,26 @@ async function openDrawer(row) {
   $('list-panel').hidden = true;
   $('drawer').hidden = false;
   window.scrollTo(0, 0);
+  // reflect the open record in the URL so a refresh reopens it
+  setHash(`${state.entity}/${row ? row.id : 'new'}`);
   renderLinkSections(def, row);
   renderCreditSections(def, row);
+  renderRelatedSection(def, row);
   renderMediaSection(def, row);
 }
 
 function closeDrawer() {
   if (!$('bulk-panel').hidden) closeBulk();
+  const wasOpen = !$('drawer').hidden;
   $('drawer').hidden = true;
   $('drawer-links').replaceChildren();
   $('drawer-credits').replaceChildren();
+  $('drawer-related').replaceChildren();
   $('drawer-media').replaceChildren();
   $('list-panel').hidden = false;
   state.editing = null;
+  // drop the record from the URL, back to the entity's list
+  if (wasOpen) setHash(state.entity);
 }
 $('drawer-close').addEventListener('click', closeDrawer);
 

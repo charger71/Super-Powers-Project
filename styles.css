@@ -919,12 +919,12 @@ a.aux__item { display: block; text-decoration: none; }
 
 /* Dossier head (title block on white) */
 .dossier-head {
-  padding-block: clamp(2rem, 4vw, 3rem);
+  padding-block: clamp(0.75rem, 1.5vw, 1.1rem);
   background: var(--color-white);
 }
 .dossier-head__tags {
   display: flex; gap: 0.5rem; flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: 0.6rem;
 }
 .dossier-tag {
   display: inline-flex;
@@ -965,7 +965,7 @@ a.aux__item { display: block; text-decoration: none; }
   letter-spacing: -0.035em;
   text-transform: uppercase;
   color: var(--color-blue);
-  margin: 0.5rem 0 0.25rem;
+  margin: 0.25rem 0 0.15rem;
   text-shadow: 4px 4px 0 var(--color-yellow);
 }
 .dossier-aliases {
@@ -987,7 +987,7 @@ a.aux__item { display: block; text-decoration: none; }
 /* Overview + spec (2-col) */
 .dossier-body {
   background: var(--color-white);
-  padding-block: clamp(2.5rem, 5vw, 4rem);
+  padding-block: clamp(1rem, 2vw, 1.5rem);
 }
 .dossier-body__grid {
   display: grid;
@@ -1605,6 +1605,83 @@ a.figure-card:focus-visible {
   .enemy-link { transition: none; }
 }
 
+/* ---------- RELATED (curated cross-type "see also") ----------
+   Sidebar block on dossier/release/media/comic/creator pages. Heterogeneous
+   cards (a character, a toy, a comic…) share one look: thumbnail + kind kicker
+   + name. Real <img> thumbs, never .photo-well (see CLAUDE.md). Data comes from
+   related_items; the build resolves each link and drops any that don't. */
+.dossier-related {
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius);
+  padding: clamp(1.25rem, 2vw, 1.75rem);
+  margin-top: 2rem;
+}
+.dossier-related > .dek { margin: 0 0 1rem; }
+.related-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.related-card {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0.5rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--color-blue);
+  transition: transform var(--dur) ease, border-color var(--dur) ease;
+}
+.related-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-red);
+}
+.related-card:focus-visible {
+  outline: 3px solid var(--color-blue);
+  outline-offset: 2px;
+}
+.related-card__thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--color-yellow);
+}
+.related-card__body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.related-card__kind {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--step--2);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-red);
+}
+.related-card__name {
+  font-family: var(--font-brand);
+  font-weight: 900;
+  font-size: var(--step-0);
+  line-height: 1.15;
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
+}
+.related-card__note {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: var(--step--1);
+  color: var(--color-blue);
+  opacity: 0.85;
+}
+@media (prefers-reduced-motion: reduce) {
+  .related-card { transition: none; }
+}
+
 /* ---------- HISTORY (editorial timeline) ---------- */
 .dossier-history {
   padding-block: clamp(2.5rem, 5vw, 4rem);
@@ -1761,6 +1838,9 @@ a.figure-card:focus-visible {
   outline-offset: 2px;
 }
 .lb-trigger img { cursor: zoom-in; }
+/* rich-text prose images are lightbox triggers themselves (not a full-width
+   button wrapper) — keep them at natural size within the text column */
+img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; }
 
 /* ---------- LIGHTBOX (native <dialog>) ---------- */
 .lightbox {
@@ -2006,7 +2086,7 @@ a.figure-card:focus-visible {
    ========================================================================= */
 
 /* Single-column editorial lede (media + merchandise intros) */
-.media-lede { max-width: 68ch; }
+.media-lede { max-width: 74ch; }
 
 .media-empty {
   font-family: var(--font-mono);

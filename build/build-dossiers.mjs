@@ -258,6 +258,32 @@ async function fetchCreators() {
   }
 }
 
+// Curated "related items" — a hand-curated, cross-type "see also". One
+// polymorphic table (related_items) holds directed links (source -> target),
+// NOT auto-mirrored. The target columns carry no FK (deliberate — see the
+// migration), so this is fetched tolerantly and every link whose target doesn't
+// resolve at build time is silently skipped (buildRelatedResolver / resolveRelated).
+// Returns a Map keyed by `${source_type}:${source_id}`.
+async function fetchRelatedItems() {
+  const map = new Map();
+  let rows;
+  try {
+    rows = await rest(
+      'related_items?select=source_type,source_id,target_type,target_id,note,sort_order&order=sort_order'
+    );
+  } catch {
+    console.warn('Related items unavailable (is the related_items migration applied?) — building without curated related sections.');
+    return map;
+  }
+  for (const r of rows) {
+    const key = `${r.source_type}:${r.source_id}`;
+    const list = map.get(key) ?? [];
+    list.push(r);
+    map.set(key, list);
+  }
+  return map;
+}
+
 // Write only when content actually changed, so an unchanged Batman page isn't
 // rewritten (and Dropbox doesn't re-sync it) just because Superman changed.
 // `--all` forces every file to be rewritten (the admin "Rebuild all" switch).
@@ -505,9 +531,66 @@ function headshotFigure(media, label, fallbackAlt) {
         </figure>`;
 }
 
+// ---- curated related items ("Related" sidebar block) --------------------
+
+// Turn a related_items target (type + id) into a renderable card, using the
+// rows already fetched for the whole build. Returns null for anything that
+// doesn't resolve (deleted target, unknown type) — the caller drops it, so a
+// dead link degrades to "the card disappears", never a broken page. Kept in
+// lockstep with entity_types and the admin's RELATED_TYPES.
+function buildRelatedResolver({ characters, releases, publications, screenMedia, creators }) {
+  const byId = (arr) => new Map(arr.map((x) => [x.id, x]));
+  const TYPES = {
+    character:    { map: byId(characters),  dir: 'dossier',  label: 'Character',
+                    name: (c) => c.name,  thumb: (c) => mediaUrl(pickMedia(c.media_characters, ['artwork'])[0]) },
+    release:      { map: byId(releases),    dir: 'release',  label: 'Toy',
+                    name: (r) => r.name,  thumb: (r) => mediaUrl(sortedMedia(r.media_releases)[0]) },
+    publication:  { map: byId(publications), dir: 'comics',  label: 'Comic',
+                    name: (p) => p.title, thumb: (p) => mediaUrl(sortedMedia(p.media_publications)[0]) },
+    screen_media: { map: byId(screenMedia), dir: 'media',    label: 'Media',
+                    name: (s) => s.title, thumb: (s) => screenPoster(s) },
+    creator:      { map: byId(creators),    dir: 'creators', label: 'Creator',
+                    name: (k) => k.name,  thumb: (k) => mediaUrl(sortedMedia(k.media_creators)[0]) },
+  };
+  return (type, id) => {
+    const t = TYPES[type];
+    if (!t) return null;
+    const row = t.map.get(id);
+    if (!row) return null;
+    return { label: t.label, name: t.name(row), href: `/${t.dir}/${row.slug}.html`, thumb: t.thumb(row) ?? PLACEHOLDER };
+  };
+}
+
+// Raw related rows -> resolved, in curated (sort_order) order, unresolved dropped.
+function resolveRelated(rows, resolve) {
+  return (rows ?? [])
+    .map((r) => { const hit = resolve(r.target_type, r.target_id); return hit ? { ...hit, note: r.note } : null; })
+    .filter(Boolean);
+}
+
+// The "Related" sidebar aside. items = output of resolveRelated. Empty -> ''.
+function relatedSidebar(items) {
+  if (!items?.length) return '';
+  const cards = items.map((it) => `
+          <li><a class="related-card" href="${esc(it.href)}">
+            <img class="related-card__thumb" src="${esc(it.thumb)}" alt="${esc(it.name)}">
+            <span class="related-card__body">
+              <span class="related-card__kind">${esc(it.label)}</span>
+              <span class="related-card__name">${esc(it.name)}</span>
+              ${it.note ? `<span class="related-card__note">${esc(it.note)}</span>` : ''}
+            </span>
+          </a></li>`).join('');
+  return `
+        <aside class="dossier-related">
+          <p class="dek">Related</p>
+          <ul class="related-list">${cards}
+          </ul>
+        </aside>`;
+}
+
 // ---- character page -----------------------------------------------------
 
-function renderCharacterPage(c, releases, publications, enemyList, adj) {
+function renderCharacterPage(c, releases, publications, enemyList, adj, related = '') {
   const teams = (c.character_teams ?? []).map((t) => t.teams?.name).filter(Boolean);
   const portraitMedia = pickMedia(c.media_characters, ['artwork'])[0];
   const portrait = mediaUrl(portraitMedia) ?? PLACEHOLDER;
@@ -678,6 +761,7 @@ ${aboutSection}
       ${portraitMedia?.credit ? `<p class="dek dek--sm">Photo: ${esc(portraitMedia.credit)}</p>` : ''}
 ${headshots}
 ${powersCard}
+${related}
       </div>
 
     </div>
@@ -693,7 +777,7 @@ ${pager('dossier', adj?.prev, adj?.next)}`;
 
 // ---- release page -------------------------------------------------------
 
-function renderReleasePage(r, variations, adj) {
+function renderReleasePage(r, variations, adj, related = '') {
   const media = sortedMedia(r.media_releases);
   const hero = mediaUrl(media[0]) ?? PLACEHOLDER;  // og:image only
 
@@ -854,6 +938,7 @@ ${sourcesSection}
             ${spec}
           </dl>
         </aside>
+${related}
       </div>
 
     </div>
@@ -895,7 +980,7 @@ function videoCard(sm) {
 // A screen-media detail page: the player up top, a long-form article below,
 // spec + attribution in the sidebar. `parent` is the resolved parent series
 // (episode → series), if any.
-function renderScreenMediaPage(sm, parent, adj) {
+function renderScreenMediaPage(sm, parent, adj, related = '') {
   const m = sm.media_assets;
   const embed = embedSrc(m?.embed_url);
   const poster = screenPoster(sm) ?? PLACEHOLDER;
@@ -976,6 +1061,7 @@ ${sourceLink}
             ${spec}
           </dl>
         </aside>
+${related}
       </div>
 
     </div>
@@ -1258,7 +1344,7 @@ const PUB_KIND_LABEL = {
   book: 'Book', rpg: 'Role-Playing Game',
 };
 
-function renderPublicationPage(p, packedRelease, adj) {
+function renderPublicationPage(p, packedRelease, adj, related = '') {
   const media = sortedMedia(p.media_publications);
   const cover = mediaUrl(media[0]) ?? PLACEHOLDER;
 
@@ -1350,6 +1436,7 @@ ${creditsSection}
             ${spec}
           </dl>
         </aside>
+${related}
       </div>
 
     </div>
@@ -1380,7 +1467,7 @@ function groupCredits(rows, embed, keyOf) {
 const creditRoles = (roles) => roles.length
   ? ` — ${esc([...new Set(roles)].join(', '))}` : '';
 
-function renderCreatorPage(cr, adj) {
+function renderCreatorPage(cr, adj, related = '') {
   const photo = sortedMedia(cr.media_creators)[0];
   const portrait = mediaUrl(photo) ?? PLACEHOLDER;
   const portraitAlt = photo?.alt_text ?? `${cr.name} — portrait`;
@@ -1472,6 +1559,7 @@ ${portraitSidebar}
             ${spec}
           </dl>
         </aside>
+${related}
       </div>
 
     </div>
@@ -2274,12 +2362,17 @@ function renderSearch(indexCount) {
 
 // ---- main ---------------------------------------------------------------
 
-const [characters, releases, pubsByChar, enemiesByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators] = await Promise.all([
+const [characters, releases, pubsByChar, enemiesByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems] = await Promise.all([
   fetchCharacters(), fetchReleases(), fetchPublicationsByCharacter(), fetchEnemiesByCharacter(),
   fetchVariationsByRelease(), fetchScreenMedia(), fetchMerchandise(),
   rest(`publications?select=*,media_publications(is_primary,sort_order,${MEDIA_EMBED}),publication_creators(role,creators(name,slug)),publication_characters(characters(name,slug))&order=kind.asc,year.asc`).catch(() => []),
-  fetchCreators(),
+  fetchCreators(), fetchRelatedItems(),
 ]);
+
+// Resolve curated related_items against the rows we just fetched. `relatedFor`
+// yields a ready-to-embed sidebar block (or '') for any source record.
+const resolveRelatedTarget = buildRelatedResolver({ characters, releases, publications: allPublications, screenMedia, creators });
+const relatedFor = (type, id) => relatedSidebar(resolveRelated(relatedItems.get(`${type}:${id}`), resolveRelatedTarget));
 
 if (!characters.length && !releases.length && !screenMedia.length && !merchandise.length) {
   console.log('Nothing in the database — nothing to build.');
@@ -2308,7 +2401,7 @@ for (const [i, c] of characters.entries()) {
   const own = releasesForCharacter(releases, c).sort(releaseOrder);
   const publications = pubsByChar.get(c.id) ?? [];
   const enemyList = enemiesByChar.get(c.id) ?? [];
-  const html = renderCharacterPage(c, own, publications, enemyList, adjacent(characters, i));
+  const html = renderCharacterPage(c, own, publications, enemyList, adjacent(characters, i), relatedFor('character', c.id));
   if (await writeIfChanged(join(root, 'dossier', `${c.slug}.html`), html)) {
     written++;
     console.log(`built dossier/${c.slug}.html`);
@@ -2317,7 +2410,7 @@ for (const [i, c] of characters.entries()) {
 
 for (const [i, r] of releases.entries()) {
   const variations = variationsByRelease.get(r.id) ?? [];
-  const html = renderReleasePage(r, variations, adjacent(releases, i));
+  const html = renderReleasePage(r, variations, adjacent(releases, i), relatedFor('release', r.id));
   if (await writeIfChanged(join(root, 'release', `${r.slug}.html`), html)) {
     written++;
     console.log(`built release/${r.slug}.html`);
@@ -2335,7 +2428,7 @@ for (const [i, r] of releases.entries()) {
 const screenById = new Map(screenMedia.map((sm) => [sm.id, sm]));
 for (const [i, sm] of screenMedia.entries()) {
   const parent = sm.parent_id ? screenById.get(sm.parent_id) : null;
-  const html = renderScreenMediaPage(sm, parent, adjacent(screenMedia, i));
+  const html = renderScreenMediaPage(sm, parent, adjacent(screenMedia, i), relatedFor('screen_media', sm.id));
   if (await writeIfChanged(join(root, 'media', `${sm.slug}.html`), html)) {
     written++;
     console.log(`built media/${sm.slug}.html`);
@@ -2363,7 +2456,7 @@ for (const [i, m] of merchandise.entries()) {
   const releaseById = new Map(releases.map((r) => [r.id, r]));
   for (const [i, p] of allPublications.entries()) {
     const packed = p.packed_with ? releaseById.get(p.packed_with) : null;
-    const html = renderPublicationPage(p, packed, adjacent(allPublications, i));
+    const html = renderPublicationPage(p, packed, adjacent(allPublications, i), relatedFor('publication', p.id));
     if (await writeIfChanged(join(root, 'comics', `${p.slug}.html`), html)) {
       written++;
       console.log(`built comics/${p.slug}.html`);
@@ -2373,7 +2466,7 @@ for (const [i, m] of merchandise.entries()) {
 
 // Creator bio pages — comic/toy credits link here
 for (const [i, cr] of creators.entries()) {
-  const html = renderCreatorPage(cr, adjacent(creators, i));
+  const html = renderCreatorPage(cr, adjacent(creators, i), relatedFor('creator', cr.id));
   if (await writeIfChanged(join(root, 'creators', `${cr.slug}.html`), html)) {
     written++;
     console.log(`built creators/${cr.slug}.html`);

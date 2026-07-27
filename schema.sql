@@ -468,6 +468,45 @@ create table merchandise_characters (
 );
 
 -- ============================================================
+-- Curated "Related items" — a hand-curated, cross-type "see also"
+--
+-- The ONE deliberate exception to "typed join tables, no polymorphic pair":
+-- a related link can point from any entity to any other, so it's polymorphic
+-- and gives up FK integrity on the id columns. source_type/target_type still
+-- FK into entity_types (so the type strings can't sprawl), a CHECK blocks
+-- self-links, and the build resolves-or-skips each link so a deleted target
+-- degrades to "link disappears", never a broken page. cleanup_related_items()
+-- sweeps dead rows on demand. Links are one-directional (not auto-mirrored).
+-- See migration 20260727000002_related_items.
+-- ============================================================
+create table entity_types (
+  id          uuid primary key default gen_random_uuid(),
+  slug        text unique not null,
+  name        text not null,
+  description text,
+  sort_order  smallint default 0,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+insert into entity_types (slug, name, sort_order) values
+  ('character','Character',0), ('release','Toy',1), ('publication','Comic',2),
+  ('screen_media','Media',3), ('creator','Creator',4);
+
+create table related_items (
+  source_type text not null references entity_types(slug) on update cascade on delete restrict,
+  source_id   uuid not null,
+  target_type text not null references entity_types(slug) on update cascade on delete restrict,
+  target_id   uuid not null,
+  sort_order  smallint default 0,
+  note        text,                          -- optional editorial caption
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now(),
+  primary key (source_type, source_id, target_type, target_id),
+  constraint related_not_self check (not (source_type = target_type and source_id = target_id))
+);
+create index on related_items (source_type, source_id);
+
+-- ============================================================
 -- updated_at triggers
 -- ============================================================
 do $$
@@ -477,7 +516,8 @@ begin
     'lines','series','release_statuses','characters','teams','creators','releases','release_variations','media_assets',
     'artwork','publications','screen_media','interviews','merchandise',
     'alignments','release_types','rarity_levels','variation_types','media_types','rights_statuses',
-    'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories'
+    'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories',
+    'entity_types','related_items'
   ] loop
     execute format(
       'create trigger trg_%s_updated before update on %I
@@ -503,7 +543,8 @@ begin
     'publications','media_publications','publication_creators','publication_characters',
     'screen_media','interviews','merchandise','merchandise_characters',
     'alignments','release_types','rarity_levels','variation_types','media_types','rights_statuses',
-    'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories'
+    'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories',
+    'entity_types','related_items'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format(

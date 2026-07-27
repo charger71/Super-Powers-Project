@@ -24,10 +24,12 @@
 
   const meta = (el) => {
     const d = el.dataset;
-    const thumb = el.querySelector('img');
+    // the trigger may be a wrapper containing an <img>, or an <img> itself
+    // (rich-text prose images) — in which case it is its own thumbnail
+    const thumb = el.tagName === 'IMG' ? el : el.querySelector('img');
     return {
       image:  d.full || d.image || (thumb ? thumb.src : ''),
-      title:  d.title || '',
+      title:  d.title || (thumb ? thumb.alt : '') || '',
       // new: explicit credit; legacy: "year · status"
       status: d.credit || [d.year, d.status].filter(Boolean).join(' · '),
       desc:   d.caption || d.desc || '',

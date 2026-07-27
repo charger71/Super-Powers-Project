@@ -209,6 +209,31 @@ card-sized.
 ### Known enemies — `.dossier-enemies` / `.enemies-list` / `.enemy-link`
 Wrapped row of red pill links to villain dossiers.
 
+### Related — `.dossier-related` / `.related-list` / `.related-card`
+Curated cross-type "see also" block that sits in the **sidebar** of the dossier,
+release, media, comic, and creator detail pages. Cards are heterogeneous (a
+character, a toy, a comic, a video, a creator) but share one look: a square
+thumbnail, a red mono `__kind` kicker, a brand-font `__name`, and an optional
+italic `__note`. Backed by the polymorphic `related_items` table; the build
+resolves each link against the records it fetched and silently drops any that
+don't resolve. Thumbnails are real `<img>` (never `.photo-well`).
+
+```html
+<aside class="dossier-related">
+  <p class="dek">Related</p>
+  <ul class="related-list">
+    <li><a class="related-card" href="release/batmobile-kenner-1984.html">
+      <img class="related-card__thumb" src="…batmobile.png" alt="Batmobile">
+      <span class="related-card__body">
+        <span class="related-card__kind">Toy</span>
+        <span class="related-card__name">Batmobile</span>
+        <span class="related-card__note">Batman's ride</span>
+      </span>
+    </a></li>
+  </ul>
+</aside>
+```
+
 ### History timeline — `.dossier-history` / `.timeline` / `.timeline__item`
 Light-blue field; each item is a `year | body` grid (`.timeline__year` red, big brand
 numerals). Stacks under 640px.
