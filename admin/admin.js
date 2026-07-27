@@ -379,55 +379,72 @@ const MENU_GROUPS = [
                                   'screen_media_kinds', 'interview_formats', 'merchandise_categories'] },
 ];
 
+// One dropdown per group, laid out as a menubar in the header. The group
+// holding the current entity is marked .is-current; the current entity itself
+// is .active inside its panel.
 function renderMenu() {
-  $('menu-current').textContent = ENTITIES[state.entity]?.label ?? 'Menu';
-  const panel = $('menu-panel');
-  const nodes = [];
-  for (const group of MENU_GROUPS) {
-    // groups still order the list; a hairline separates them, no text heading
-    if (nodes.length) {
-      const rule = document.createElement('hr');
-      rule.className = 'menu__sep';
-      nodes.push(rule);
-    }
+  const bar = $('menu');
+  bar.replaceChildren(...MENU_GROUPS.map((group) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'menu';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'menu__button' + (group.keys.includes(state.entity) ? ' is-current' : '');
+    btn.setAttribute('aria-haspopup', 'true');
+    btn.setAttribute('aria-expanded', 'false');
+    const caret = document.createElement('span');
+    caret.className = 'menu__caret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = '▾';
+    const label = document.createElement('span');
+    label.textContent = group.label;
+    btn.append(label, caret);
+
+    const panel = document.createElement('div');
+    panel.className = 'menu__panel';
+    panel.setAttribute('role', 'menu');
+    panel.hidden = true;
     for (const key of group.keys) {
       const def = ENTITIES[key];
       if (!def) continue;
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'menu__item' + (key === state.entity ? ' active' : '');
-      b.setAttribute('role', 'menuitem');
-      b.textContent = def.label;
-      b.addEventListener('click', () => {
-        closeMenu();
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'menu__item' + (key === state.entity ? ' active' : '');
+      item.setAttribute('role', 'menuitem');
+      item.textContent = def.label;
+      item.addEventListener('click', () => {
+        closeMenus();
         if (key === state.entity) return;
         state.entity = key;
         closeDrawer();
         renderMenu();
         loadList();
       });
-      nodes.push(b);
+      panel.append(item);
     }
-  }
-  panel.replaceChildren(...nodes);
+
+    // toggle this dropdown; opening one closes any other that's open
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = panel.hidden;
+      closeMenus();
+      if (willOpen) { panel.hidden = false; btn.setAttribute('aria-expanded', 'true'); }
+    });
+
+    wrap.append(btn, panel);
+    return wrap;
+  }));
 }
 
-function openMenu() {
-  $('menu-panel').hidden = false;
-  $('menu-button').setAttribute('aria-expanded', 'true');
+function closeMenus() {
+  for (const p of $('menu').querySelectorAll('.menu__panel')) p.hidden = true;
+  for (const b of $('menu').querySelectorAll('.menu__button')) b.setAttribute('aria-expanded', 'false');
 }
-function closeMenu() {
-  $('menu-panel').hidden = true;
-  $('menu-button').setAttribute('aria-expanded', 'false');
-}
-function toggleMenu() { $('menu-panel').hidden ? openMenu() : closeMenu(); }
 
-$('menu-button').addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
-// click-away and Escape close the dropdown
-document.addEventListener('click', (e) => {
-  if (!$('menu-panel').hidden && !$('menu').contains(e.target)) closeMenu();
-});
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+// click-away and Escape close whichever dropdown is open
+document.addEventListener('click', (e) => { if (!$('menu').contains(e.target)) closeMenus(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
 
 // ---- list ---------------------------------------------------------------
 async function loadList() {

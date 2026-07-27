@@ -113,7 +113,8 @@ input.invalid { border-color: var(--danger); }
 /* app layout */
 .app { max-width: 72rem; margin: 0 auto; padding: 1.25rem; }
 
-/* header nav — grouped dropdown menu (lives in the blue bar) */
+/* header nav — one dropdown per group, laid out as a menubar in the blue bar */
+.menubar { display: flex; gap: 0.4rem; }
 .menu { position: relative; }
 .bar .menu__button {
   display: inline-flex;
@@ -124,6 +125,8 @@ input.invalid { border-color: var(--danger); }
   color: #fff;
 }
 .bar .menu__button:hover { background: rgba(255, 255, 255, 0.22); opacity: 1; }
+/* the group holding the current entity reads as selected */
+.bar .menu__button.is-current { background: rgba(255, 255, 255, 0.28); border-color: rgba(255, 255, 255, 0.6); }
 .menu__caret {
   font-size: 0.7em;
   opacity: 0.85;
@@ -146,11 +149,6 @@ input.invalid { border-color: var(--danger); }
   box-shadow: 0 10px 28px rgba(29, 28, 58, 0.18);
   display: grid;
   gap: 0.1rem;
-}
-.menu__panel .menu__sep {
-  border: 0;
-  border-top: 1px solid var(--rule);
-  margin: 0.3rem 0.4rem;
 }
 .menu__panel .menu__item {
   display: block;
