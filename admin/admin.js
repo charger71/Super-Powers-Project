@@ -299,6 +299,7 @@ async function refreshAuth() {
   $('logout').hidden = !session;
   $('rebuild').hidden = !session;
   $('rebuild-all-wrap').hidden = !session;
+  $('menu').hidden = !session;
   $('user-email').textContent = session?.user?.email ?? '';
   if (session) loadList();
 }
@@ -338,16 +339,63 @@ $('login-form').addEventListener('submit', async (e) => {
 $('logout').addEventListener('click', () => db.auth.signOut());
 db.auth.onAuthStateChange(() => refreshAuth());
 
-// ---- tabs ---------------------------------------------------------------
-function renderTabs() {
-  $('tabs').replaceChildren(...Object.entries(ENTITIES).map(([key, def]) => {
-    const b = document.createElement('button');
-    b.textContent = def.label;
-    b.className = key === state.entity ? 'active' : '';
-    b.addEventListener('click', () => { state.entity = key; closeDrawer(); renderTabs(); loadList(); });
-    return b;
-  }));
+// ---- menu (grouped dropdown in the header bar) --------------------------
+// Groups the 13 entities so daily-use content sits apart from the rarely
+// touched lookup tables. Keys must match ENTITIES; any entity left out of a
+// group would simply not appear, so keep this in sync when adding tables.
+const MENU_GROUPS = [
+  { label: 'Content',  keys: ['characters', 'releases', 'variations'] },
+  { label: 'Taxonomy', keys: ['lines', 'series', 'statuses', 'teams'] },
+  { label: 'Media',    keys: ['publications', 'screen_media', 'interviews', 'merchandise', 'creators', 'media'] },
+];
+
+function renderMenu() {
+  $('menu-current').textContent = ENTITIES[state.entity]?.label ?? 'Menu';
+  const panel = $('menu-panel');
+  const nodes = [];
+  for (const group of MENU_GROUPS) {
+    const heading = document.createElement('p');
+    heading.className = 'menu__group';
+    heading.textContent = group.label;
+    nodes.push(heading);
+    for (const key of group.keys) {
+      const def = ENTITIES[key];
+      if (!def) continue;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'menu__item' + (key === state.entity ? ' active' : '');
+      b.setAttribute('role', 'menuitem');
+      b.textContent = def.label;
+      b.addEventListener('click', () => {
+        closeMenu();
+        if (key === state.entity) return;
+        state.entity = key;
+        closeDrawer();
+        renderMenu();
+        loadList();
+      });
+      nodes.push(b);
+    }
+  }
+  panel.replaceChildren(...nodes);
 }
+
+function openMenu() {
+  $('menu-panel').hidden = false;
+  $('menu-button').setAttribute('aria-expanded', 'true');
+}
+function closeMenu() {
+  $('menu-panel').hidden = true;
+  $('menu-button').setAttribute('aria-expanded', 'false');
+}
+function toggleMenu() { $('menu-panel').hidden ? openMenu() : closeMenu(); }
+
+$('menu-button').addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
+// click-away and Escape close the dropdown
+document.addEventListener('click', (e) => {
+  if (!$('menu-panel').hidden && !$('menu').contains(e.target)) closeMenu();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
 
 // ---- list ---------------------------------------------------------------
 async function loadList() {
@@ -1373,9 +1421,9 @@ async function openDrawer(row) {
   }
 
   $('drawer-fields').replaceChildren(...fields);
-  // full-page editor: hide the list + tabs while editing
+  // full-page editor: hide the list while editing (the header menu stays,
+  // so you can jump to another entity — it closes the drawer on the way out)
   $('list-panel').hidden = true;
-  $('tabs').hidden = true;
   $('drawer').hidden = false;
   window.scrollTo(0, 0);
   renderLinkSections(def, row);
@@ -1390,7 +1438,6 @@ function closeDrawer() {
   $('drawer-credits').replaceChildren();
   $('drawer-media').replaceChildren();
   $('list-panel').hidden = false;
-  $('tabs').hidden = false;
   state.editing = null;
 }
 $('drawer-close').addEventListener('click', closeDrawer);
@@ -1522,7 +1569,6 @@ function openBulk() {
   $('bulk-status').textContent = '';
   clearBulkFiles();
   $('list-panel').hidden = true;
-  $('tabs').hidden = true;
   $('bulk-panel').hidden = false;
   window.scrollTo(0, 0);
 }
@@ -1531,7 +1577,6 @@ function closeBulk() {
   $('bulk-panel').hidden = true;
   clearBulkFiles();
   $('list-panel').hidden = false;
-  $('tabs').hidden = false;
 }
 
 function clearBulkFiles() {
@@ -1645,5 +1690,5 @@ $('bulk-submit').addEventListener('click', async () => {
 });
 
 // ---- boot ---------------------------------------------------------------
-renderTabs();
+renderMenu();
 refreshAuth();
