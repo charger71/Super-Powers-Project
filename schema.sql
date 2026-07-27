@@ -423,7 +423,8 @@ create table screen_media (
   year          smallint,
   parent_id     uuid references screen_media(id) on delete cascade, -- episode -> series
   description   text,
-  media_id      uuid references media_assets(id) on delete set null,
+  media_id      uuid references media_assets(id) on delete set null, -- the video asset
+  poster_media_id uuid references media_assets(id) on delete set null, -- still shown before play
   created_at    timestamptz default now(),
   updated_at    timestamptz default now()
 );

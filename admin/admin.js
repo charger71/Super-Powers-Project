@@ -196,9 +196,13 @@ const ENTITIES = {
       { col: 'parent_id',   label: 'Parent (series → episode)', kind: 'fk', table: 'screen_media',
         fkCols: 'id, title, slug', fkOrder: 'title', fkLabel: (r) => `${r.title} · ${r.slug}` },
       { col: 'description', label: 'Description', kind: 'rich' },
-      // Single media asset (the video embed). Attribution lives on the asset,
-      // captured in the Media tab. Pick a video-type asset with an Embed URL.
-      { col: 'media_id',    label: 'Video / poster (media asset)', kind: 'fk', table: 'media_assets',
+      // Two single media assets: the video embed and the poster still shown
+      // before it plays. Attribution lives on each asset, captured in the Media
+      // tab. Pick a video-type asset (with an Embed URL) for the video.
+      { col: 'media_id',    label: 'Video (media asset)', kind: 'fk', table: 'media_assets',
+        fkCols: 'id, caption, alt_text, credit', fkOrder: 'created_at',
+        fkLabel: (m) => `${m.caption || m.alt_text || 'untitled'} · ${m.credit}` },
+      { col: 'poster_media_id', label: 'Poster image (media asset)', kind: 'fk', table: 'media_assets',
         fkCols: 'id, caption, alt_text, credit', fkOrder: 'created_at',
         fkLabel: (m) => `${m.caption || m.alt_text || 'untitled'} · ${m.credit}` },
     ],
