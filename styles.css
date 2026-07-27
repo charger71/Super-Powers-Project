@@ -42,7 +42,7 @@
   --step-3:  clamp(1.6rem, 1.3rem + 1.5vw, 2.25rem);
   --step-4:  clamp(2rem, 1.55rem + 2.25vw, 3.25rem);
   --step-5:  clamp(2.75rem, 1.9rem + 4.25vw, 5rem);
-  --step-6:  clamp(3.5rem, 2.2rem + 6vw, 7rem);
+  --step-6:  clamp(2.75rem, 7vw, 5.5rem); /* marquee: dossier-title */
 
   --page-max: 1240px;
   --gutter:   clamp(1rem, 2.5vw, 2.5rem);
@@ -949,7 +949,7 @@ a.aux__item { display: block; text-decoration: none; }
 .dossier-title {
   font-family: var(--font-brand);
   font-weight: 900;
-  font-size: clamp(2.75rem, 7vw, 5.5rem);
+  font-size: var(--step-6);
   line-height: 0.85;
   letter-spacing: -0.035em;
   text-transform: uppercase;
