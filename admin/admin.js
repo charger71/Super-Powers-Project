@@ -354,10 +354,12 @@ function renderMenu() {
   const panel = $('menu-panel');
   const nodes = [];
   for (const group of MENU_GROUPS) {
-    const heading = document.createElement('p');
-    heading.className = 'menu__group';
-    heading.textContent = group.label;
-    nodes.push(heading);
+    // groups still order the list; a hairline separates them, no text heading
+    if (nodes.length) {
+      const rule = document.createElement('hr');
+      rule.className = 'menu__sep';
+      nodes.push(rule);
+    }
     for (const key of group.keys) {
       const def = ENTITIES[key];
       if (!def) continue;
