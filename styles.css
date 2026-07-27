@@ -39,10 +39,10 @@
   --step-0:  clamp(0.95rem, 0.9rem + 0.25vw, 1.05rem);
   --step-1:  clamp(1.1rem, 1rem + 0.5vw, 1.35rem);
   --step-2:  clamp(1.4rem, 1.15rem + 1.25vw, 1.9rem);
-  --step-3:  clamp(1.85rem, 1.4rem + 2.25vw, 2.75rem);
-  --step-4:  clamp(2.5rem, 1.8rem + 3.5vw, 4rem);
-  --step-5:  clamp(3.5rem, 2.2rem + 6vw, 6.5rem);
-  --step-6:  clamp(4.5rem, 2.5rem + 8vw, 9rem);
+  --step-3:  clamp(1.6rem, 1.3rem + 1.5vw, 2.25rem);
+  --step-4:  clamp(2rem, 1.55rem + 2.25vw, 3.25rem);
+  --step-5:  clamp(2.75rem, 1.9rem + 4.25vw, 5rem);
+  --step-6:  clamp(3.5rem, 2.2rem + 6vw, 7rem);
 
   --page-max: 1240px;
   --gutter:   clamp(1rem, 2.5vw, 2.5rem);
@@ -1441,16 +1441,16 @@ a.aux__item { display: block; text-decoration: none; }
 
 /* Common section header */
 .dossier-section-head {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.9rem;
 }
 .dossier-section-head h2 {
   font-family: var(--font-brand);
   font-weight: 900;
-  font-size: var(--step-3);
+  font-size: var(--step-2);
   letter-spacing: -0.02em;
   text-transform: uppercase;
   color: var(--color-blue);
-  margin: 0.25rem 0 0;
+  margin: 0.1rem 0 0;
 }
 
 /* Figures grid */
@@ -1461,10 +1461,13 @@ a.aux__item { display: block; text-decoration: none; }
 .dossier-figures .dossier-section-head h2 { color: var(--color-blue); }
 .figures-grid {
   display: grid;
-  /* auto-fill (not auto-fit) keeps the empty tracks, so a lone release renders
-     at the same card size as a row of four */
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1.25rem;
+  /* six across on wide viewports; auto-fill (not auto-fit) keeps the empty
+     tracks, so a lone release renders at the same card size as a full row */
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (max-width: 900px) {
+  .figures-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 }
 .figure-card {
   background: var(--color-white);
