@@ -572,6 +572,7 @@ function listCell(row, col) {
 
 function renderList() {
   const def = ENTITIES[state.entity];
+  $('list-title').textContent = def.label;
   $('bulk-upload').hidden = !def.upload;
   const filter = $('list-filter').value.trim().toLowerCase();
   const displayCols = [...def.listCols, EDITED_COL];

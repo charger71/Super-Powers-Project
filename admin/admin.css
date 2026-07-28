@@ -164,6 +164,8 @@ input.invalid { border-color: var(--danger); }
 .menu__panel .menu__item:hover { background: #f0f0fa; opacity: 1; }
 .menu__panel .menu__item.active { background: var(--accent); color: #fff; }
 
+.panel__title { margin: 0 0 0.75rem; font-size: 1.15rem; }
+
 .panel__head {
   display: flex;
   gap: 0.75rem;

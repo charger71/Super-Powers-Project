@@ -445,6 +445,7 @@ ${body}
   </dialog>
   <script src="/js/lightbox.js" defer></script>
   <script src="/js/nav.js" defer></script>
+  <script src="/js/power-bubble.js" defer></script>
 
 </body>
 </html>

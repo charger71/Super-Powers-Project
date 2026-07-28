@@ -65,7 +65,7 @@ Five families, each with a fixed job. Don't mix these roles.
 | `--font-display` | Futura → Arial Black → Impact | Big editorial headlines & deks (hero title, pullquotes) |
 | `--font-body` | Georgia → Times New Roman → serif | Running body copy, ledes, article text |
 | `--font-mono` | IBM Plex Mono → Courier New | Kickers, labels, eyebrows, tags, captions, edition marks |
-| `--font-marker` | Marker Felt → Comic Sans MS → Chalkboard | Only the Power Action speech bubble |
+| `--font-marker` | Balloon Extra Bold (self-hosted) → Marker Felt → Comic Sans MS | Only the Power Action speech bubble |
 
 ### Type scale (fluid, `clamp`-based)
 

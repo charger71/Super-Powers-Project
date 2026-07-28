@@ -5,6 +5,19 @@
    Black reserved for illustrations. Body ink = dark blue.
    ========================================================================= */
 
+/* ---------- WEB FONTS ---------- */
+/* Balloon Extra Bold — the only self-hosted face; drives the Power Action
+   speech bubble (see --font-marker). Files in assets/fonts/; url() resolves
+   relative to this stylesheet, so it works from every page depth. */
+@font-face {
+  font-family: "Balloon Extra Bold";
+  src: url("assets/fonts/Balloon_Extra_Bold/BALLOON1.woff") format("woff"),
+       url("assets/fonts/Balloon_Extra_Bold/BALLOON1.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ---------- TOKENS ---------- */
 :root {
   --color-blue-lt:    #4EB6E3;
@@ -35,12 +48,12 @@
      display  → big editorial headlines & deks — hero title, pullquotes (Futura/Arial Black)
      body     → running text, ledes, article copy (Georgia)
      mono     → kickers, labels, eyebrows, tags, captions, edition marks (IBM Plex Mono)
-     marker   → the Power Action speech bubble only (Marker Felt) */
+     marker   → the Power Action speech bubble only (Balloon Extra Bold) */
   --font-brand:   "Futura", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
   --font-display: "Futura", "Arial Black", "Helvetica Neue", Impact, sans-serif;
   --font-body:    Georgia, "Times New Roman", "Liberation Serif", serif;
   --font-mono:    "IBM Plex Mono", "Courier New", ui-monospace, monospace;
-  --font-marker:  "Marker Felt", "Comic Sans MS", "Chalkboard SE", cursive;
+  --font-marker:  "Balloon Extra Bold", "Marker Felt", "Comic Sans MS", cursive;
 
   --step--2: clamp(0.68rem, 0.66rem + 0.08vw, 0.72rem); /* micro: kickers, captions, meta */
   --step--1: clamp(0.75rem, 0.72rem + 0.15vw, 0.85rem);
@@ -1387,9 +1400,11 @@ a.aux__item { display: block; text-decoration: none; }
 .power-bubble {
   position: relative;
   width: 100%;
-  max-width: 240px;
-  margin: 0 auto 0.5rem;
+  max-width: 292px;
+  margin: 0 auto -2.5rem;       /* negative: pulls the next element up into the
+                                   SVG's empty lower-right band (tail hangs left) */
   aspect-ratio: 83.83 / 85.2;   /* the SVG's own ratio */
+  container-type: inline-size;  /* so bubble text sizes in cqw and always fills */
 }
 .power-bubble__shape {
   display: block;
@@ -1407,13 +1422,13 @@ a.aux__item { display: block; text-decoration: none; }
   justify-content: center;
   text-align: center;
   font-family: var(--font-marker);
-  font-weight: 700;
-  font-size: clamp(1.44rem, 1.92vw + 0.96rem, 2rem);
+  font-weight: normal;  /* Balloon is already Extra Bold; 700 triggers faux-bold */
+  font-size: 15.4cqw;   /* bubble-relative, so the fill ratio holds at any bubble size */
   line-height: 1.05;
   letter-spacing: -0.03em;
   text-transform: uppercase;
   color: var(--color-bubble-ink);   /* matches the bubble's dark-blue outline */
-  transform: rotate(-6deg);
+  transform: translateX(-4px) rotate(-6deg);
 }
 
 /* Text fallback when a character has no logo asset (generated pages) */
