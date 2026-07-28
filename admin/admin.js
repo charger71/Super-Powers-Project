@@ -1701,6 +1701,7 @@ async function openDrawer(row) {
   state.editing = row;
   stickyMedia = {}; // shared media attribution is scoped to one open record
   const title = row ? (row[def.titleCol ?? 'name'] || '(untitled)') : `New ${def.label.replace(/s$/, '').toLowerCase()}`;
+  $('drawer-entity').textContent = def.label;
   $('drawer-title').textContent = row ? `Edit: ${title}` : title;
   $('delete').hidden = !row;
   $('form-status').textContent = '';

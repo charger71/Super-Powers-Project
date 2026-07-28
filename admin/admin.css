@@ -220,6 +220,8 @@ input.invalid { border-color: var(--danger); }
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--rule);
 }
+.editor__titles { display: flex; flex-direction: column; gap: 0.1rem; }
+.editor__eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-mid); }
 .editor__head h2 { margin: 0; font-size: 1.15rem; }
 .editor__back {
   background: transparent;
