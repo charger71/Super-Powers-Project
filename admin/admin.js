@@ -144,12 +144,12 @@ const ENTITIES = {
       { col: 'name',             label: 'Name',            kind: 'text', required: true },
       { col: 'slug',             label: 'Slug',            kind: 'slug', required: true },
       { col: 'variation_type',   label: 'Variation type',  kind: 'lookup', table: 'variation_types' },
-      { col: 'description',      label: 'Description',     kind: 'textarea' },
+      { col: 'description',      label: 'Description',     kind: 'rich' },
       { col: 'rarity',           label: 'Rarity',          kind: 'lookup', table: 'rarity_levels' },
       { col: 'est_value_loose',  label: 'Est. value loose ($)',  kind: 'number', step: '0.01' },
       { col: 'est_value_carded', label: 'Est. value carded ($)', kind: 'number', step: '0.01' },
       { col: 'sort_order',       label: 'Sort order',      kind: 'number' },
-      { col: 'notes',            label: 'Notes',           kind: 'textarea' },
+      { col: 'notes',            label: 'Notes',           kind: 'rich' },
       { col: 'sources',          label: 'Sources (comma-separated URLs)', kind: 'array' },
     ],
   },
@@ -218,6 +218,9 @@ const ENTITIES = {
     titleCol: 'title',
     orderBy: { col: 'title', ascending: true },
     listCols: ['title', 'slug', 'format', 'interviewer'],
+    // curated "see also" from an interview. 'interview' is source-only for now
+    // (no public interview pages yet), so it isn't offered as a target type.
+    relatedType: 'interview',
     fields: [
       { col: 'title',       label: 'Title',       kind: 'text', required: true },
       { col: 'slug',        label: 'Slug',        kind: 'slug', required: true },
@@ -238,6 +241,7 @@ const ENTITIES = {
     listCols: ['name', 'slug', 'category', 'manufacturer', 'year'],
     // licensed non-figure goods get photos like everything else (media_merchandise)
     mediaJoin: { table: 'media_merchandise', fk: 'merchandise_id' },
+    relatedType: 'merchandise',
     // which characters a piece features (logo-only items just leave this empty)
     linkJoins: [
       { label: 'Characters', table: 'merchandise_characters', fk: 'merchandise_id', targetFk: 'character_id', targetTable: 'characters' },
@@ -312,12 +316,17 @@ const VOCAB_TABLES = {
 // its migration. Each linkable type maps a related_items type slug to the table
 // its rows live in and the column that titles them (comics/media use `title`).
 // Kept in lockstep with the entity_types seed and the build's resolver.
+// These are the types offered as link TARGETS (and how existing links are
+// labeled). Every type here must have a public page for the build to resolve
+// it. 'interview' is intentionally absent — interviews can curate related links
+// (relatedType on the def) but have no page to point at, so they're source-only.
 const RELATED_TYPES = [
-  { slug: 'character',    label: 'Character', table: 'characters',   titleCol: 'name'  },
-  { slug: 'release',      label: 'Toy',       table: 'releases',     titleCol: 'name'  },
-  { slug: 'publication',  label: 'Comic',     table: 'publications', titleCol: 'title' },
-  { slug: 'screen_media', label: 'Media',     table: 'screen_media', titleCol: 'title' },
-  { slug: 'creator',      label: 'Creator',   table: 'creators',     titleCol: 'name'  },
+  { slug: 'character',    label: 'Character',    table: 'characters',   titleCol: 'name'  },
+  { slug: 'release',      label: 'Toy',          table: 'releases',     titleCol: 'name'  },
+  { slug: 'publication',  label: 'Comic',        table: 'publications', titleCol: 'title' },
+  { slug: 'screen_media', label: 'Media',        table: 'screen_media', titleCol: 'title' },
+  { slug: 'creator',      label: 'Creator',      table: 'creators',     titleCol: 'name'  },
+  { slug: 'merchandise',  label: 'Merchandise',  table: 'merchandise',  titleCol: 'name'  },
 ];
 const RELATED_BY_SLUG = new Map(RELATED_TYPES.map((t) => [t.slug, t]));
 

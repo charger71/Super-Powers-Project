@@ -490,7 +490,8 @@ create table entity_types (
 );
 insert into entity_types (slug, name, sort_order) values
   ('character','Character',0), ('release','Toy',1), ('publication','Comic',2),
-  ('screen_media','Media',3), ('creator','Creator',4);
+  ('screen_media','Media',3), ('creator','Creator',4),
+  ('merchandise','Merchandise',5), ('interview','Interview',6);
 
 create table related_items (
   source_type text not null references entity_types(slug) on update cascade on delete restrict,

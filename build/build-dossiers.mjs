@@ -539,7 +539,7 @@ function headshotFigure(media, label, fallbackAlt) {
 // doesn't resolve (deleted target, unknown type) — the caller drops it, so a
 // dead link degrades to "the card disappears", never a broken page. Kept in
 // lockstep with entity_types and the admin's RELATED_TYPES.
-function buildRelatedResolver({ characters, releases, publications, screenMedia, creators }) {
+function buildRelatedResolver({ characters, releases, publications, screenMedia, creators, merchandise }) {
   const byId = (arr) => new Map(arr.map((x) => [x.id, x]));
   const TYPES = {
     character:    { map: byId(characters),  dir: 'dossier',  label: 'Character',
@@ -552,6 +552,8 @@ function buildRelatedResolver({ characters, releases, publications, screenMedia,
                     name: (s) => s.title, thumb: (s) => screenPoster(s) },
     creator:      { map: byId(creators),    dir: 'creators', label: 'Creator',
                     name: (k) => k.name,  thumb: (k) => mediaUrl(sortedMedia(k.media_creators)[0]) },
+    merchandise:  { map: byId(merchandise), dir: 'merchandise', label: 'Merchandise',
+                    name: (m) => m.name,  thumb: (m) => mediaUrl(sortedMedia(m.media_merchandise)[0]) },
   };
   return (type, id) => {
     const t = TYPES[type];
@@ -876,9 +878,9 @@ function renderReleasePage(r, variations, adj, related = '') {
               <h3>${esc(v.name)}</h3>
               ${vType}${vRarity}
             </div>
-            ${v.description ? `<p>${esc(v.description)}</p>` : ''}
+            ${v.description ? richText(v.description) : ''}
             ${vValues ? `<p class="variation-card__values">${esc(vValues)}</p>` : ''}
-            ${v.notes ? `<p class="variation-card__notes">${esc(v.notes)}</p>` : ''}
+            ${v.notes ? `<div class="variation-card__notes">${richText(v.notes)}</div>` : ''}
           </div>
         </li>`;
         }).join('\n        ')}
@@ -1244,7 +1246,7 @@ ${catSections}${emptyState}`;
   return pageShell({ title: 'Beyond the Figures — Merchandise', description, ogImage: PLACEHOLDER, body });
 }
 
-function renderMerchPage(m, adj) {
+function renderMerchPage(m, adj, related = '') {
   const media = sortedMedia(m.media_merchandise);
   const hero = mediaUrl(media[0]) ?? PLACEHOLDER;
 
@@ -1328,6 +1330,7 @@ ${descSection}
             ${spec}
           </dl>
         </aside>
+${related}
       </div>
 
     </div>
@@ -2372,7 +2375,7 @@ const [characters, releases, pubsByChar, enemiesByChar, variationsByRelease, scr
 
 // Resolve curated related_items against the rows we just fetched. `relatedFor`
 // yields a ready-to-embed sidebar block (or '') for any source record.
-const resolveRelatedTarget = buildRelatedResolver({ characters, releases, publications: allPublications, screenMedia, creators });
+const resolveRelatedTarget = buildRelatedResolver({ characters, releases, publications: allPublications, screenMedia, creators, merchandise });
 const relatedFor = (type, id) => relatedSidebar(resolveRelated(relatedItems.get(`${type}:${id}`), resolveRelatedTarget));
 
 if (!characters.length && !releases.length && !screenMedia.length && !merchandise.length) {
@@ -2445,7 +2448,7 @@ for (const [i, sm] of screenMedia.entries()) {
   } else skipped++;
 }
 for (const [i, m] of merchandise.entries()) {
-  const html = renderMerchPage(m, adjacent(merchandise, i));
+  const html = renderMerchPage(m, adjacent(merchandise, i), relatedFor('merchandise', m.id));
   if (await writeIfChanged(join(root, 'merchandise', `${m.slug}.html`), html)) {
     written++;
     console.log(`built merchandise/${m.slug}.html`);
