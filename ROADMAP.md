@@ -286,6 +286,38 @@ From the original brief:
 
 ---
 
+## Planned: revision history (edit tracking)
+
+**Why.** The access model is deliberately "trust everyone, publish direct" — no
+draft/approval workflow (see `CLAUDE.md`). That's the right call for velocity,
+but as co-authors grow it needs a safety net: **accountability and undo, not
+gatekeeping.** With multiple people writing densely cross-linked records
+straight to production, we want to see who changed what and when, and be able to
+roll a bad or accidental edit back — without slowing anyone down at write time.
+
+**What (feature).**
+- Per-record **history panel** in the admin editor: a timeline of every save —
+  editor, timestamp, and a field-level diff (before → after).
+- **Revert**: one click restores a previous version (applied as a *new* revision,
+  so history is append-only and nothing is ever silently lost).
+- Public-facing trust signals can read from this later — it's the backend behind
+  the dossier "Last Updated / Contributor Log", "Errata", and "Contributor
+  Notes" items already listed under *Character Dossier → Meta / navigation*.
+
+**Sketch (not committed).**
+- An append-only `record_revisions` audit table: `table_name`, `row_id`,
+  `editor` (auth uid), `changed_at`, and the old/new row as `jsonb` (field-level
+  diff derivable from the pair). Populated by a **Postgres trigger** on each
+  content table so *every* write path is captured and it can't be bypassed from
+  the client. RLS: co-authors read; inserts only via the trigger.
+- Open questions: how join-table edits (relationships/media attach-detach) are
+  represented; retention/pruning for high-churn records; whether to diff at the
+  field level in SQL or in the admin; surfacing "last edited by" in list views.
+- Scope note: this is infrastructure, not a phase gate — slot it in once the
+  co-author count makes it worth the trigger maintenance.
+
+---
+
 ## Design deferred
 
 - **Powers-card border** — currently a proper 9-slice `border-image` with a
