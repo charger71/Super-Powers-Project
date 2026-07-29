@@ -270,6 +270,9 @@ const ENTITIES = {
       { col: 'bio',          label: 'Bio (body)',   kind: 'rich' },
       { col: 'birth_year',   label: 'Birth year',   kind: 'number' },
       { col: 'death_year',   label: 'Death year',   kind: 'number' },
+      // website / social / portfolio URLs — the public page derives each one's
+      // platform label + icon from its domain, so just paste the URLs
+      { col: 'links',        label: 'Links (comma-separated URLs — website, social, portfolio)', kind: 'array' },
     ],
   },
   media: {
@@ -596,7 +599,7 @@ function renderList() {
   rows.sort((a, b) => compareRows(a, b, sort.col, dir));
 
   const head = document.createElement('tr');
-  head.replaceChildren(...displayCols.map((c) => {
+  const headCells = displayCols.map((c) => {
     const th = document.createElement('th');
     if (c === '_thumb') { th.textContent = ''; return th; }
     const active = sort.col === c;
@@ -608,11 +611,26 @@ function renderList() {
       renderList();
     });
     return th;
-  }));
+  });
+  const actionsTh = document.createElement('th');
+  actionsTh.className = 'row-actions';
+  head.replaceChildren(...headCells, actionsTh);
 
   const body = rows.map((row) => {
     const tr = document.createElement('tr');
-    tr.replaceChildren(...displayCols.map((c) => listCell(row, c)));
+    const actionsTd = document.createElement('td');
+    actionsTd.className = 'row-actions';
+    const dup = document.createElement('button');
+    dup.type = 'button';
+    dup.className = 'row-dup';
+    dup.textContent = 'Duplicate';
+    dup.title = 'Create an editable copy of this record';
+    dup.addEventListener('click', (e) => {
+      e.stopPropagation();        // don't also open the row for editing
+      duplicateRow(row);
+    });
+    actionsTd.append(dup);
+    tr.replaceChildren(...displayCols.map((c) => listCell(row, c)), actionsTd);
     tr.addEventListener('click', () => openDrawer(row));
     return tr;
   });
@@ -622,6 +640,41 @@ function renderList() {
 
 $('list-filter').addEventListener('input', renderList);
 $('new-record').addEventListener('click', () => openDrawer(null));
+
+// Pick a slug not already used by a loaded row, so a duplicate never collides
+// with the unique-slug constraint. Strips any existing -copy suffix first so
+// duplicating a copy gives "-copy-2", not "-copy-copy".
+function uniqueSlug(base, existing) {
+  const root = base.replace(/-copy(-\d+)?$/, '');
+  const taken = new Set(existing);
+  let candidate = `${root}-copy`;
+  for (let n = 2; taken.has(candidate); n++) candidate = `${root}-copy-${n}`;
+  return candidate;
+}
+
+// Row-list "Duplicate": copy a record's own columns into a new row (the unique
+// slug is bumped and the title gets "(copy)"), then open the copy in the editor
+// so it can be adjusted. Relationships and attached media are NOT copied — this
+// clones the record's fields only, which is the point (e.g. a fast Series-2 from
+// a Series-1 release); wire up links/media on the new copy as needed.
+async function duplicateRow(row) {
+  const def = ENTITIES[state.entity];
+  const payload = { ...row };
+  delete payload.id;
+  delete payload.created_at;
+  delete payload.updated_at;
+  if (typeof payload.slug === 'string' && payload.slug) {
+    payload.slug = uniqueSlug(payload.slug, state.rows.map((r) => r.slug).filter(Boolean));
+  }
+  const titleCol = def.titleCol ?? 'name';
+  if (typeof payload[titleCol] === 'string' && payload[titleCol]) {
+    payload[titleCol] = `${payload[titleCol]} (copy)`;
+  }
+  const { data, error } = await db.from(def.table).insert(payload).select().single();
+  if (error) { alert(`Duplicate failed: ${error.message}`); return; }
+  await loadList();
+  openDrawer(data);
+}
 
 // ---- rich text editor (zero-dependency, contenteditable) ----------------
 // Long-form fields (bios, notes, articles) use a small toolbar over a

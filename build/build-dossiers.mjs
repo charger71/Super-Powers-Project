@@ -82,6 +82,31 @@ const stripTags = (s) => String(s ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g
 
 const titleCase = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
 
+// Creator links are stored as plain URLs; derive a friendly platform label from
+// the domain so the list reads "Twitter / X", "ArtStation", etc. Unknown hosts
+// fall back to the bare domain (minus www.). Bad URLs degrade to the raw string.
+const LINK_HOSTS = [
+  [/(?:^|\.)(?:twitter\.com|x\.com)$/, 'Twitter / X'],
+  [/(?:^|\.)instagram\.com$/, 'Instagram'],
+  [/(?:^|\.)facebook\.com$/, 'Facebook'],
+  [/(?:^|\.)(?:youtube\.com|youtu\.be)$/, 'YouTube'],
+  [/(?:^|\.)artstation\.com$/, 'ArtStation'],
+  [/(?:^|\.)behance\.net$/, 'Behance'],
+  [/(?:^|\.)deviantart\.com$/, 'DeviantArt'],
+  [/(?:^|\.)linkedin\.com$/, 'LinkedIn'],
+  [/(?:^|\.)bsky\.app$/, 'Bluesky'],
+  [/(?:^|\.)threads\.(?:net|com)$/, 'Threads'],
+  [/(?:^|\.)tiktok\.com$/, 'TikTok'],
+  [/(?:^|\.)patreon\.com$/, 'Patreon'],
+  [/(?:^|\.)tumblr\.com$/, 'Tumblr'],
+];
+function linkLabel(url) {
+  let host;
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
+  for (const [re, label] of LINK_HOSTS) if (re.test(host)) return label;
+  return host;
+}
+
 // media links → assets, primary first then sort_order (no role filtering)
 const sortedMedia = (links) => (links ?? [])
   .slice()
@@ -780,7 +805,7 @@ ${pager('dossier', adj?.prev, adj?.next)}`;
 
 // ---- release page -------------------------------------------------------
 
-function renderReleasePage(r, variations, adj, related = '') {
+function renderReleasePage(r, variations, adj, related = '', siblings = []) {
   const media = sortedMedia(r.media_releases);
   const hero = mediaUrl(media[0]) ?? PLACEHOLDER;  // og:image only
 
@@ -848,7 +873,7 @@ function renderReleasePage(r, variations, adj, related = '') {
   <section class="release-variations">
     <div class="wrap">
       <div class="dossier-section-head">
-        <p class="dek">Same release, documented differences</p>
+        <p class="dek">Documented Variations</p>
         <h2>Variations</h2>
       </div>
       <ul class="variation-list">
@@ -885,6 +910,23 @@ function renderReleasePage(r, variations, adj, related = '') {
         </li>`;
         }).join('\n        ')}
       </ul>
+    </div>
+  </section>` : '';
+
+  // "Other Releases" — the SAME figure (character) issued elsewhere in the SAME
+  // line, e.g. Superman on the Series 1 / 2 / 3 Kenner cards. Distinct from the
+  // "Variations" section above (card-back differences within THIS one release).
+  // Purely derived from character_id + line_id; the build passes the matches in.
+  const siblingsSection = siblings.length ? `
+  <section class="dossier-figures">
+    <div class="wrap">
+      <div class="dossier-section-head">
+        <p class="dek">Related Releases</p>
+        <h2>${esc(r.lines?.name ?? 'Other Releases')}</h2>
+      </div>
+      <div class="figures-grid">
+        ${siblings.map((s) => figureCard(s, ['artwork'])).join('\n        ')}
+      </div>
     </div>
   </section>` : '';
 
@@ -947,6 +989,7 @@ ${related}
     </div>
   </section>
 ${variationsSection}
+${siblingsSection}
 ${pager('release', adj?.prev, adj?.next)}`;
 
   return pageShell({ title: r.name, description, ogImage: hero, body });
@@ -1500,6 +1543,15 @@ function renderCreatorPage(cr, adj, related = '') {
       <img class="dossier-portrait" src="${esc(portrait)}" alt="${esc(portraitAlt)}">
       ${photo?.credit ? `<p class="dek dek--sm">Photo: ${esc(photo.credit)}</p>` : ''}`;
 
+  const links = (cr.links ?? []).filter(Boolean);
+  const linksSection = links.length ? `
+        <aside class="dossier-links">
+          <p class="dek">Links</p>
+          <ul>
+            ${links.map((u) => `<li><a href="${esc(u)}" rel="nofollow noopener" target="_blank">${esc(linkLabel(u))}</a></li>`).join('\n            ')}
+          </ul>
+        </aside>` : '';
+
   const overviewSection = cr.overview ? `
         <section class="dossier-about">
           ${richText(cr.overview)}
@@ -1563,6 +1615,7 @@ ${portraitSidebar}
             ${spec}
           </dl>
         </aside>
+${linksSection}
 ${related}
       </div>
 
@@ -2414,7 +2467,12 @@ for (const [i, c] of characters.entries()) {
 
 for (const [i, r] of releases.entries()) {
   const variations = variationsByRelease.get(r.id) ?? [];
-  const html = renderReleasePage(r, variations, adjacent(releases, i), relatedFor('release', r.id));
+  // Other releases of the same figure in the same line (Series 1/2/3 etc).
+  // `releases` is already sorted by releaseOrder, so siblings stay in order.
+  const siblings = r.character_id
+    ? releases.filter((o) => o.id !== r.id && o.character_id === r.character_id && o.line_id === r.line_id)
+    : [];
+  const html = renderReleasePage(r, variations, adjacent(releases, i), relatedFor('release', r.id), siblings);
   if (await writeIfChanged(join(root, 'release', `${r.slug}.html`), html)) {
     written++;
     console.log(`built release/${r.slug}.html`);

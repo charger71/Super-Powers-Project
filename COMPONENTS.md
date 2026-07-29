@@ -255,6 +255,9 @@ Prev/next yellow blocks (`.dossier-pager__next` right-aligns).
 - **`.release-hero`** — square product shot, `contain` on white pad.
 - **`.release-charlink`** — red link back to the character dossier.
 - **`.release-sources`** — mono source-URL list.
+- **`.dossier-links`** — creator bio-sidebar list of external links (website /
+  social / portfolio); `.dek` heading + `ul` of `a`. URLs are stored plain and
+  the build derives each label from its domain (Twitter, ArtStation, …).
 - **`.release-gallery-block` / `.release-gallery`** — all attached photography;
   `figure` + `figcaption` (mono, truncated), images `contain` on white.
 - **`.release-variations` / `.variation-card`** — documented variants: per-card

@@ -204,6 +204,16 @@ input.invalid { border-color: var(--danger); }
 .list th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
 .list th.sortable:hover { color: var(--ink); }
 .list th.sorted { color: var(--ink); }
+/* trailing per-row actions (Duplicate) — compact, right-aligned, secondary */
+.list td.row-actions, .list th.row-actions { text-align: right; width: 1%; white-space: nowrap; }
+.list .row-dup {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.list .row-dup:hover { background: var(--accent); color: #fff; opacity: 1; }
 
 /* full-page editor (replaces the list while editing) */
 .editor {

@@ -208,6 +208,7 @@ create table creators (
   bio         text,
   birth_year  smallint,
   death_year  smallint,
+  links       text[] default '{}',            -- external URLs: website, social, portfolio (platform derived from domain)
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );
