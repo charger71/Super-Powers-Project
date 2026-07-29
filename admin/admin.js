@@ -1390,6 +1390,71 @@ async function renderRelatedSection(def, row) {
 // ---- attached media (inside character/release drawers) ------------------
 const mediaLabel = (m) => `${m.caption || m.alt_text || 'untitled'} · ${m.credit} [${m.id.slice(0, 8)}]`;
 
+// Drag-to-reorder for the attached-media grid, on Pointer Events so it works
+// with both mouse and touch. The whole card is the drag surface (except its
+// action buttons / role select). On touch we only start from the grip handle,
+// so a finger can still scroll the page past the grid. Dragging rearranges the
+// cards live; on release we write each card's new index back to join.sort_order
+// (the column the front end reads).
+function enableMediaReorder(grid, def, row, join, originalOrder) {
+  let dragging = null;
+
+  const onMove = (e) => {
+    if (!dragging) return;
+    e.preventDefault();
+    // pointer capture keeps events flowing to the dragged card; hit-test the
+    // point ourselves to find which card we're over (works the same for touch).
+    const over = document.elementFromPoint(e.clientX, e.clientY)?.closest('.media-card');
+    if (!over || over === dragging || over.parentElement !== grid) return;
+    const r = over.getBoundingClientRect();
+    // grid wraps into rows, so weigh vertical position first, then horizontal
+    const before = e.clientY < r.top + r.height / 2 ||
+      (e.clientY < r.bottom && e.clientX < r.left + r.width / 2);
+    grid.insertBefore(dragging, before ? over : over.nextSibling);
+  };
+
+  grid.addEventListener('pointerdown', (e) => {
+    if (e.button > 0) return;                        // primary press / touch only
+    const card = e.target.closest('.media-card');
+    if (!card) return;
+    // let the action buttons and role <select> receive their own clicks
+    if (e.target.closest('.media-card__actions, .media-card__role')) return;
+    // on touch, only the grip handle drags — everywhere else stays a scroll
+    if (e.pointerType === 'touch' && !e.target.closest('.media-card__handle')) return;
+    e.preventDefault();
+    dragging = card;
+    card.classList.add('is-dragging');
+    card.setPointerCapture(e.pointerId);
+
+    const end = async () => {
+      card.removeEventListener('pointermove', onMove);
+      if (!dragging) return;
+      dragging.classList.remove('is-dragging');
+      dragging = null;
+      await persistMediaOrder(grid, def, row, join, originalOrder);
+    };
+    card.addEventListener('pointermove', onMove);
+    card.addEventListener('pointerup', end, { once: true });
+    card.addEventListener('pointercancel', end, { once: true });
+  });
+}
+
+async function persistMediaOrder(grid, def, row, join, originalOrder) {
+  const ids = [...grid.querySelectorAll('.media-card')].map((c) => c.dataset.mediaId);
+  const unchanged = ids.length === originalOrder.length &&
+    ids.every((id, i) => id === originalOrder[i]);
+  if (unchanged) return;
+  // composite PK (fk, media_id) — update only the rows whose index moved
+  const writes = ids
+    .map((mediaId, i) => ({ mediaId, i }))
+    .filter(({ mediaId, i }) => originalOrder[i] !== mediaId)
+    .map(({ mediaId, i }) => db.from(join.table).update({ sort_order: i })
+      .eq(join.fk, row.id).eq('media_id', mediaId));
+  const failed = (await Promise.all(writes)).find((r) => r.error);
+  if (failed) alert('Reorder failed: ' + failed.error.message);
+  renderMediaSection(def, row);
+}
+
 async function renderMediaSection(def, row) {
   const box = $('drawer-media');
   box.replaceChildren();
@@ -1407,18 +1472,31 @@ async function renderMediaSection(def, row) {
     .order('sort_order');
   if (error) { box.append(error.message); return; }
 
-  // current attachments
+  // current attachments — drag to reorder (persists to join.sort_order below)
   const grid = document.createElement('div');
   grid.className = 'media-grid';
+  const reorderable = links.length > 1;
   for (const link of links) {
     const m = link.media_assets;
     const card = document.createElement('div');
     card.className = 'media-card';
+    card.dataset.mediaId = m.id;
+
+    // drag handle — only the handle starts a drag, so the buttons/role select
+    // inside the card stay tappable. Hidden when there's nothing to reorder.
+    if (reorderable) {
+      const handle = document.createElement('div');
+      handle.className = 'media-card__handle';
+      handle.textContent = '⠿';
+      handle.title = 'Drag to reorder';
+      card.append(handle);
+    }
 
     if (m.storage_path) {
       const img = document.createElement('img');
       img.src = publicUrl(m.storage_path);
       img.alt = m.alt_text ?? '';
+      img.draggable = false;   // else the browser's native image-drag fights our reorder
       card.append(img);
     } else {
       const ph = document.createElement('div');
@@ -1481,6 +1559,7 @@ async function renderMediaSection(def, row) {
     card.append(actions);
     grid.append(card);
   }
+  if (reorderable) enableMediaReorder(grid, def, row, join, links.map((l) => l.media_id));
   box.append(grid);
 
   // attach picker

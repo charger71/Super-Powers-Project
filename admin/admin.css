@@ -374,10 +374,41 @@ input.invalid { border-color: var(--danger); }
   margin-bottom: 0.75rem;
 }
 .media-card {
+  position: relative;
   border: 1px solid var(--rule);
   border-radius: 4px;
   padding: 0.5rem;
   font-size: 0.75rem;
+  cursor: grab;               /* whole card is the drag surface */
+  user-select: none;          /* don't select caption text while dragging */
+}
+.media-card.is-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+/* the action controls are clickable, not drag handles */
+.media-card__actions, .media-card__role { cursor: auto; }
+.media-card__handle {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink-mid);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;         /* let the handle own touch drags (no page scroll) */
+}
+.media-card__handle:active {
+  cursor: grabbing;
 }
 .media-card img, .media-card__embed {
   width: 100%;
@@ -385,6 +416,7 @@ input.invalid { border-color: var(--danger); }
   object-fit: contain;
   border-radius: 3px;
   background: var(--paper);
+  -webkit-user-drag: none;    /* pairs with img.draggable=false: no native ghost-drag */
 }
 .media-card__embed {
   display: grid;
