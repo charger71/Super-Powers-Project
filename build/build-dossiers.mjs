@@ -70,12 +70,41 @@ const paras = (text) => (text ?? '')
   .split(/\n\s*\n/).filter((p) => p.trim())
   .map((p) => `<p>${esc(p.trim())}</p>`).join('\n        ');
 
+// Prose images are stored bare (`<img class="lb-trigger" data-gallery="prose"
+// data-caption data-credit>`) with their caption/credit only ever visible in the
+// lightbox. Wrap each one in a <figure> so the caption (and credit, following
+// the site's "Photo: …" figcaption convention) shows inline under the image.
+// The <img> stays a lightbox trigger; images with neither caption nor credit are
+// left bare. data-* values are already HTML-escaped in the stored markup, so
+// they can be dropped into figcaption text as-is. Runs at build only — keeping
+// the editor's stored HTML a plain <img> keeps contenteditable simple.
+const attrOf = (tag, name) => (tag.match(new RegExp(`${name}="([^"]*)"`, 'i')) || [])[1] || '';
+function proseFigure(imgTag) {
+  const caption = attrOf(imgTag, 'data-caption');
+  const credit  = attrOf(imgTag, 'data-credit');
+  if (!caption && !credit) return imgTag;
+  const cap = caption ? `<span class="prose-figure__caption">${caption}</span>` : '';
+  const cred = credit ? `<span class="prose-figure__credit">Photo: ${credit}</span>` : '';
+  return `<figure class="prose-figure">${imgTag}<figcaption>${cap}${cred}</figcaption></figure>`;
+}
+// Single pass: an image alone in a <p> swallows the <p> (so <figure> isn't
+// nested in <p>); any other prose image is wrapped in place. Alternation keeps
+// each image matched once — no double-wrapping.
+const PROSE_IMG = '<img\\b[^>]*data-gallery="prose"[^>]*>';
+const wrapProseImages = (html) => html.replace(
+  new RegExp(`<p>\\s*(${PROSE_IMG})\\s*</p>|(${PROSE_IMG})`, 'gi'),
+  (whole, pImg, bareImg) => {
+    const img = pImg || bareImg;
+    const fig = proseFigure(img);
+    return fig === img ? whole : fig;   // no caption/credit → leave markup untouched
+  });
+
 // Rich text: fields edited with the admin's rich editor store sanitized HTML
 // (authenticated authors only write — see RLS). Legacy/plain content has no
 // block tags and still flows through paras() so blank-line paragraphs keep
 // working. Detection is a cheap tag sniff.
 const looksLikeHtml = (s) => /<(p|h[1-6]|ul|ol|li|blockquote|br|hr|strong|em|b|i|u|a|small|table|tr|t[hd])\b/i.test(s ?? '');
-const richText = (text) => text ? (looksLikeHtml(text) ? String(text) : paras(text)) : '';
+const richText = (text) => text ? wrapProseImages(looksLikeHtml(text) ? String(text) : paras(text)) : '';
 
 // Plain-text extraction for meta descriptions / teasers (strip any HTML).
 const stripTags = (s) => String(s ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();

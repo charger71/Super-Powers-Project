@@ -1870,6 +1870,35 @@ a.figure-card:focus-visible {
    button wrapper) — keep them at natural size within the text column */
 img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; }
 
+/* ---------- PROSE FIGURE ---------- */
+/* A prose image (from the rich-text editor's media picker) wrapped with its
+   caption. The build emits this whenever the image carries a caption or credit;
+   the <img> stays a lightbox trigger. Caption reads as body prose; the credit
+   line follows the site's mono "Photo: …" attribution convention. */
+.prose-figure {
+  margin: 1.25rem 0;
+}
+.prose-figure img.lb-trigger { margin: 0; }
+.prose-figure figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.5rem;
+}
+.prose-figure__caption {
+  font-family: var(--font-brand);
+  font-size: var(--step--1);
+  line-height: 1.35;
+  color: var(--color-ink-mid);
+}
+.prose-figure__credit {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-mid);
+}
+
 /* ---------- LIGHTBOX (native <dialog>) ---------- */
 .lightbox {
   border: none;

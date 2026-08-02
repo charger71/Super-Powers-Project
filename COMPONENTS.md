@@ -303,6 +303,27 @@ content instead of full width):
 </button>
 ```
 
+### Prose figure — `.prose-figure`
+
+An image placed inside rich text (via the admin editor's media picker) is stored
+as a bare `<img class="lb-trigger" data-gallery="prose" …>` carrying its caption
+and credit as `data-caption` / `data-credit`. The static build (`richText()`)
+wraps any such image that has a caption or credit in a `.prose-figure` so the
+caption shows **inline** under the image — the `<img>` stays a lightbox trigger.
+The caption reads as body prose; the credit follows the site's mono `Photo: …`
+attribution convention. Images with neither stay bare.
+
+```html
+<figure class="prose-figure">
+  <img class="lb-trigger" data-gallery="prose" src="…" alt="…"
+       data-caption="…" data-credit="…">
+  <figcaption>
+    <span class="prose-figure__caption">…</span>
+    <span class="prose-figure__credit">Photo: …</span>
+  </figcaption>
+</figure>
+```
+
 ---
 
 ## Timeline page (`.timeline` + multi-event years)
