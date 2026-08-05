@@ -1725,7 +1725,7 @@ ${backAndCrumb([{ label: 'Home', href: '/index.html' }, { label: crumbLabel }])}
   </section>`;
 }
 
-function renderCharacterIndex(characters) {
+function renderCharacterIndex(characters, releases = []) {
   const alignOrder = ['hero', 'ally', 'neutral', 'villain'];
   const alignLabel = { hero: 'Heroes', ally: 'Allies', neutral: 'Neutral', villain: 'Villains', other: 'Unaligned' };
   const byAlign = new Map();
@@ -1736,11 +1736,24 @@ function renderCharacterIndex(characters) {
   }
   const ordered = [...alignOrder.filter((a) => byAlign.has(a)), ...[...byAlign.keys()].filter((a) => !alignOrder.includes(a))];
 
+  // Characters with at least one Kenner Super Powers release — powers the
+  // "Kenner only" switch at the top of the roster. Derived from real release
+  // rows (primary + join-table character links) so it stays correct as data
+  // grows, rather than being a hand-kept list.
+  const kennerCharIds = new Set();
+  for (const r of releases) {
+    if (r.lines?.slug !== 'kenner-super-powers') continue;
+    if (r.character_id) kennerCharIds.add(r.character_id);
+    for (const rc of r.release_characters ?? []) kennerCharIds.add(rc.character_id);
+  }
+  const kennerCount = characters.filter((c) => kennerCharIds.has(c.id)).length;
+
   const card = (c) => {
     const portrait = mediaUrl(pickMedia(c.media_characters, ['artwork'])[0]
       ?? pickMedia(c.media_characters, ['headshot'])[0]) ?? PLACEHOLDER;
     const meta = [titleCase(c.alignment ?? ''), (c.aka ?? [])[0]].filter(Boolean).join(' · ');
-    return `<a class="figure-card" href="/dossier/${esc(c.slug)}.html">
+    const kenner = kennerCharIds.has(c.id) ? ' data-kenner' : '';
+    return `<a class="figure-card"${kenner} href="/dossier/${esc(c.slug)}.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="${esc(portrait)}" alt="${esc(c.name)} — DC Comics">
           </div>
@@ -1749,13 +1762,23 @@ function renderCharacterIndex(characters) {
         </a>`;
   };
 
-  const groupSections = ordered.map((a) => `
+  // The "Kenner only" switch sits between the first group's H2 and its grid.
+  const rosterControls = `
+      <div class="roster-controls">
+        <button class="roster-switch" type="button" role="switch" aria-checked="false"
+                aria-controls="roster" data-count="${kennerCount}">
+          <span class="roster-switch__track" aria-hidden="true"><span class="roster-switch__thumb"></span></span>
+          Kenner only
+        </button>
+      </div>`;
+
+  const groupSections = ordered.map((a, i) => `
   <section class="roster-group">
     <div class="wrap">
       <div class="dossier-section-head">
         <p class="dek">The roster</p>
         <h2>${esc(alignLabel[a] ?? titleCase(a))}</h2>
-      </div>
+      </div>${i === 0 ? rosterControls : ''}
       <div class="figures-grid">
         ${byAlign.get(a).map(card).join('\n        ')}
       </div>
@@ -1779,10 +1802,28 @@ function renderCharacterIndex(characters) {
   </section>
 
   <div class="star-bar" aria-hidden="true"></div>
-  <div class="roster roster--blue">
+  <div class="roster roster--blue" id="roster">
 ${groupSections}
   </div>
-  <div class="star-bar" aria-hidden="true"></div>`;
+  <div class="star-bar" aria-hidden="true"></div>
+
+  <script>
+    (function () {
+      var roster = document.getElementById('roster');
+      var sw = document.querySelector('.roster-switch');
+      if (!roster || !sw) return;
+      sw.addEventListener('click', function () {
+        var on = sw.getAttribute('aria-checked') !== 'true';
+        sw.setAttribute('aria-checked', on ? 'true' : 'false');
+        roster.classList.toggle('is-kenner-only', on);
+        // Hide any allegiance group left with no Kenner cards so the page
+        // doesn't show empty section headers.
+        roster.querySelectorAll('.roster-group').forEach(function (g) {
+          g.hidden = on && !g.querySelector('.figure-card[data-kenner]');
+        });
+      });
+    })();
+  </script>`;
 
   return pageShell({
     title: 'Character Index',
@@ -2566,7 +2607,7 @@ for (const [i, cr] of creators.entries()) {
 
 // Section index pages — listings the homepage tiles link to
 for (const [dir, html] of [
-  ['characters', renderCharacterIndex(characters)],
+  ['characters', renderCharacterIndex(characters, releases)],
   ['toys', renderToyIndex(releases)],
   ['comics', renderComicIndex(allPublications)],
   ...(creators.length ? [['creators', renderCreatorIndex(creators)]] : []),

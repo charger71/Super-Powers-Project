@@ -69,13 +69,20 @@
   </section>
 
   <div class="star-bar" aria-hidden="true"></div>
-  <div class="roster roster--blue">
+  <div class="roster roster--blue" id="roster">
 
   <section class="roster-group">
     <div class="wrap">
       <div class="dossier-section-head">
         <p class="dek">The roster</p>
         <h2>Heroes</h2>
+      </div>
+      <div class="roster-controls">
+        <button class="roster-switch" type="button" role="switch" aria-checked="false"
+                aria-controls="roster" data-count="36">
+          <span class="roster-switch__track" aria-hidden="true"><span class="roster-switch__thumb"></span></span>
+          Kenner only
+        </button>
       </div>
       <div class="figures-grid">
         <a class="figure-card" href="../dossier/animal-man.html">
@@ -85,14 +92,14 @@
           <h3>Animal Man</h3>
           <p class="figure-card__meta">Hero · Buddy Baker</p>
         </a>
-        <a class="figure-card" href="../dossier/aquaman.html">
+        <a class="figure-card" data-kenner href="../dossier/aquaman.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1785925586378-spcardart-aquaman.svg" alt="Aquaman — DC Comics">
           </div>
           <h3>Aquaman</h3>
           <p class="figure-card__meta">Hero · Arthur Curry</p>
         </a>
-        <a class="figure-card" href="../dossier/batman.html">
+        <a class="figure-card" data-kenner href="../dossier/batman.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1785939265270-spcardart-batman.svg" alt="Batman — DC Comics">
           </div>
@@ -120,7 +127,7 @@
           <h3>Booster Gold</h3>
           <p class="figure-card__meta">Hero · Michael Carter</p>
         </a>
-        <a class="figure-card" href="../dossier/cyborg.html">
+        <a class="figure-card" data-kenner href="../dossier/cyborg.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Cyborg — DC Comics">
           </div>
@@ -134,7 +141,7 @@
           <h3>Deadman</h3>
           <p class="figure-card__meta">Hero · Boston Brand</p>
         </a>
-        <a class="figure-card" href="../dossier/doctor-fate.html">
+        <a class="figure-card" data-kenner href="../dossier/doctor-fate.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Doctor Fate — DC Comics">
           </div>
@@ -148,28 +155,28 @@
           <h3>Dr. Midnight</h3>
           <p class="figure-card__meta">Hero</p>
         </a>
-        <a class="figure-card" href="../dossier/firestorm.html">
+        <a class="figure-card" data-kenner href="../dossier/firestorm.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Firestorm — DC Comics">
           </div>
           <h3>Firestorm</h3>
           <p class="figure-card__meta">Hero · Ronnie Raymond</p>
         </a>
-        <a class="figure-card" href="../dossier/golden-pharaoh.html">
+        <a class="figure-card" data-kenner href="../dossier/golden-pharaoh.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Golden Pharaoh — DC Comics">
           </div>
           <h3>Golden Pharaoh</h3>
           <p class="figure-card__meta">Hero</p>
         </a>
-        <a class="figure-card" href="../dossier/green-arrow.html">
+        <a class="figure-card" data-kenner href="../dossier/green-arrow.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Green Arrow — DC Comics">
           </div>
           <h3>Green Arrow</h3>
           <p class="figure-card__meta">Hero · Oliver Queen</p>
         </a>
-        <a class="figure-card" href="../dossier/green-lantern.html">
+        <a class="figure-card" data-kenner href="../dossier/green-lantern.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Green Lantern — DC Comics">
           </div>
@@ -190,7 +197,7 @@
           <h3>Guy Gardner</h3>
           <p class="figure-card__meta">Hero · Green Lantern</p>
         </a>
-        <a class="figure-card" href="../dossier/hawkman.html">
+        <a class="figure-card" data-kenner href="../dossier/hawkman.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Hawkman — DC Comics">
           </div>
@@ -239,7 +246,7 @@
           <h3>Kilowog</h3>
           <p class="figure-card__meta">Hero · Green Lantern Corps</p>
         </a>
-        <a class="figure-card" href="../dossier/martian-manhunter.html">
+        <a class="figure-card" data-kenner href="../dossier/martian-manhunter.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Martian Manhunter — DC Comics">
           </div>
@@ -253,7 +260,7 @@
           <h3>Metamorpho</h3>
           <p class="figure-card__meta">Hero · Rex Mason</p>
         </a>
-        <a class="figure-card" href="../dossier/mister-miracle.html">
+        <a class="figure-card" data-kenner href="../dossier/mister-miracle.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Mister Miracle — DC Comics">
           </div>
@@ -274,14 +281,14 @@
           <h3>Nightwing</h3>
           <p class="figure-card__meta">Hero · Dick Grayson</p>
         </a>
-        <a class="figure-card" href="../dossier/orion.html">
+        <a class="figure-card" data-kenner href="../dossier/orion.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Orion — DC Comics">
           </div>
           <h3>Orion</h3>
           <p class="figure-card__meta">Hero</p>
         </a>
-        <a class="figure-card" href="../dossier/plastic-man.html">
+        <a class="figure-card" data-kenner href="../dossier/plastic-man.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Plastic Man — DC Comics">
           </div>
@@ -302,28 +309,28 @@
           <h3>Raven</h3>
           <p class="figure-card__meta">Hero</p>
         </a>
-        <a class="figure-card" href="../dossier/red-tornado.html">
+        <a class="figure-card" data-kenner href="../dossier/red-tornado.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Red Tornado — DC Comics">
           </div>
           <h3>Red Tornado</h3>
           <p class="figure-card__meta">Hero</p>
         </a>
-        <a class="figure-card" href="../dossier/robin.html">
+        <a class="figure-card" data-kenner href="../dossier/robin.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Robin — DC Comics">
           </div>
           <h3>Robin</h3>
           <p class="figure-card__meta">Hero · Dick Grayson</p>
         </a>
-        <a class="figure-card" href="../dossier/samurai.html">
+        <a class="figure-card" data-kenner href="../dossier/samurai.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Samurai — DC Comics">
           </div>
           <h3>Samurai</h3>
           <p class="figure-card__meta">Hero · Toshio Eto</p>
         </a>
-        <a class="figure-card" href="../dossier/shazam.html">
+        <a class="figure-card" data-kenner href="../dossier/shazam.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Shazam! — DC Comics">
           </div>
@@ -351,7 +358,7 @@
           <h3>Supergirl</h3>
           <p class="figure-card__meta">Hero · L</p>
         </a>
-        <a class="figure-card" href="../dossier/superman.html">
+        <a class="figure-card" data-kenner href="../dossier/superman.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1785948390655-spcardart-superman.svg" alt="Superman — DC Comics">
           </div>
@@ -365,7 +372,7 @@
           <h3>The Atom</h3>
           <p class="figure-card__meta">Hero · Ray Palmer</p>
         </a>
-        <a class="figure-card" href="../dossier/the-flash.html">
+        <a class="figure-card" data-kenner href="../dossier/the-flash.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="The Flash — DC Comics">
           </div>
@@ -400,7 +407,7 @@
           <h3>Wildcat</h3>
           <p class="figure-card__meta">Hero</p>
         </a>
-        <a class="figure-card" href="../dossier/wonder-woman.html">
+        <a class="figure-card" data-kenner href="../dossier/wonder-woman.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1785959497856-spcardart-wonderwoman.svg" alt="Wonder Woman — DC Comics">
           </div>
@@ -418,7 +425,7 @@
         <h2>Allies</h2>
       </div>
       <div class="figures-grid">
-        <a class="figure-card" href="../dossier/cyclotron.html">
+        <a class="figure-card" data-kenner href="../dossier/cyclotron.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Cyclotron — DC Comics">
           </div>
@@ -489,14 +496,14 @@
           <h3>Black Manta</h3>
           <p class="figure-card__meta">Villain</p>
         </a>
-        <a class="figure-card" href="../dossier/brainiac.html">
+        <a class="figure-card" data-kenner href="../dossier/brainiac.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Brainiac — DC Comics">
           </div>
           <h3>Brainiac</h3>
           <p class="figure-card__meta">Villain</p>
         </a>
-        <a class="figure-card" href="../dossier/catwoman.html">
+        <a class="figure-card" data-kenner href="../dossier/catwoman.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Catwoman — DC Comics">
           </div>
@@ -510,7 +517,7 @@
           <h3>Cyborg Superman</h3>
           <p class="figure-card__meta">Villain · Hank Henshaw</p>
         </a>
-        <a class="figure-card" href="../dossier/darkseid.html">
+        <a class="figure-card" data-kenner href="../dossier/darkseid.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Darkseid — DC Comics">
           </div>
@@ -524,7 +531,7 @@
           <h3>Deathstroke</h3>
           <p class="figure-card__meta">Villain · Slade Wilson</p>
         </a>
-        <a class="figure-card" href="../dossier/desaad.html">
+        <a class="figure-card" data-kenner href="../dossier/desaad.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="DeSaad — DC Comics">
           </div>
@@ -538,14 +545,14 @@
           <h3>Eradicator</h3>
           <p class="figure-card__meta">Villain</p>
         </a>
-        <a class="figure-card" href="../dossier/kalibak.html">
+        <a class="figure-card" data-kenner href="../dossier/kalibak.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Kalibak — DC Comics">
           </div>
           <h3>Kalibak</h3>
           <p class="figure-card__meta">Villain</p>
         </a>
-        <a class="figure-card" href="../dossier/lex-luthor.html">
+        <a class="figure-card" data-kenner href="../dossier/lex-luthor.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Lex Luthor — DC Comics">
           </div>
@@ -559,28 +566,28 @@
           <h3>Lord Superman</h3>
           <p class="figure-card__meta">Villain</p>
         </a>
-        <a class="figure-card" href="../dossier/man-bat.html">
+        <a class="figure-card" data-kenner href="../dossier/man-bat.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Man-Bat — DC Comics">
           </div>
           <h3>Man-Bat</h3>
           <p class="figure-card__meta">Villain · Kirk Langstrom</p>
         </a>
-        <a class="figure-card" href="../dossier/mantis.html">
+        <a class="figure-card" data-kenner href="../dossier/mantis.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Mantis — DC Comics">
           </div>
           <h3>Mantis</h3>
           <p class="figure-card__meta">Villain</p>
         </a>
-        <a class="figure-card" href="../dossier/mr-freeze.html">
+        <a class="figure-card" data-kenner href="../dossier/mr-freeze.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Mr. Freeze — DC Comics">
           </div>
           <h3>Mr. Freeze</h3>
           <p class="figure-card__meta">Villain · Victor Fries</p>
         </a>
-        <a class="figure-card" href="../dossier/parademon.html">
+        <a class="figure-card" data-kenner href="../dossier/parademon.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Parademon — DC Comics">
           </div>
@@ -601,7 +608,7 @@
           <h3>Sinestro</h3>
           <p class="figure-card__meta">Villain</p>
         </a>
-        <a class="figure-card" href="../dossier/steppenwolf.html">
+        <a class="figure-card" data-kenner href="../dossier/steppenwolf.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="https://ccdcycgxblebzmpjmili.supabase.co/storage/v1/object/public/media/uploads/1785033841611-spfig-steppenwolf-front-loose.png" alt="Steppenwolf — DC Comics">
           </div>
@@ -615,28 +622,28 @@
           <h3>The Batman Who Laughs</h3>
           <p class="figure-card__meta">Villain</p>
         </a>
-        <a class="figure-card" href="../dossier/the-joker.html">
+        <a class="figure-card" data-kenner href="../dossier/the-joker.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="The Joker — DC Comics">
           </div>
           <h3>The Joker</h3>
           <p class="figure-card__meta">Villain</p>
         </a>
-        <a class="figure-card" href="../dossier/the-penguin.html">
+        <a class="figure-card" data-kenner href="../dossier/the-penguin.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="The Penguin — DC Comics">
           </div>
           <h3>The Penguin</h3>
           <p class="figure-card__meta">Villain · Oswald Cobblepot</p>
         </a>
-        <a class="figure-card" href="../dossier/riddler.html">
+        <a class="figure-card" data-kenner href="../dossier/riddler.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="The Riddler — DC Comics">
           </div>
           <h3>The Riddler</h3>
           <p class="figure-card__meta">Villain · Edward Nigma</p>
         </a>
-        <a class="figure-card" href="../dossier/tyr.html">
+        <a class="figure-card" data-kenner href="../dossier/tyr.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="../assets/sp-palceholder.jpg" alt="Tyr — DC Comics">
           </div>
@@ -655,6 +662,24 @@
   </section>
   </div>
   <div class="star-bar" aria-hidden="true"></div>
+
+  <script>
+    (function () {
+      var roster = document.getElementById('roster');
+      var sw = document.querySelector('.roster-switch');
+      if (!roster || !sw) return;
+      sw.addEventListener('click', function () {
+        var on = sw.getAttribute('aria-checked') !== 'true';
+        sw.setAttribute('aria-checked', on ? 'true' : 'false');
+        roster.classList.toggle('is-kenner-only', on);
+        // Hide any allegiance group left with no Kenner cards so the page
+        // doesn't show empty section headers.
+        roster.querySelectorAll('.roster-group').forEach(function (g) {
+          g.hidden = on && !g.querySelector('.figure-card[data-kenner]');
+        });
+      });
+    })();
+  </script>
 
   <footer class="foot">
     <div class="wrap">

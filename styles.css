@@ -2311,6 +2311,61 @@ a.video-card:focus-visible {
   border: 2px solid var(--color-red);
 }
 
+/* Roster filter — "Kenner only" switch sits between the first group's heading
+   and its grid, pulled right. Toggling .is-kenner-only on the roster hides every
+   card without [data-kenner] (empty allegiance groups get [hidden] via JS). */
+.roster-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+.roster-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-blue);
+  background: none;
+  border: 0;
+  padding: 0.2rem;
+  cursor: pointer;
+}
+.roster-switch__track {
+  position: relative;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: var(--color-white);
+  border: 2px solid var(--color-blue);
+  transition: background 0.15s, border-color 0.15s;
+}
+.roster-switch__thumb {
+  position: absolute;
+  top: 50%;
+  left: 0.16rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: var(--color-blue);
+  transform: translateY(-50%);
+  transition: transform 0.15s, background 0.15s;
+}
+.roster-switch[aria-checked="true"] { color: var(--color-red); }
+.roster-switch[aria-checked="true"] .roster-switch__track {
+  background: var(--color-red);
+  border-color: var(--color-red);
+}
+.roster-switch[aria-checked="true"] .roster-switch__thumb {
+  background: var(--color-white);
+  transform: translate(1.15rem, -50%);
+}
+.roster-switch:focus-visible { outline: 3px solid var(--color-yellow); outline-offset: 3px; }
+.roster.is-kenner-only .figure-card:not([data-kenner]) { display: none; }
+
 @media (max-width: 640px) {
   .video-grid { grid-template-columns: 1fr; }
 }
