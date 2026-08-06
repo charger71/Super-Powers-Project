@@ -6,3 +6,18 @@ supabase/.temp/
 
 # macOS
 .DS_Store
+
+# Generated site output — built from Supabase by build/build-dossiers.mjs and
+# deployed by .github/workflows/rebuild.yml. Not committed; CI regenerates it.
+/index.html
+/search-index.json
+/characters/
+/toys/
+/comics/
+/creators/
+/dossier/
+/media/
+/merchandise/
+/release/
+/search/
+/timeline/

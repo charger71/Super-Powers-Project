@@ -69,6 +69,12 @@
   --gutter:   clamp(1rem, 2.5vw, 2.5rem);
   --radius:   6px;
 
+  /* Keyboard focus ring — one token so focusable things stay consistent
+     (WCAG 2.4.7). Blue reads on the light surfaces; dark surfaces (the footer)
+     override the colour locally. */
+  --focus-ring:   3px solid var(--color-blue);
+  --focus-offset: 2px;
+
   --dur:      150ms; /* standard UI transition */
   --dur-slow: 550ms; /* figure-card flip */
 }
@@ -88,6 +94,44 @@ img, svg { display: block; max-width: 100%; }
 a { color: inherit; }
 button { font: inherit; cursor: pointer; }
 ::selection { background: var(--color-yellow); color: var(--color-ink); }
+
+/* ---------- SKIP LINK (keyboard bypass — WCAG 2.4.1) ---------- */
+/* First focusable element on every page; hidden off-screen until focused, then
+   slides into the top-left. The layered yellow + dark-blue ring stays visible
+   on any background (a plain yellow ring would vanish on the near-white page). */
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -4rem;
+  z-index: 100;
+  background: var(--color-blue);
+  color: var(--color-white);
+  font-family: var(--font-brand);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  transition: top var(--dur) ease;
+}
+.skip-link:focus {
+  top: 0.5rem;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-yellow), 0 0 0 6px var(--color-blue-dk);
+}
+
+/* ---------- GLOBAL KEYBOARD FOCUS (WCAG 2.4.7) ---------- */
+/* Fallback ring so every focusable element has a visible indicator by default.
+   :where() keeps this at zero specificity, so any component with its own
+   focus-visible style still wins. Dark surfaces switch to a light ring. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.foot :where(a, button, [tabindex]):focus-visible {
+  outline-color: var(--color-yellow);
+}
 
 .wrap { max-width: var(--page-max); margin-inline: auto; padding-inline: var(--gutter); }
 
@@ -548,7 +592,7 @@ button { font: inherit; cursor: pointer; }
   border-bottom: 1px solid currentColor;
   padding-bottom: 2px;
 }
-.aux__more:hover { color: var(--color-red); }
+.aux__more:hover { color: var(--color-red-dk); }
 
 /* ---------- DIRECTORY ---------- */
 .directory {
@@ -968,7 +1012,7 @@ a.aux__item { display: block; text-decoration: none; }
   text-decoration: none;
   margin-bottom: 0.85rem;
 }
-.back-link:hover { color: var(--color-red); }
+.back-link:hover { color: var(--color-red-dk); }
 
 .dossier-title {
   font-family: var(--font-brand);
@@ -1190,7 +1234,8 @@ a.aux__item { display: block; text-decoration: none; }
   color: var(--color-blue);
 }
 .dossier-lede a, .dossier-about a {
-  color: var(--color-red);
+  color: var(--color-red-dk);          /* AA text contrast on the paper surface */
+  text-decoration: underline;          /* distinguish links without relying on color (1.4.1) */
   text-underline-offset: 2px;
 }
 .dossier-lede a:hover, .dossier-about a:hover { text-decoration: underline; }
@@ -1252,7 +1297,7 @@ a.aux__item { display: block; text-decoration: none; }
   margin-top: 1.5rem;
   font-family: var(--font-brand);
   font-weight: 700;
-  color: var(--color-red);
+  color: var(--color-red-dk);
   text-decoration: none;
 }
 .release-charlink:hover { text-decoration: underline; }
@@ -1811,7 +1856,10 @@ a.figure-card:focus-visible {
 .gallery__item:focus-visible {
   transform: translateY(-3px);
   box-shadow: 0 6px 0 var(--color-yellow);
-  outline: none;
+}
+.gallery__item:focus-visible {
+  outline: 3px solid var(--color-blue);   /* visible keyboard focus (2.4.7) */
+  outline-offset: 2px;
 }
 .gallery__item .photo-well,
 .gallery__photo {
@@ -2354,7 +2402,7 @@ a.video-card:focus-visible {
   transform: translateY(-50%);
   transition: transform 0.15s, background 0.15s;
 }
-.roster-switch[aria-checked="true"] { color: var(--color-red); }
+.roster-switch[aria-checked="true"] { color: var(--color-red-dk); }
 .roster-switch[aria-checked="true"] .roster-switch__track {
   background: var(--color-red);
   border-color: var(--color-red);
@@ -2363,7 +2411,7 @@ a.video-card:focus-visible {
   background: var(--color-white);
   transform: translate(1.15rem, -50%);
 }
-.roster-switch:focus-visible { outline: 3px solid var(--color-yellow); outline-offset: 3px; }
+.roster-switch:focus-visible { outline: 3px solid var(--color-blue); outline-offset: 3px; }
 .roster.is-kenner-only .figure-card:not([data-kenner]) { display: none; }
 
 @media (max-width: 640px) {
@@ -2395,7 +2443,7 @@ a.video-card:focus-visible {
   font-weight: 700;
   text-decoration: none;
 }
-.timeline__event a:hover { color: var(--color-red); text-decoration: underline; }
+.timeline__event a:hover { color: var(--color-red-dk); text-decoration: underline; }
 .timeline__kind {
   flex: 0 0 auto;
   font-family: var(--font-mono);
@@ -2424,7 +2472,7 @@ a.video-card:focus-visible {
   border-radius: var(--radius);
 }
 .search-box input:focus-visible {
-  outline: 3px solid var(--color-yellow);
+  outline: 3px solid var(--color-blue);
   outline-offset: 1px;
   border-color: var(--color-red);
 }
@@ -2483,10 +2531,10 @@ a.video-card:focus-visible {
   color: var(--color-ink-mid);
 }
 .search-result__kind[data-group="character"] { color: var(--color-blue); }
-.search-result__kind[data-group="toy"]        { color: var(--color-red); }
+.search-result__kind[data-group="toy"]        { color: var(--color-red-dk); }
 .search-result__kind[data-group="comic"]      { color: var(--color-blue); }
 .search-result__kind[data-group="media"]      { color: var(--color-red-dk); }
-.search-result__kind[data-group="merch"]      { color: var(--color-red); }
+.search-result__kind[data-group="merch"]      { color: var(--color-red-dk); }
 .search-result__kind[data-group="creator"]    { color: var(--color-blue); }
 .search-result__title {
   font-family: var(--font-brand);
@@ -2494,7 +2542,7 @@ a.video-card:focus-visible {
   font-size: var(--step-0);
   color: var(--color-ink);
 }
-.search-result:hover .search-result__title { color: var(--color-red); }
+.search-result:hover .search-result__title { color: var(--color-red-dk); }
 .search-result__year {
   font-family: var(--font-mono);
   font-size: var(--step--1);

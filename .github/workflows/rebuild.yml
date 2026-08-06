@@ -1,16 +1,17 @@
-name: Rebuild site
+name: Build & deploy site
 
-# Regenerates the static pages from Supabase and publishes them to GitHub Pages
-# — the server-side equivalent of the admin's local "Rebuild site" button, so
-# you can refresh the live site from anywhere without a local machine.
+# Regenerates the static pages from Supabase and deploys them to GitHub Pages
+# as a Pages artifact — the server-side equivalent of the admin's local
+# "Rebuild site" button, so you can refresh the live site from anywhere.
+#
+# The generated pages are NOT committed to the repo (see .gitignore): CI builds
+# them fresh on every run and publishes the result directly, so `main` only ever
+# holds source (templates, CSS, JS, data scripts).
 #
 # Triggers:
 #   • On every push to main (rebuilds when you change code/templates/CSS)
-#   • Manually — Actions tab → "Rebuild site" → "Run workflow"
+#   • Manually — Actions tab → "Build & deploy site" → "Run workflow"
 #   • Nightly at 07:00 UTC (optional — delete the `schedule:` block to disable)
-#
-# No recursion: the commit-back below uses GITHUB_TOKEN, and GitHub does not
-# re-trigger workflows from GITHUB_TOKEN pushes.
 
 on:
   push:
@@ -20,15 +21,17 @@ on:
     - cron: '0 7 * * *'
 
 permissions:
-  contents: write   # commit the regenerated pages back to the repo
-  pages: write      # request a GitHub Pages build
+  contents: read    # read-only: nothing is committed back anymore
+  pages: write      # publish a Pages deployment
+  id-token: write   # required by actions/deploy-pages
 
+# Let a running deploy finish before the next starts (don't cancel a publish).
 concurrency:
-  group: rebuild
+  group: pages
   cancel-in-progress: false
 
 jobs:
-  rebuild:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,24 +45,21 @@ jobs:
       - name: Build pages from Supabase
         run: node build/build-dossiers.mjs
 
-      - name: Commit regenerated pages
-        id: commit
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ -n "$(git status --porcelain)" ]; then
-            git add -A
-            git commit -m "Rebuild site from Supabase"
-            git push
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "No content changes — nothing to publish."
-          fi
+      - uses: actions/configure-pages@v5
 
-      # Explicitly ask GitHub Pages to (re)build the branch, so publishing
-      # never depends on whether the bot push triggered it.
-      - name: Publish to GitHub Pages
-        if: steps.commit.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh api -X POST "repos/${{ github.repository }}/pages/builds"
+      # Uploads the whole working tree (generated pages now exist on disk).
+      # upload-pages-artifact excludes .git and .github by default.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

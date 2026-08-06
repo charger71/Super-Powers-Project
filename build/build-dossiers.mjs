@@ -429,6 +429,8 @@ function pageShell({ title, description, ogImage, body }) {
 </head>
 <body>
 
+  <a class="skip-link" href="#main">Skip to content</a>
+
   <div class="strip">
     <div class="wrap strip__inner">
       <a class="strip__brand" href="/index.html"><span class="star" aria-hidden="true"></span> Archive84</a>
@@ -443,7 +445,10 @@ function pageShell({ title, description, ogImage, body }) {
   </header>
 
   <div class="star-bar" aria-hidden="true"></div>
+
+  <main id="main">
 ${body}
+  </main>
 
   <footer class="foot">
     <div class="wrap">
@@ -2104,6 +2109,8 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
 </head>
 <body>
 
+  <a class="skip-link" href="#main">Skip to content</a>
+
   <!-- TOP EDITION STRIP -->
   <div class="strip">
     <div class="wrap strip__inner">
@@ -2125,6 +2132,8 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
   </header>
 
   <div class="star-bar" aria-hidden="true"></div>
+
+  <main id="main">
 
   <!-- HERO + AUX -->
   <section class="hero-section">
@@ -2234,6 +2243,8 @@ ${essaysSection}
   </section>
 
     <div class="star-bar" aria-hidden="true"></div>
+
+  </main>
 
   <!-- FOOTER -->
   <footer class="foot">
