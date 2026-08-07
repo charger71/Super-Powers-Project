@@ -44,6 +44,7 @@ create table lines (
   slug          text unique not null,          -- 'kenner-super-powers'
   name          text not null,                 -- 'Kenner Super Powers Collection'
   manufacturer  text,                          -- 'Kenner' / 'McFarlane Toys'
+  manufacturer_website text,                    -- manufacturer homepage (logo links here)
   year_start    smallint,
   year_end      smallint,                      -- null = ongoing
   description   text,
@@ -254,6 +255,8 @@ create table releases (
   character_id      uuid references characters(id)       on delete set null,  -- null for vehicles/playsets
   variant_of        uuid references releases(id)         on delete set null,  -- Argentine Riddler -> Green Lantern
 
+  overview_lede     text,                      -- short enlarged intro (release detail Overview)
+  overview_text     text,                      -- rich body under the lede
   release_year      smallint,
   region            text default 'US',         -- ISO-ish: 'US','AR','BR','CO'
   action_feature    text,                      -- 'Thrusting Arms'
@@ -372,6 +375,15 @@ create table media_variations (
   is_primary   boolean default false,
   primary key (media_id, variation_id)
 );
+-- Line-level imagery — the manufacturer logo (is_primary) shown on release pages.
+create table media_lines (
+  media_id   uuid references media_assets(id) on delete cascade,
+  line_id    uuid references lines(id)        on delete cascade,
+  sort_order smallint default 0,
+  is_primary boolean default false,           -- the manufacturer logo
+  primary key (media_id, line_id)
+);
+create index on media_lines (line_id);
 
 -- ============================================================
 -- Artwork
@@ -563,7 +575,7 @@ begin
     'lines','series','release_statuses','characters','teams','character_teams',
     'character_enemies','character_creators','creators',
     'releases','release_creators','release_characters','release_variations',
-    'media_assets','media_releases','media_characters','media_creators','media_variations',
+    'media_assets','media_releases','media_characters','media_creators','media_variations','media_lines',
     'artwork','artwork_creators','artwork_characters',
     'publications','media_publications','publication_creators','publication_characters',
     'screen_media','interviews','merchandise','merchandise_characters',

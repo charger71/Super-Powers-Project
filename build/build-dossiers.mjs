@@ -272,6 +272,31 @@ async function fetchReleases() {
   return list.sort(releaseOrder);
 }
 
+// Line-level manufacturer branding for the release page: the manufacturer name,
+// its website, and its logo (media_lines, primary first). Fetched tolerantly so
+// a not-yet-applied migration degrades to "no logo" (and, worst case, still the
+// manufacturer name from the pre-existing column). Returns a Map keyed by line id.
+async function fetchLineInfoById() {
+  const map = new Map();
+  let rows;
+  try {
+    rows = await rest(
+      `lines?select=id,manufacturer,manufacturer_website,media_lines(is_primary,sort_order,${MEDIA_EMBED})`
+    );
+  } catch {
+    console.warn('Line manufacturer branding unavailable (is the media_lines migration applied?) — building without manufacturer logos.');
+    try { rows = await rest('lines?select=id,manufacturer'); } catch { return map; }
+  }
+  for (const l of rows) {
+    map.set(l.id, {
+      manufacturer: l.manufacturer,
+      website: l.manufacturer_website ?? null,
+      logo: sortedMedia(l.media_lines)[0] ?? null,
+    });
+  }
+  return map;
+}
+
 // One query for every publication + its character links, grouped in memory —
 // replaces N sequential per-character queries.
 async function fetchPublicationsByCharacter() {
@@ -897,7 +922,7 @@ ${pager('dossier', adj?.prev, adj?.next)}`;
 
 // ---- release page -------------------------------------------------------
 
-function renderReleasePage(r, variations, adj, related = '', siblings = []) {
+function renderReleasePage(r, variations, adj, related = '', siblings = [], lineInfo = null) {
   const media = sortedMedia(r.media_releases);
   const hero = mediaUrl(media[0]) ?? PLACEHOLDER;  // og:image only
 
@@ -1022,6 +1047,14 @@ function renderReleasePage(r, variations, adj, related = '', siblings = []) {
     </div>
   </section>` : '';
 
+  // Overview — a lede + rich body above the photography (mirrors the character
+  // dossier's Overview). The lede's first paragraph is enlarged by the shared
+  // .dossier-lede rule; the body renders as standard rich text below it.
+  const overviewSection = (r.overview_lede || r.overview_text) ? `
+        <p class="dek">Overview</p>
+        ${richText(r.overview_lede)}
+        ${r.overview_text ? `<div class="dossier-lede__more">${richText(r.overview_text)}</div>` : ''}` : '';
+
   // Gallery lives in the main column above Notes and shows every image
   // (the former hero is just the first gallery item now).
   const galleryInline = media.length ? `
@@ -1034,6 +1067,37 @@ function renderReleasePage(r, variations, adj, related = '', siblings = []) {
             </figure>`).join('\n            ')}
           </div>
         </section>` : '';
+
+  // Loose (out-of-package) photo above the specifications aside in the sidebar.
+  // Opens in the shared gallery lightbox alongside the rest of the release's photos.
+  const looseMedia = pickMedia(r.media_releases, ['loose'])[0];
+  const looseBlock = looseMedia ? `
+        <figure class="release-loose">
+          ${lbTrigger(looseMedia, `rel-${r.slug}`, r.name)}
+          ${looseMedia.credit ? `<figcaption>Photo: ${esc(looseMedia.credit)}</figcaption>` : ''}
+        </figure>` : '';
+
+  // Manufacturer branding under the specifications — the line's manufacturer
+  // LOGO + NAME (not the line name), linking to the manufacturer website if set.
+  const manuName = lineInfo?.manufacturer;
+  const manuLogo = mediaUrl(lineInfo?.logo);
+  const manuSite = lineInfo?.website;
+  const manuNameEl = manuName
+    ? (manuSite
+        ? `<a class="release-manufacturer__name" href="${esc(manuSite)}" rel="nofollow noopener">${esc(manuName)}</a>`
+        : `<span class="release-manufacturer__name">${esc(manuName)}</span>`)
+    : '';
+  const manuLogoImg = manuLogo
+    ? `<img class="release-manufacturer__logo" src="${esc(manuLogo)}" alt="${esc(lineInfo.logo.alt_text ?? (manuName ? manuName + ' logo' : 'Manufacturer logo'))}">`
+    : '';
+  const manuLogoEl = (manuLogo && manuSite)
+    ? `<a href="${esc(manuSite)}" rel="nofollow noopener" aria-label="${esc(manuName ?? 'Manufacturer')}">${manuLogoImg}</a>`
+    : manuLogoImg;
+  const manufacturerBlock = (manuName || manuLogo) ? `
+        <aside class="release-manufacturer">
+          ${manuLogoEl}
+          ${manuNameEl}
+        </aside>` : '';
 
   const subtitle = [r.lines?.name, r.series?.name, r.release_year].filter(Boolean).join(' · ');
 
@@ -1062,6 +1126,7 @@ ${backAndCrumb([
     <div class="wrap dossier-body__grid">
 
       <article class="dossier-lede">
+${overviewSection}
 ${galleryInline}
 ${notesSection}
 ${creditsSection}
@@ -1069,12 +1134,14 @@ ${sourcesSection}
       </article>
 
       <div class="dossier-sidebar">
+${looseBlock}
         <aside class="dossier-spec">
           <p class="dek">Specifications</p>
           <dl>
             ${spec}
           </dl>
         </aside>
+${manufacturerBlock}
 ${related}
       </div>
 
@@ -2558,11 +2625,11 @@ function renderSearch(indexCount) {
 
 // ---- main ---------------------------------------------------------------
 
-const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems] = await Promise.all([
+const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems, lineInfoById] = await Promise.all([
   fetchCharacters(), fetchReleases(), fetchPublicationsByCharacter(), fetchEnemiesByCharacter(),
   fetchCreatorsByCharacter(), fetchVariationsByRelease(), fetchScreenMedia(), fetchMerchandise(),
   rest(`publications?select=*,media_publications(is_primary,sort_order,${MEDIA_EMBED}),publication_creators(role,creators(name,slug)),publication_characters(characters(name,slug))&order=kind.asc,year.asc`).catch(() => []),
-  fetchCreators(), fetchRelatedItems(),
+  fetchCreators(), fetchRelatedItems(), fetchLineInfoById(),
 ]);
 
 // Resolve curated related_items against the rows we just fetched. `relatedFor`
@@ -2612,7 +2679,7 @@ for (const [i, r] of releases.entries()) {
   const siblings = r.character_id
     ? releases.filter((o) => o.id !== r.id && o.character_id === r.character_id && o.line_id === r.line_id)
     : [];
-  const html = renderReleasePage(r, variations, adjacent(releases, i), relatedFor('release', r.id), siblings);
+  const html = renderReleasePage(r, variations, adjacent(releases, i), relatedFor('release', r.id), siblings, lineInfoById.get(r.line_id));
   if (await writeIfChanged(join(root, 'release', `${r.slug}.html`), html)) {
     written++;
     console.log(`built release/${r.slug}.html`);

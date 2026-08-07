@@ -266,7 +266,15 @@ Prev/next yellow blocks (`.dossier-pager__next` right-aligns).
   social / portfolio); `.dek` heading + `ul` of `a`. URLs are stored plain and
   the build derives each label from its domain (Twitter, ArtStation, …).
 - **`.release-gallery-block` / `.release-gallery`** — all attached photography;
-  `figure` + `figcaption` (mono, truncated), images `contain` on white.
+  `figure` + `figcaption` (mono, truncated), images `contain` on white. The main
+  column opens with an optional **Overview** (`.dek` + enlarged lede + a standard
+  `.dossier-lede__more` body, from the release's `overview_lede` / `overview_text`)
+  above this gallery.
+- **`.release-loose`** — the out-of-package ('loose' role) photo in the sidebar,
+  above the specs; white card, opens the shared lightbox.
+- **`.release-manufacturer`** — under the specifications: the LINE's manufacturer
+  logo (`__logo`, from `media_lines`) + name (`__name`, not the line name) on a
+  white card, both linking to the line's `manufacturer_website` when set.
 - **`.release-variations` / `.variation-card`** — documented variants: per-card
   `.variation-card__gallery`, `.variation-card__head` (`h3` + tags), `.variation-card__values`
   and `.variation-card__notes`.

@@ -92,6 +92,8 @@ const ENTITIES = {
       { col: 'rarity',           label: 'Rarity',          kind: 'lookup', table: 'rarity_levels' },
       { col: 'est_value_loose',  label: 'Est. value loose ($)',  kind: 'number', step: '0.01' },
       { col: 'est_value_carded', label: 'Est. value carded ($)', kind: 'number', step: '0.01' },
+      { col: 'overview_lede',    label: 'Overview lede (short enlarged intro, above photography)', kind: 'textarea' },
+      { col: 'overview_text',    label: 'Overview text (rich body under the lede)', kind: 'rich' },
       { col: 'notes',            label: 'Notes',           kind: 'rich' },
       { col: 'sources',          label: 'Sources (comma-separated URLs)', kind: 'array' },
     ],
@@ -101,10 +103,14 @@ const ENTITIES = {
     table: 'lines',
     orderBy: { col: 'sort_order', ascending: true },
     listCols: ['name', 'slug', 'manufacturer', 'year_start', 'year_end'],
+    // the manufacturer logo (and any line-level imagery) — mark one is_primary;
+    // the release page shows it under the specifications.
+    mediaJoin: { table: 'media_lines', fk: 'line_id' },
     fields: [
       { col: 'name',         label: 'Name',         kind: 'text', required: true },
       { col: 'slug',         label: 'Slug',         kind: 'slug', required: true },
       { col: 'manufacturer', label: 'Manufacturer', kind: 'text' },
+      { col: 'manufacturer_website', label: 'Manufacturer website (URL)', kind: 'text' },
       { col: 'year_start',   label: 'Year start',   kind: 'number' },
       { col: 'year_end',     label: 'Year end (blank = ongoing)', kind: 'number' },
       { col: 'description',  label: 'Description',   kind: 'rich' },
