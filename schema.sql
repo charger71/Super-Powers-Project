@@ -156,12 +156,21 @@ create table characters (
   slug              text unique not null,      -- 'cyborg'
   name              text not null,
   aka               text[] default '{}',
+  epithet           text,                      -- powers-card tagline ('The Man of Steel'), all-caps
   alignment         text references alignments(slug) on update cascade on delete restrict,
   first_appearance  text,                      -- 'DC Comics Presents #26 (1980)'
   bio               text,                      -- character biography (About section)
   overview          text,                      -- toy-line editorial (dossier Overview)
+  overview_extra    text,                      -- second, standard-styled rich text under Overview
   homeworld         text,                      -- 'Krypton'
   base_of_operations text,                     -- 'Metropolis'
+  marital_status    text,                      -- Vital Statistics
+  known_relatives   text,                      -- Vital Statistics
+  height            text,                      -- Vital Statistics
+  weight            text,                      -- Vital Statistics
+  eyes              text,                      -- Vital Statistics
+  hair              text,                      -- Vital Statistics
+  random_fact       text,                      -- titleless last row of Vital Statistics
   powers            text,                      -- prose, card-back style
   weaknesses        text,                      -- prose, card-back style
   enemies           text,                      -- free-text card-back list (the linked
@@ -195,6 +204,19 @@ create table character_enemies (
   constraint character_enemies_not_self check (character_id <> enemy_id)
 );
 create index on character_enemies (enemy_id);
+
+-- The real-world creators who CREATED the character (Siegel & Shuster for
+-- Superman). A plain many-to-many with editorial sort_order, rendered as text
+-- links to each creator's page in the dossier's Vital Statistics. Distinct from
+-- release_creators (a toy's design/sculpt credits) and the curated related_items
+-- "See Also" sidebar.
+create table character_creators (
+  character_id uuid references characters(id) on delete cascade,
+  creator_id   uuid references creators(id)   on delete cascade,
+  sort_order   smallint default 0,   -- editorial order (billing), like character_teams
+  primary key (character_id, creator_id)
+);
+create index on character_creators (creator_id);
 
 -- ============================================================
 -- Creators
@@ -538,7 +560,8 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'lines','series','release_statuses','characters','teams','character_teams','creators',
+    'lines','series','release_statuses','characters','teams','character_teams',
+    'character_enemies','character_creators','creators',
     'releases','release_creators','release_characters','release_variations',
     'media_assets','media_releases','media_characters','media_creators','media_variations',
     'artwork','artwork_creators','artwork_characters',

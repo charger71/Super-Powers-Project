@@ -176,17 +176,24 @@ under 800px.
 - **`.dossier-lede`** — lead article; first paragraph is enlarged. Rich-text children
   (`h2`–`h4`, `ul`/`ol`, `table`, `blockquote`, `hr`, `a`, `small`) are all styled — this
   is the admin-editor output surface. Same styling applies inside `.dossier-about`.
+  - **`.dossier-lede__more`** — an optional second rich-text block under the Overview
+    (character `overview_extra`). Deliberately plain body-copy prose, **not** the enlarged
+    blue lede — wrap it in this div so its paragraphs escape the `> p:first-of-type` rule.
 - **`.dossier-spec`** — yellow "Vital Stats" block: `.dek` heading + `dl` of `.spec-row`
-  (`dt` brand label / `dd` italic value).
+  (`dt` brand label / `dd` italic value). `dd a` (e.g. the "Created by" creator links)
+  is underlined blue → red on hover. `.spec-row--note` is a titleless full-width row
+  (`dd` only) for the character `random_fact` aside that closes the list.
 - **`.dossier-about`** — off-white bordered biography box; first `h3` gets the red
   underline, inner headings don't.
 
 ### Sidebar pieces — `.dossier-sidebar`
-Stacks: `.power-bubble` (marker-font Power Action callout over SVG), `.dossier-portrait`
-(3:4), `.dossier-headshots` (paired figures), and the `.powers-card`.
+Light-blue padded container (`--color-blue-lt`) that stacks: `.power-bubble` (marker-font
+Power Action callout over SVG), `.dossier-portrait` (3:4), `.dossier-headshots` (paired
+figures), and the `.powers-card`.
 
 - **`.powers-card`** — the fixed 1984 dossier card: red star-frame border (`border-image`),
-  `.powers-card__logo` or text `.powers-card__name`, then `.powers-card__section` blocks.
+  `.powers-card__logo` or text `.powers-card__name`, an optional all-caps red
+  `.powers-card__epithet` tagline directly beneath it, then `.powers-card__section` blocks.
   (This card is a constant character-level artifact — see project memory.)
 
 ### Figures grid — `.dossier-figures` / `.figures-grid` / `.figure-card`

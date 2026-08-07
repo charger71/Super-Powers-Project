@@ -177,6 +177,32 @@ async function fetchCharacters() {
   );
 }
 
+// "Created by" credits — the real-world creators who created the character,
+// linked to their creator pages in the dossier's Vital Statistics. A plain
+// many-to-many (character_creators → creators). Fetched on its own and
+// tolerantly (like enemies) so a not-yet-applied migration just builds without
+// the credit rather than failing the whole site. Returns a Map keyed by
+// character_id, each value sorted for display (billing order, then name).
+async function fetchCreatorsByCharacter() {
+  const map = new Map();
+  let rows;
+  try {
+    rows = await rest(
+      'character_creators?select=character_id,sort_order,creators(name,slug)&order=sort_order'
+    );
+  } catch (err) {
+    console.warn('Character creators unavailable (is the character_creators migration applied?) — building without "Created by".');
+    return map;
+  }
+  for (const r of rows) {
+    if (!r.creators) continue;
+    const list = map.get(r.character_id) ?? [];
+    list.push({ ...r.creators, sort_order: r.sort_order ?? 0 });
+    map.set(r.character_id, list);
+  }
+  return map;
+}
+
 // Enemies live in a separate, self-referential join table. Fetched on its own
 // (and tolerantly) so that if the migration hasn't been applied yet — or the
 // query otherwise fails — the whole site still rebuilds without enemies rather
@@ -518,6 +544,16 @@ function specRows(pairs) {
     .join('\n            ');
 }
 
+// A spec-row whose value is already-trusted HTML (e.g. creator page links),
+// so it isn't re-escaped. Empty value → ''.
+const specRowHtml = (label, htmlValue) =>
+  htmlValue ? `<div class="spec-row"><dt>${esc(label)}</dt><dd>${htmlValue}</dd></div>` : '';
+
+// A titleless spec-row spanning the full width — the "random fact" aside that
+// closes the Vital Statistics list. Empty value → ''.
+const specRowNote = (value) =>
+  value ? `<div class="spec-row spec-row--note"><dd>${esc(value)}</dd></div>` : '';
+
 function pager(kind, prev, next) {
   if (!prev || !next) return '';
   return `
@@ -652,7 +688,7 @@ function relatedSidebar(items) {
 
 // ---- character page -----------------------------------------------------
 
-function renderCharacterPage(c, releases, publications, enemyList, adj, related = '') {
+function renderCharacterPage(c, releases, publications, enemyList, creatorList, adj, related = '') {
   const teams = (c.character_teams ?? []).map((t) => t.teams?.name).filter(Boolean);
   const portraitMedia = pickMedia(c.media_characters, ['artwork'])[0];
   const portrait = mediaUrl(portraitMedia) ?? PLACEHOLDER;
@@ -690,17 +726,34 @@ function renderCharacterPage(c, releases, publications, enemyList, adj, related 
     : '';
   const teamTags = teams.map((t) => `<span class="dossier-tag dossier-tag--yellow">${esc(t)}</span>`).join('\n        ');
 
-  const vitals = specRows([
-    ['Real Name', (c.aka ?? []).slice(0, 2).join(' · ')],
-    ['Homeworld', c.homeworld],
-    ['Alignment', titleCase(c.alignment)],
-    ['Team', teams.join(' · ')],
-    ['Base of Operations', c.base_of_operations],
-    ['First Appearance', c.first_appearance],
-    ['First Figure', firstFigure ? `${firstFigure.series?.name ?? firstFigure.lines?.name ?? ''} (${firstFigure.release_year ?? '—'})` : null],
-    ['Power Action', firstFigure?.action_feature],
-    ['Waves Present', kennerWaves.join(' · ')],
-  ]);
+  // "Created by" — the real-world creators, as text links to their pages, in
+  // editorial (billing) order. Separate from the curated "See Also" sidebar.
+  const creatorLinks = [...(creatorList ?? [])]
+    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+    .map((k) => `<a href="/creators/${esc(k.slug)}.html">${esc(k.name)}</a>`)
+    .join(' · ');
+
+  const vitals = [
+    specRows([
+      ['Real Name', (c.aka ?? []).slice(0, 2).join(' · ')],
+      ['Marital Status', c.marital_status],
+      ['Known Relatives', c.known_relatives],
+      ['Height', c.height],
+      ['Weight', c.weight],
+      ['Eyes', c.eyes],
+      ['Hair', c.hair],
+      ['Homeworld', c.homeworld],
+      ['Alignment', titleCase(c.alignment)],
+      ['Team', teams.join(' · ')],
+      ['Base of Operations', c.base_of_operations],
+      ['First Appearance', c.first_appearance],
+      ['First Figure', firstFigure ? `${firstFigure.series?.name ?? firstFigure.lines?.name ?? ''} (${firstFigure.release_year ?? '—'})` : null],
+      ['Power Action', firstFigure?.action_feature],
+      ['Waves Present', kennerWaves.join(' · ')],
+    ]),
+    specRowHtml('Created by', creatorLinks),
+    specRowNote(c.random_fact),
+  ].filter(Boolean).join('\n            ');
 
   const pullquote = firstFigure?.action_feature ? `
   <section class="pullquote" aria-label="Power Action">
@@ -759,6 +812,9 @@ function renderCharacterPage(c, releases, publications, enemyList, adj, related 
     ? `<img class="powers-card__logo" src="${esc(mediaUrl(logoMedia))}" alt="${esc(logoMedia.alt_text ?? c.name + ' logo')}">`
     : `<h2 class="powers-card__name">${esc(c.name)}</h2>`;
 
+  // Epithet — the tagline under the logo ("The Man of Steel"), rendered all-caps.
+  const epithet = c.epithet ? `<p class="powers-card__epithet">${esc(c.epithet)}</p>` : '';
+
   // Power Action speech bubble — the figure's Power Action feature overlaid on
   // the bubble artwork in dark blue. Sits at the top of the sidebar, above the
   // character hero portrait.
@@ -767,9 +823,10 @@ function renderCharacterPage(c, releases, publications, enemyList, adj, related 
         <span class="power-bubble__text">${esc(firstFigure.action_feature)}</span>
       </div>` : '';
 
-  const powersCard = (c.powers || c.weaknesses || c.aka?.length || c.enemies || logoMedia) ? `
+  const powersCard = (c.powers || c.weaknesses || c.aka?.length || c.enemies || c.epithet || logoMedia) ? `
       <aside class="powers-card">
         ${powersHeader}
+        ${epithet}
         ${c.powers ? `<div class="powers-card__section"><h3>Powers</h3><p>${esc(c.powers)}</p></div>` : ''}
         ${c.weaknesses ? `<div class="powers-card__section"><h3>Weaknesses</h3><p>${esc(c.weaknesses)}</p></div>` : ''}
         ${c.aka?.length ? `<div class="powers-card__section"><h3>Secret Identity</h3><p>${esc(c.aka.join(' · '))}</p></div>` : ''}
@@ -807,6 +864,7 @@ ${backAndCrumb([
       <article class="dossier-lede">
         ${(c.overview || c.bio) ? `<p class="dek">Overview</p>
         ${richText(c.overview) || richText(c.bio)}` : ''}
+        ${c.overview_extra ? `<div class="dossier-lede__more">${richText(c.overview_extra)}</div>` : ''}
 
         ${vitals ? `<aside class="dossier-spec">
           <p class="dek">Vital Statistics</p>
@@ -2500,9 +2558,9 @@ function renderSearch(indexCount) {
 
 // ---- main ---------------------------------------------------------------
 
-const [characters, releases, pubsByChar, enemiesByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems] = await Promise.all([
+const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems] = await Promise.all([
   fetchCharacters(), fetchReleases(), fetchPublicationsByCharacter(), fetchEnemiesByCharacter(),
-  fetchVariationsByRelease(), fetchScreenMedia(), fetchMerchandise(),
+  fetchCreatorsByCharacter(), fetchVariationsByRelease(), fetchScreenMedia(), fetchMerchandise(),
   rest(`publications?select=*,media_publications(is_primary,sort_order,${MEDIA_EMBED}),publication_creators(role,creators(name,slug)),publication_characters(characters(name,slug))&order=kind.asc,year.asc`).catch(() => []),
   fetchCreators(), fetchRelatedItems(),
 ]);
@@ -2539,7 +2597,8 @@ for (const [i, c] of characters.entries()) {
   const own = releasesForCharacter(releases, c).sort(releaseOrder);
   const publications = pubsByChar.get(c.id) ?? [];
   const enemyList = enemiesByChar.get(c.id) ?? [];
-  const html = renderCharacterPage(c, own, publications, enemyList, adjacent(characters, i), relatedFor('character', c.id));
+  const creatorList = creatorsByChar.get(c.id) ?? [];
+  const html = renderCharacterPage(c, own, publications, enemyList, creatorList, adjacent(characters, i), relatedFor('character', c.id));
   if (await writeIfChanged(join(root, 'dossier', `${c.slug}.html`), html)) {
     written++;
     console.log(`built dossier/${c.slug}.html`);

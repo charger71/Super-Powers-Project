@@ -1066,6 +1066,21 @@ a.aux__item { display: block; text-decoration: none; }
   font-family: var(--font-brand);
   font-weight: 500;
 }
+/* Overview (extra) — a second rich-text block under the Overview. Deliberately
+   NOT the big blue lede treatment above: plain body-copy rich text (like the
+   About block), so it reads as standard prose. Wrapping it in a div also keeps
+   its paragraphs clear of the `> p:first-of-type` lede rule. */
+.dossier-lede__more {
+  margin-top: 1.25rem;
+}
+.dossier-lede__more p {
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.7;
+  color: var(--color-ink-mid);
+  margin: 0 0 1rem;
+}
+.dossier-lede__more p:last-child { margin-bottom: 0; }
 
 /* Vital Stats — full-width block below the overview, 2-col spec grid */
 .dossier-spec {
@@ -1118,6 +1133,22 @@ a.aux__item { display: block; text-decoration: none; }
   opacity: 0.9;
   font-weight: 400;
   margin: 0;
+}
+/* "Created by" creator links inside a Vital Statistics value */
+.dossier-spec dd a {
+  color: var(--color-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dossier-spec dd a:hover { color: var(--color-red); }
+/* Titleless "random fact" row — spans both stat columns, no dt, read as an
+   italic aside that closes the list. */
+.dossier-spec .spec-row--note {
+  grid-column: 1 / -1;
+  display: block;
+}
+.dossier-spec .spec-row--note dd {
+  opacity: 1;
 }
 
 /* About — character biography in its own container, smaller reading text */
@@ -1246,6 +1277,9 @@ a.aux__item { display: block; text-decoration: none; }
   flex-direction: column;
   gap: 1rem;
   align-self: start;
+  background: var(--color-blue-lt);
+  padding: var(--step--2);
+  border-radius: var(--radius);
 }
 .dossier-portrait {
   display: block;
@@ -1452,15 +1486,26 @@ a.aux__item { display: block; text-decoration: none; }
   margin: 0 auto 1.5rem;
   height: auto;
 }
+/* Epithet — the tagline under the logo ("The Man of Steel"), all-caps. Sits
+   directly beneath the logo/name, so pull it up under the logo's own margin. */
+.powers-card__epithet {
+  margin: -1rem 0 1.5rem;
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: var(--step--1);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--color-red);
+}
 
 /* Power Action speech bubble — the Power Action feature text overlaid on the
    bubble artwork. Sits at the top of the sidebar, above the hero portrait. */
 .power-bubble {
   position: relative;
   width: 100%;
-  max-width: 292px;
-  margin: 0 auto -2.5rem;       /* negative: pulls the next element up into the
-                                   SVG's empty lower-right band (tail hangs left) */
+  max-width: 240px;
+  margin: 0 auto var(--step-2);
   aspect-ratio: 83.83 / 85.2;   /* the SVG's own ratio */
   container-type: inline-size;  /* so bubble text sizes in cqw and always fills */
 }

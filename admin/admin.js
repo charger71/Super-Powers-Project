@@ -36,16 +36,29 @@ const ENTITIES = {
     linkJoins: [
       { label: 'Enemies', table: 'character_enemies', fk: 'character_id', targetFk: 'enemy_id', targetTable: 'characters' },
       { label: 'Teams', table: 'character_teams', fk: 'character_id', targetFk: 'team_id', targetTable: 'teams' },
+      // Real-world creators credited with creating the character — rendered as
+      // text links in the dossier's Vital Statistics ("Created by"). Separate
+      // from the curated related_items "See Also" sidebar.
+      { label: 'Created by (creators)', table: 'character_creators', fk: 'character_id', targetFk: 'creator_id', targetTable: 'creators' },
     ],
     fields: [
       { col: 'name',               label: 'Name',                kind: 'text', required: true },
       { col: 'slug',               label: 'Slug',                kind: 'slug', required: true },
       { col: 'aka',                label: 'AKA (comma-separated)', kind: 'array' },
+      { col: 'epithet',            label: 'Epithet (powers-card tagline, shown all-caps)', kind: 'text' },
       { col: 'alignment',          label: 'Alignment',           kind: 'lookup', table: 'alignments' },
       { col: 'first_appearance',   label: 'First appearance',    kind: 'text' },
       { col: 'homeworld',          label: 'Homeworld',           kind: 'text' },
       { col: 'base_of_operations', label: 'Base of operations',  kind: 'text' },
+      { col: 'marital_status',     label: 'Marital status',      kind: 'text' },
+      { col: 'known_relatives',    label: 'Known relatives',     kind: 'text' },
+      { col: 'height',             label: 'Height',              kind: 'text' },
+      { col: 'weight',             label: 'Weight',              kind: 'text' },
+      { col: 'eyes',               label: 'Eyes',                kind: 'text' },
+      { col: 'hair',               label: 'Hair',                kind: 'text' },
+      { col: 'random_fact',        label: 'Random fact (titleless last Vital Stats row)', kind: 'text' },
       { col: 'overview',           label: 'Overview',            kind: 'rich' },
+      { col: 'overview_extra',     label: 'Overview (extra rich text, standard style)', kind: 'rich' },
       { col: 'bio',                label: 'Bio',                 kind: 'rich' },
       { col: 'powers',             label: 'Powers',              kind: 'textarea' },
       { col: 'weaknesses',         label: 'Weaknesses',          kind: 'textarea' },
