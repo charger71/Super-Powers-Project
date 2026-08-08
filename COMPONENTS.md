@@ -188,11 +188,15 @@ under 800px.
 
 ### Sidebar pieces — `.dossier-sidebar`
 Light-blue padded container (`--color-blue-lt`) that stacks: `.power-bubble` (marker-font
-Power Action callout over SVG), `.dossier-portrait` (3:4), `.dossier-headshots` (paired
-figures), and the `.powers-card`.
+Power Action callout over SVG), the framed `.dossier-portrait` (3:4), `.dossier-headshots`
+(paired figures), and the `.powers-card`. On mobile (≤800px) the whole sidebar reorders
+**above** the main column (`order:-1`), on both character and release pages.
 
+- **`.dossier-portrait-frame`** — wraps `.dossier-portrait` so a slightly-tilted yellow
+  field bracketed top & bottom by red star-bars (the star motif) sits behind an upright
+  portrait — a comic pin-up backing. Used on character and creator pages.
 - **`.powers-card`** — the fixed 1984 dossier card: red star-frame border (`border-image`),
-  `.powers-card__logo` or text `.powers-card__name`, an optional all-caps red
+  `.powers-card__logo` or text `.powers-card__name`, an optional all-caps dark-blue
   `.powers-card__epithet` tagline directly beneath it, then `.powers-card__section` blocks.
   (This card is a constant character-level artifact — see project memory.)
 

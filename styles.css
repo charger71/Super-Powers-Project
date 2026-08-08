@@ -1281,6 +1281,29 @@ a.aux__item { display: block; text-decoration: none; }
   padding: var(--step--2);
   border-radius: var(--radius);
 }
+/* Portrait sits on a slightly-tilted yellow field bracketed top & bottom by red
+   star-bars (the site's star motif) — a comic pin-up backing. The frame wrapper
+   holds the angled ::before behind an upright portrait; the backing extends past
+   the image top/bottom so the star-bars peek out above and below it. */
+.dossier-portrait-frame {
+  position: relative;
+  isolation: isolate;            /* contain the ::before's negative z-index */
+  margin-block: 14px;            /* room for the star-bars that overhang the image */
+}
+.dossier-portrait-frame::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -14px -6px;             /* overhang: star-bars clear the image edges */
+  transform: rotate(-3deg);      /* the slight angle */
+  border-radius: var(--radius);
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon fill='%23FBEC3E' points='12,1.5 14.36,8.76 22,8.76 15.82,13.24 18.18,20.5 12,16.02 5.82,20.5 8.18,13.24 2,8.76 9.64,8.76'/></svg>") repeat-x left top 5px / auto 15px,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon fill='%23FBEC3E' points='12,1.5 14.36,8.76 22,8.76 15.82,13.24 18.18,20.5 12,16.02 5.82,20.5 8.18,13.24 2,8.76 9.64,8.76'/></svg>") repeat-x left bottom 5px / auto 15px,
+    linear-gradient(var(--color-red), var(--color-red)) no-repeat left top / 100% 25px,
+    linear-gradient(var(--color-red), var(--color-red)) no-repeat left bottom / 100% 25px,
+    var(--color-yellow);
+}
 .dossier-portrait {
   display: block;
   width: 100%;
@@ -1544,11 +1567,11 @@ a.release-manufacturer__name:hover { color: var(--color-red); text-decoration: u
   margin: -1rem 0 1.5rem;
   font-family: var(--font-brand);
   font-weight: 700;
-  font-size: var(--step--1);
+  font-size: var(--step-0);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   text-align: center;
-  color: var(--color-red);
+  color: var(--color-blue-dk);
 }
 
 /* Power Action speech bubble — the Power Action feature text overlaid on the
@@ -2239,6 +2262,9 @@ img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; }
 /* Responsive */
 @media (max-width: 800px) {
   .dossier-body__grid { grid-template-columns: 1fr; }
+  /* Sidebar (power card / portrait / specs) leads on mobile, above the main
+     column — for both character and release pages. */
+  .dossier-body__grid > .dossier-sidebar { order: -1; }
   .dossier-pager__inner { grid-template-columns: 1fr; }
   .dossier-pager__next { text-align: left; }
 }

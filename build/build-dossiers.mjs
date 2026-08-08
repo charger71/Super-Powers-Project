@@ -729,12 +729,9 @@ function renderCharacterPage(c, releases, publications, enemyList, creatorList, 
   const enemies = [...(enemyList ?? [])]
     .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
 
+  // firstFigure still drives the Power Action pull-quote + power bubble below,
+  // even though First Figure / Power Action / Waves were removed from Vital Stats.
   const firstFigure = releases.find((r) => r.type === 'figure');
-  const kennerWaves = [...new Set(
-    releases
-      .filter((r) => r.lines?.slug === 'kenner-super-powers' && r.series?.name)
-      .map((r) => r.series.name.replace('Series ', ''))
-  )];
 
   const description = stripTags((c.overview ?? c.bio ?? '').split(/\n\s*\n/)[0] ?? '')
     .slice(0, 158);
@@ -772,9 +769,6 @@ function renderCharacterPage(c, releases, publications, enemyList, creatorList, 
       ['Team', teams.join(' · ')],
       ['Base of Operations', c.base_of_operations],
       ['First Appearance', c.first_appearance],
-      ['First Figure', firstFigure ? `${firstFigure.series?.name ?? firstFigure.lines?.name ?? ''} (${firstFigure.release_year ?? '—'})` : null],
-      ['Power Action', firstFigure?.action_feature],
-      ['Waves Present', kennerWaves.join(' · ')],
     ]),
     specRowHtml('Created by', creatorLinks),
     specRowNote(c.random_fact),
@@ -854,8 +848,8 @@ function renderCharacterPage(c, releases, publications, enemyList, creatorList, 
         ${epithet}
         ${c.powers ? `<div class="powers-card__section"><h3>Powers</h3><p>${esc(c.powers)}</p></div>` : ''}
         ${c.weaknesses ? `<div class="powers-card__section"><h3>Weaknesses</h3><p>${esc(c.weaknesses)}</p></div>` : ''}
-        ${c.aka?.length ? `<div class="powers-card__section"><h3>Secret Identity</h3><p>${esc(c.aka.join(' · '))}</p></div>` : ''}
         ${c.enemies ? `<div class="powers-card__section"><h3>Enemies</h3><p>${esc(c.enemies)}</p></div>` : ''}
+        ${c.aka?.length ? `<div class="powers-card__section"><h3>Secret Identity</h3><p>${esc(c.aka.join(' · '))}</p></div>` : ''}
       </aside>` : '';
 
   const headshots = (headshotMedia || alterEgoMedia) ? `
@@ -902,7 +896,7 @@ ${aboutSection}
 
       <div class="dossier-sidebar">
       ${powerBubble}
-      <img class="dossier-portrait" src="${esc(portrait)}" alt="${esc(portraitAlt)}">
+      <div class="dossier-portrait-frame"><img class="dossier-portrait" src="${esc(portrait)}" alt="${esc(portraitAlt)}"></div>
       ${portraitMedia?.credit ? `<p class="dek dek--sm">Photo: ${esc(portraitMedia.credit)}</p>` : ''}
 ${headshots}
 ${powersCard}
@@ -1699,7 +1693,7 @@ function renderCreatorPage(cr, adj, related = '') {
   ]);
 
   const portraitSidebar = `
-      <img class="dossier-portrait" src="${esc(portrait)}" alt="${esc(portraitAlt)}">
+      <div class="dossier-portrait-frame"><img class="dossier-portrait" src="${esc(portrait)}" alt="${esc(portraitAlt)}"></div>
       ${photo?.credit ? `<p class="dek dek--sm">Photo: ${esc(photo.credit)}</p>` : ''}`;
 
   const links = (cr.links ?? []).filter(Boolean);
