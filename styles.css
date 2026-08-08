@@ -1589,7 +1589,7 @@ a.release-manufacturer__name:hover { color: var(--color-red); text-decoration: u
   position: relative;
   width: 100%;
   max-width: 200px;
-  margin: 0 auto var(--step-2);
+  margin: var(--step-2) auto 0;
   aspect-ratio: 83.83 / 85.2;   /* the SVG's own ratio */
   container-type: inline-size;  /* so bubble text sizes in cqw and always fills */
 }
