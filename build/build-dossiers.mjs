@@ -755,19 +755,22 @@ function renderCharacterPage(c, releases, publications, enemyList, creatorList, 
     .map((k) => `<a href="/creators/${esc(k.slug)}.html">${esc(k.name)}</a>`)
     .join(' · ');
 
+  // Grouped for readability: identity → origin/classification → affiliation →
+  // family → physical description → publication history, then the "Created by"
+  // credit and a titleless fun-fact aside to close.
   const vitals = [
     specRows([
       ['Real Name', (c.aka ?? []).slice(0, 2).join(' · ')],
+      ['Homeworld', c.homeworld],
+      ['Alignment', titleCase(c.alignment)],
+      ['Team', teams.join(' · ')],
+      ['Base of Operations', c.base_of_operations],
       ['Marital Status', c.marital_status],
       ['Known Relatives', c.known_relatives],
       ['Height', c.height],
       ['Weight', c.weight],
       ['Eyes', c.eyes],
       ['Hair', c.hair],
-      ['Homeworld', c.homeworld],
-      ['Alignment', titleCase(c.alignment)],
-      ['Team', teams.join(' · ')],
-      ['Base of Operations', c.base_of_operations],
       ['First Appearance', c.first_appearance],
     ]),
     specRowHtml('Created by', creatorLinks),
