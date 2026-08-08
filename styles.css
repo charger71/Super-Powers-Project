@@ -1280,28 +1280,37 @@ a.aux__item { display: block; text-decoration: none; }
   background: var(--color-blue-lt);
   padding: var(--step--2);
   border-radius: var(--radius);
+  /* trims the tilted portrait star-bar band to the container's rounded edges */
+  overflow: clip;
 }
-/* Portrait sits on a slightly-tilted yellow field bracketed top & bottom by red
-   star-bars (the site's star motif) — a comic pin-up backing. The frame wrapper
-   holds the angled ::before behind an upright portrait; the backing extends past
-   the image top/bottom so the star-bars peek out above and below it. */
+/* Portrait sits on a yellow field bracketed top & bottom by red star-bars (the
+   site's star motif) — a comic pin-up backing. Straight (not tilted), it bleeds
+   the full width of the sidebar container, and the bars are sized to match the
+   powers-card star border (32px red, stars at ~62% like .star-bar). The band
+   covers the middle ~half of the portrait; the (transparent) art breaks out
+   above and below it onto the sidebar field. */
 .dossier-portrait-frame {
   position: relative;
   isolation: isolate;            /* contain the ::before's negative z-index */
-  margin-block: 14px;            /* room for the star-bars that overhang the image */
 }
 .dossier-portrait-frame::before {
   content: "";
   position: absolute;
   z-index: -1;
-  inset: -14px -6px;             /* overhang: star-bars clear the image edges */
-  transform: rotate(-3deg);      /* the slight angle */
-  border-radius: var(--radius);
+  /* Tilted so the right side rides higher. Bled well past the sidebar edges so
+     the rotated band still covers the full width; the sidebar's overflow:clip
+     trims it back to the container edges (no triangular gaps at the corners). */
+  left: -28px;
+  right: -28px;
+  /* yellow band covering the middle ~half of the portrait's height */
+  top: 25%;
+  bottom: 25%;
+  transform: rotate(-4deg);
   background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon fill='%23FBEC3E' points='12,1.5 14.36,8.76 22,8.76 15.82,13.24 18.18,20.5 12,16.02 5.82,20.5 8.18,13.24 2,8.76 9.64,8.76'/></svg>") repeat-x left top 5px / auto 15px,
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon fill='%23FBEC3E' points='12,1.5 14.36,8.76 22,8.76 15.82,13.24 18.18,20.5 12,16.02 5.82,20.5 8.18,13.24 2,8.76 9.64,8.76'/></svg>") repeat-x left bottom 5px / auto 15px,
-    linear-gradient(var(--color-red), var(--color-red)) no-repeat left top / 100% 25px,
-    linear-gradient(var(--color-red), var(--color-red)) no-repeat left bottom / 100% 25px,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon fill='%23FBEC3E' points='12,1.5 14.36,8.76 22,8.76 15.82,13.24 18.18,20.5 12,16.02 5.82,20.5 8.18,13.24 2,8.76 9.64,8.76'/></svg>") repeat-x left top 6px / auto 20px,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon fill='%23FBEC3E' points='12,1.5 14.36,8.76 22,8.76 15.82,13.24 18.18,20.5 12,16.02 5.82,20.5 8.18,13.24 2,8.76 9.64,8.76'/></svg>") repeat-x left bottom 6px / auto 20px,
+    linear-gradient(var(--color-red), var(--color-red)) no-repeat left top / 100% 32px,
+    linear-gradient(var(--color-red), var(--color-red)) no-repeat left bottom / 100% 32px,
     var(--color-yellow);
 }
 .dossier-portrait {
