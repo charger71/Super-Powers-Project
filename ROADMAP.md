@@ -271,6 +271,72 @@ From the original brief:
 
 ---
 
+## Planned: Collecting Super Powers — a collector's guide
+
+**Why.** "Search is the product" (`CLAUDE.md`) — collectors arrive Googling
+"kenner super powers cyborg prototype" and "argentine riddler value". Right now
+the collector-technical material is scattered across the *Character Dossier →
+Collector-technical* bullets (prototypes, card-back variants, loose vs. MOC
+pricing, bootlegs, factory codes) and the reference doc's *Collecting Notes*.
+A single, editorial **guide** consolidates that into the on-ramp the hobby
+actually needs: one place that explains the line, what's hard to get, what to
+watch for, and how to grade condition — before a newcomer wanders into a
+$2,000 Argentine Riddler blind. High SEO value; low data cost (mostly authored
+prose over records that already exist).
+
+**What (feature).** A pre-rendered guide at `/guide/index.html` (candidate slug —
+"guide" is generic and cheap to change per the naming caution in `CLAUDE.md`),
+built by `build-dossiers.mjs` like the other section indexes, static, no client
+JS. Long-form editorial reusing the existing `.dossier-*` article treatment and
+the rich-text article CSS; figure/roster cards link out to the real release and
+character pages so the guide stays a *view over the data*, not a fork of it.
+
+**Structure (draft outline).**
+
+1. **Start here — what the line is.** The three-series arc (1984 → cancelled
+   Feb 1986), the ~4.5" scale (not the oft-misreported 3¾"), the spring "Power
+   Action" gimmick the line is named for. Links to the Timeline.
+2. **The waves at a glance.** Series 1 "greatest hits" (12 figures) → Series 2
+   Kirby New Gods wave + mail-away Clark Kent → the rare Series 3 (Cyborg and
+   Mister Miracle the toughest US cards). Roster cards → the Toy Database.
+3. **Grails & what's hard.** Argentine Riddler (~$2–3k, the ultimate get),
+   Series 3 carded figures, complete boxed Hall of Justice, the poorly-selling
+   Series 2 vehicles (Boulder Bomber, Darkseid Destroyer). Links to those
+   release pages.
+4. **Condition & completeness.** The spring leg-action mechanisms wearing loose
+   (Flash, Aquaman especially); capes/weapons/armor and pack-in mini-comics
+   swinging value; loose vs. MOC. Feeds the dossier "Common Damage / Repair
+   Guide" and "Loose vs. MOC Pricing" items.
+5. **Watch-outs — variants, bootlegs, and origins.** International variants as a
+   rabbit hole (Estrela/Brazil, Pacipa/Argentina, Colombian "Super Heroes"),
+   bootlegs & fakes, factory codes / country-of-origin markings.
+6. **Sub-hobbies.** Pack-in mini-comics (their own checklist), prototypes &
+   never-produced items (Man-Bat, Tower of Darkness, All-Terrain Trapper).
+7. **Where to go deeper.** The vetted external archives from the reference doc
+   (Jason Geyer's Super Powers Archive / ToyOtter, kennersuperpowers.com, the
+   Super Friends Wiki), clearly marked as outside resources.
+
+**Data notes.**
+- Mostly authored prose. The vetted facts live in
+  `Kenner-Super-Powers-Collection-Reference.md` (*Collecting Notes*, *Series*
+  tables, *International Variants*, *Never Produced*) — the guide is the
+  editorial synthesis of that material, cross-linked to records.
+- Where the guide cites specific pieces (Riddler, Hall of Justice, Cyborg), it
+  links to their existing release/character pages rather than restating specs —
+  keeps prices/rarity in one place as the collector-tools phase fills them in.
+- Rarity/value bands are **Phase 4** territory (collector tools). Until then the
+  guide talks in relative terms ("the rarest wave", "condition-sensitive") and
+  defers hard numbers, so it doesn't go stale as a price list.
+- Homepage directory + footers get a "Collecting" entry once the page exists;
+  any new CSS goes under a commented section in `styles.css` and into
+  `COMPONENTS.md`, per the rules of the road.
+
+**Scope note.** Editorial content, not infrastructure — slot it into Phase 2
+(Media & Editorial) as a natural companion to the history timeline, with the
+Phase 4 hooks (real rarity/value) left as links to fill in later.
+
+---
+
 ## Phases (from CLAUDE.md)
 
 - **Phase 0 — Golden Record** *(current)* — schema + admin CRUD, populate
