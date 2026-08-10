@@ -194,11 +194,13 @@ Power Action callout over SVG), the framed `.dossier-portrait` (3:4), `.dossier-
 
 - **`.dossier-portrait-frame`** — wraps `.dossier-portrait` so a slightly-tilted yellow
   field bracketed top & bottom by red star-bars (the star motif) sits behind an upright
-  portrait — a comic pin-up backing. Used on character and creator pages, and on release
-  pages for the loose (out-of-package) figure photo.
+  portrait — a comic pin-up backing. Used on character pages and on release pages for the
+  loose (out-of-package) figure photo. Creator pages use the frame without its band
+  (see `--plain` below).
 - **`.dossier-sidebar--plain`** — creator-page modifier: strips the background, border
-  and padding off the sidebar asides (`.dossier-spec`, `.dossier-related`) so they sit
-  directly on the light-blue field instead of reading as separate panels.
+  and padding off the sidebar asides (`.dossier-spec`, `.dossier-related`) and drops the
+  star-bar band behind `.dossier-portrait-frame`, so the whole column — photo included —
+  sits directly on the light-blue field instead of reading as separate panels.
 - **`.powers-card`** — the fixed 1984 dossier card: red star-frame border (`border-image`),
   `.powers-card__logo` or text `.powers-card__name`, an optional all-caps dark-blue
   `.powers-card__epithet` tagline directly beneath it, then `.powers-card__section` blocks.

@@ -1292,6 +1292,8 @@ a.aux__item { display: block; text-decoration: none; }
   border: 0;
   padding: 0;
 }
+/* …and the portrait sits plain too — no yellow star-bar band behind it. */
+.dossier-sidebar--plain .dossier-portrait-frame::before { content: none; }
 /* Portrait sits on a yellow field bracketed top & bottom by red star-bars (the
    site's star motif) — a comic pin-up backing. Straight (not tilted), it bleeds
    the full width of the sidebar container, and the bars are sized to match the
