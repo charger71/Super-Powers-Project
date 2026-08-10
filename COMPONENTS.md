@@ -190,7 +190,9 @@ under 800px.
 Light-blue padded container (`--color-blue-lt`) that stacks: `.power-bubble` (marker-font
 Power Action callout over SVG), the framed `.dossier-portrait` (3:4), `.dossier-headshots`
 (paired figures), and the `.powers-card`. On mobile (≤800px) the whole sidebar reorders
-**above** the main column (`order:-1`), on both character and release pages.
+**above** the main column (`order:-1`) and goes full-bleed — pulled out past the wrap's
+gutter with square corners, so its light-blue field runs edge to edge while its own
+padding keeps the contents inset. Applies to character, release and creator pages.
 
 - **`.power-bubble`** — tops the sidebar on character pages (the first figure's Power
   Action) and on release pages (that release's own `action_feature`); omitted when there
