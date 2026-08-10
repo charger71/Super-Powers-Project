@@ -192,6 +192,10 @@ Power Action callout over SVG), the framed `.dossier-portrait` (3:4), `.dossier-
 (paired figures), and the `.powers-card`. On mobile (≤800px) the whole sidebar reorders
 **above** the main column (`order:-1`), on both character and release pages.
 
+- **`.power-bubble`** — tops the sidebar on character pages (the first figure's Power
+  Action) and on release pages (that release's own `action_feature`); omitted when there
+  is no feature text.
+
 - **`.dossier-portrait-frame`** — wraps `.dossier-portrait` so a slightly-tilted yellow
   field bracketed top & bottom by red star-bars (the star motif) sits behind an upright
   portrait — a comic pin-up backing. Used on character pages and on release pages for the
