@@ -2267,8 +2267,15 @@ img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; }
 @media (max-width: 800px) {
   .dossier-body__grid { grid-template-columns: 1fr; }
   /* Sidebar (power card / portrait / specs) leads on mobile, above the main
-     column — for both character and release pages. */
-  .dossier-body__grid > .dossier-sidebar { order: -1; }
+     column — for both character and release pages — and goes full-bleed:
+     pulled out past the wrap's gutter so its field runs edge to edge, with the
+     rounded corners dropped so it meets the screen cleanly. Its own padding
+     stays, keeping the contents off the screen edge. */
+  .dossier-body__grid > .dossier-sidebar {
+    order: -1;
+    margin-inline: calc(var(--gutter) * -1);
+    border-radius: 0;
+  }
   .dossier-pager__inner { grid-template-columns: 1fr; }
   .dossier-pager__next { text-align: left; }
 }
