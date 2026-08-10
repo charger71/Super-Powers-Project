@@ -194,7 +194,13 @@ Power Action callout over SVG), the framed `.dossier-portrait` (3:4), `.dossier-
 
 - **`.dossier-portrait-frame`** — wraps `.dossier-portrait` so a slightly-tilted yellow
   field bracketed top & bottom by red star-bars (the star motif) sits behind an upright
-  portrait — a comic pin-up backing. Used on character and creator pages.
+  portrait — a comic pin-up backing. Used on character pages and on release pages for the
+  loose (out-of-package) figure photo. Creator pages use the frame without its band
+  (see `--plain` below).
+- **`.dossier-sidebar--plain`** — creator-page modifier: strips the background, border
+  and padding off the sidebar asides (`.dossier-spec`, `.dossier-related`) and drops the
+  star-bar band behind `.dossier-portrait-frame`, so the whole column — photo included —
+  sits directly on the light-blue field instead of reading as separate panels.
 - **`.powers-card`** — the fixed 1984 dossier card: red star-frame border (`border-image`),
   `.powers-card__logo` or text `.powers-card__name`, an optional all-caps dark-blue
   `.powers-card__epithet` tagline directly beneath it, then `.powers-card__section` blocks.
@@ -274,8 +280,12 @@ Prev/next yellow blocks (`.dossier-pager__next` right-aligns).
   column opens with an optional **Overview** (`.dek` + enlarged lede + a standard
   `.dossier-lede__more` body, from the release's `overview_lede` / `overview_text`)
   above this gallery.
-- **`.release-loose`** — the out-of-package ('loose' role) photo in the sidebar,
-  above the specs; white card, opens the shared lightbox.
+- **Loose figure photo** — the out-of-package ('loose' role) shot at the top of
+  the sidebar, above the specs. Reuses the character page's portrait treatment:
+  `.dossier-portrait-frame` wrapping a `.dossier-portrait` image (here a
+  lightbox trigger, so it opens the shared release gallery), with the mono
+  `Photo: …` credit as a `.dek.dek--sm` line beneath — the figure stands in for
+  the character artwork.
 - **`.release-manufacturer`** — under the specifications: the LINE's manufacturer
   logo (`__logo`, from `media_lines`) + name (`__name`, not the line name) on a
   white card, both linking to the line's `manufacturer_website` when set.

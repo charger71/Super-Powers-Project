@@ -1066,13 +1066,14 @@ function renderReleasePage(r, variations, adj, related = '', siblings = [], line
         </section>` : '';
 
   // Loose (out-of-package) photo above the specifications aside in the sidebar.
-  // Opens in the shared gallery lightbox alongside the rest of the release's photos.
+  // Same pin-up treatment the character page gives its artwork portrait
+  // (.dossier-portrait-frame — tilted yellow star band behind the image), with
+  // the loose figure standing in for the artwork. Opens in the shared gallery
+  // lightbox alongside the rest of the release's photos.
   const looseMedia = pickMedia(r.media_releases, ['loose'])[0];
   const looseBlock = looseMedia ? `
-        <figure class="release-loose">
-          ${lbTrigger(looseMedia, `rel-${r.slug}`, r.name)}
-          ${looseMedia.credit ? `<figcaption>Photo: ${esc(looseMedia.credit)}</figcaption>` : ''}
-        </figure>` : '';
+        <div class="dossier-portrait-frame">${lbTrigger(looseMedia, `rel-${r.slug}`, r.name, 'dossier-portrait')}</div>
+        ${looseMedia.credit ? `<p class="dek dek--sm">Photo: ${esc(looseMedia.credit)}</p>` : ''}` : '';
 
   // Manufacturer branding under the specifications — the line's manufacturer
   // LOGO + NAME (not the line name), linking to the manufacturer website if set.
@@ -1763,7 +1764,7 @@ ${bioSection}
 ${creditedSection}
       </article>
 
-      <div class="dossier-sidebar">
+      <div class="dossier-sidebar dossier-sidebar--plain">
 ${portraitSidebar}
         <aside class="dossier-spec">
           <p class="dek">Details</p>

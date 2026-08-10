@@ -1283,6 +1283,17 @@ a.aux__item { display: block; text-decoration: none; }
   /* trims the tilted portrait star-bar band to the container's rounded edges */
   overflow: clip;
 }
+/* Creator pages: the sidebar asides (Details, Links, Related) sit straight on
+   the light-blue field — no yellow spec panel, no bordered related card — so
+   the column reads as one quiet block under the portrait. */
+.dossier-sidebar--plain .dossier-spec,
+.dossier-sidebar--plain .dossier-related {
+  background: none;
+  border: 0;
+  padding: 0;
+}
+/* …and the portrait sits plain too — no yellow star-bar band behind it. */
+.dossier-sidebar--plain .dossier-portrait-frame::before { content: none; }
 /* Portrait sits on a yellow field bracketed top & bottom by red star-bars (the
    site's star motif) — a comic pin-up backing. Straight (not tilted), it bleeds
    the full width of the sidebar container, and the bars are sized to match the
@@ -1496,25 +1507,9 @@ a.aux__item { display: block; text-decoration: none; }
   white-space: nowrap;
 }
 
-/* Loose (out-of-package) photo in the release sidebar, above the specs. Shown
-   on a white card like the gallery photos; opens the shared lightbox. */
-.release-loose { margin: 0; }
-.release-loose img {
-  width: 100%;
-  height: auto;
-  display: block;
-  background: var(--color-white);
-  padding: 0.75rem;
-  border-radius: var(--radius);
-}
-.release-loose figcaption {
-  font-family: var(--font-mono);
-  font-size: var(--step--2);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-blue-dk);
-  margin-top: 0.4rem;
-}
+/* The loose (out-of-package) photo in the release sidebar reuses the character
+   page's portrait treatment — `.dossier-portrait-frame` + `.dossier-portrait`
+   with the figure standing in for the artwork — so it needs no rules of its own. */
 
 /* Manufacturer logo + name under the specifications (the LINE's manufacturer,
    not the line). Logo sits on a white card so transparent PNGs read cleanly. */
