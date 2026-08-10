@@ -644,6 +644,17 @@ function comicCard(p) {
         </a>`;
 }
 
+// Power Action speech bubble — a figure's Power Action feature overlaid on the
+// bubble artwork in dark blue. Sits at the top of the sidebar, above the hero
+// image: the character portrait on a dossier, the loose figure on a release.
+// No feature text -> no bubble.
+function powerBubbleBlock(actionFeature) {
+  return actionFeature ? `<div class="power-bubble">
+        <img class="power-bubble__shape" src="/assets/power_action_bubble.svg" alt="" aria-hidden="true">
+        <span class="power-bubble__text">${esc(actionFeature)}</span>
+      </div>` : '';
+}
+
 function headshotFigure(media, label, fallbackAlt) {
   const src = mediaUrl(media) ?? PLACEHOLDER;
   return `<figure>
@@ -837,13 +848,7 @@ function renderCharacterPage(c, releases, publications, enemyList, creatorList, 
   // Epithet — the tagline under the logo ("The Man of Steel"), rendered all-caps.
   const epithet = c.epithet ? `<p class="powers-card__epithet">${esc(c.epithet)}</p>` : '';
 
-  // Power Action speech bubble — the figure's Power Action feature overlaid on
-  // the bubble artwork in dark blue. Sits at the top of the sidebar, above the
-  // character hero portrait.
-  const powerBubble = firstFigure?.action_feature ? `<div class="power-bubble">
-        <img class="power-bubble__shape" src="/assets/power_action_bubble.svg" alt="" aria-hidden="true">
-        <span class="power-bubble__text">${esc(firstFigure.action_feature)}</span>
-      </div>` : '';
+  const powerBubble = powerBubbleBlock(firstFigure?.action_feature);
 
   const powersCard = (c.powers || c.weaknesses || c.aka?.length || c.enemies || c.epithet || logoMedia) ? `
       <aside class="powers-card">
@@ -1070,6 +1075,10 @@ function renderReleasePage(r, variations, adj, related = '', siblings = [], line
   // (.dossier-portrait-frame — tilted yellow star band behind the image), with
   // the loose figure standing in for the artwork. Opens in the shared gallery
   // lightbox alongside the rest of the release's photos.
+  // This release's own Power Action feature, in the speech bubble — same block
+  // the character dossier carries, driven here by the release's own text.
+  const powerBubble = powerBubbleBlock(r.action_feature);
+
   const looseMedia = pickMedia(r.media_releases, ['loose'])[0];
   const looseBlock = looseMedia ? `
         <div class="dossier-portrait-frame">${lbTrigger(looseMedia, `rel-${r.slug}`, r.name, 'dossier-portrait')}</div>
@@ -1132,6 +1141,7 @@ ${sourcesSection}
       </article>
 
       <div class="dossier-sidebar">
+      ${powerBubble}
 ${looseBlock}
         <aside class="dossier-spec">
           <p class="dek">Specifications</p>
