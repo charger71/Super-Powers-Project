@@ -402,11 +402,13 @@ create table artwork (
 create table artwork_creators (
   artwork_id uuid references artwork(id)  on delete cascade,
   creator_id uuid references creators(id) on delete cascade,
+  sort_order int default 0,   -- editorial order (billing), like character_creators
   primary key (artwork_id, creator_id)
 );
 create table artwork_characters (
   artwork_id   uuid references artwork(id)     on delete cascade,
   character_id uuid references characters(id)  on delete cascade,
+  sort_order   int default 0,   -- editorial order in the admin's link editor
   primary key (artwork_id, character_id)
 );
 
