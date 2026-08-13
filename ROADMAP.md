@@ -226,11 +226,26 @@ The build order from `CLAUDE.md` is the authoritative "when"; this doc is the
   whole database in one place, and a reference that cannot be applied silently
   stops being checkable.
 
-  Still outstanding: the `release_full` **view** is missing `overview_lede` and
-  `overview_text`. Migration `20260807000001` added those columns to `releases`
-  but never recreated the view, so the live view lags `schema.sql` by two
-  columns. Harmless today — nothing in `build/`, `admin/`, or `js/` selects from
-  `release_full` — but it needs a view-recreating migration before anything does.
+- **`release_full` view refreshed (fixed 2026-08-13)** — the view was missing
+  `overview_lede` and `overview_text`. Its *text* was never wrong: it is
+  `select r.*, …` and always has been. Postgres expands `*` once, at CREATE VIEW
+  time, and freezes the column list — the view was last recreated in
+  `20260727000000`, the two columns were added to `releases` afterwards in
+  `20260807000001`, and columns added to a table after a view exists never appear
+  in it. `schema.sql` hid the drift by creating the view at the end of the file,
+  after `releases` is complete, which is why two byte-identical definitions
+  produced different views. Migration `20260813000002` just drops and recreates
+  it (`security_invoker = true` preserved); the definition is unchanged.
+  Precedent: `20260726000001` and `20260727000000` recreate this view for the
+  same underlying reason.
+
+  **`schema.sql` and the migrations now produce byte-identical schemas** — 384
+  columns each, verified by diffing two real databases. Any future difference is
+  a genuine regression, which makes the reference file checkable again.
+
+  General lesson worth remembering: **any migration that adds a column to
+  `releases` must also recreate `release_full`**, or the view silently falls
+  behind again.
 
 ## Character Dossier — additional sections to build
 
