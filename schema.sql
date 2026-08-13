@@ -209,19 +209,6 @@ create table character_enemies (
 );
 create index on character_enemies (enemy_id);
 
--- The real-world creators who CREATED the character (Siegel & Shuster for
--- Superman). A plain many-to-many with editorial sort_order, rendered as text
--- links to each creator's page in the dossier's Vital Statistics. Distinct from
--- release_creators (a toy's design/sculpt credits) and the curated related_items
--- "See Also" sidebar.
-create table character_creators (
-  character_id uuid references characters(id) on delete cascade,
-  creator_id   uuid references creators(id)   on delete cascade,
-  sort_order   smallint default 0,   -- editorial order (billing), like character_teams
-  primary key (character_id, creator_id)
-);
-create index on character_creators (creator_id);
-
 -- ============================================================
 -- Creators
 -- ============================================================
@@ -238,6 +225,22 @@ create table creators (
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );
+
+-- The real-world creators who CREATED the character (Siegel & Shuster for
+-- Superman). A plain many-to-many with editorial sort_order, rendered as text
+-- links to each creator's page in the dossier's Vital Statistics. Distinct from
+-- release_creators (a toy's design/sculpt credits) and the curated related_items
+-- "See Also" sidebar.
+--
+-- Sits AFTER creators deliberately: it references both characters and creators,
+-- so defining it up with the other character joins made this file fail to run.
+create table character_creators (
+  character_id uuid references characters(id) on delete cascade,
+  creator_id   uuid references creators(id)   on delete cascade,
+  sort_order   smallint default 0,   -- editorial order (billing), like character_teams
+  primary key (character_id, creator_id)
+);
+create index on character_creators (creator_id);
 
 -- ============================================================
 -- Releases (the physical product) — the workhorse table

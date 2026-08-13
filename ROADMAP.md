@@ -211,6 +211,26 @@ The build order from `CLAUDE.md` is the authoritative "when"; this doc is the
     (`g: 'article'`). Reuses the existing `.essay` component: no new CSS.
   - `article` is registered in `entity_types`, so posts can be either side of a
     curated "Related" link.
+  - **Verified against a real Postgres 16.** All 26 migrations apply clean to an
+    empty database; `schema.sql` applies clean; the two produce identical schemas
+    (bar the pre-existing `release_full` view drift below). RLS confirmed with
+    `set role`: `anon` sees only past-dated posts and cannot write, while
+    `authenticated` sees scheduled ones too.
+
+- **`schema.sql` is executable again (fixed 2026-08-13)** — it had drifted into a
+  non-runnable reference: `character_creators` was defined before `creators`,
+  which it references, so applying the file failed partway through. Moved below
+  `creators`. Nothing else in the file was out of order (the vocab tables look
+  like forward references but are created by the loop near the top, before any
+  consumer). Worth keeping runnable — it is the only artifact that describes the
+  whole database in one place, and a reference that cannot be applied silently
+  stops being checkable.
+
+  Still outstanding: the `release_full` **view** is missing `overview_lede` and
+  `overview_text`. Migration `20260807000001` added those columns to `releases`
+  but never recreated the view, so the live view lags `schema.sql` by two
+  columns. Harmless today — nothing in `build/`, `admin/`, or `js/` selects from
+  `release_full` — but it needs a view-recreating migration before anything does.
 
 ## Character Dossier — additional sections to build
 

@@ -19,13 +19,18 @@
 -- ============================================================
 -- 1. article kinds — editable controlled vocabulary
 -- ============================================================
+-- Column-for-column identical to every other vocab table (schema.sql builds
+-- them all from one loop). `description` in particular is not optional: the
+-- admin's generic vocabulary editor renders a Description field for every
+-- lookup, so omitting it here would break editing an article kind.
 create table if not exists article_kinds (
-  id         uuid primary key default gen_random_uuid(),
-  slug       text unique not null,
-  name       text not null,
-  sort_order smallint default 0,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  id          uuid primary key default gen_random_uuid(),
+  slug        text unique not null,
+  name        text not null,
+  description text,
+  sort_order  smallint default 0,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
 );
 
 insert into article_kinds (slug, name, sort_order) values
