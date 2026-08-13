@@ -180,6 +180,38 @@ The build order from `CLAUDE.md` is the authoritative "when"; this doc is the
   media, interviews, merchandise, creators, media); only rarely-edited structural
   lookups (lines / series / teams) remain hand-seeded, by choice.
 
+- **News & articles (built 2026-08-13)** — the editorial section, pre-rendered at
+  `/news/index.html` (reverse-chronological feed) + `/news/<slug>.html` per post,
+  via `renderArticleIndex` / `renderArticlePage`. Migration `20260813000001`.
+  - **One table, not two.** `articles` with an `article_kinds` lookup
+    (news / feature / guide) rather than separate news and article tables — a
+    dated blurb and a long-form feature differ in length and cadence, not shape.
+    Same call `publications` and `screen_media` already make with their kinds.
+  - **Bylines are `editors`, a new table — deliberately NOT `creators`.**
+    `creators` means real-world comic people (Kirby, Pérez, García-López), and
+    site staff in there would surface in "Created by" credits. `editors` is also
+    deliberately not tied to `auth.users`: that table isn't readable with the
+    anon key the build uses, so a byline sourced from it could never render.
+    Public-safe columns only — display name, slug, bio. No email.
+  - **Scheduling is enforced in RLS, not in the build.** `published_at` is
+    `not null default now()` (writing a post publishes it — the "publish direct"
+    model); a future timestamp holds it back. `articles` is the one table held
+    out of the blanket `public read using (true)` loop, because the build and the
+    front end both read via the anon key — a blanket policy would serve
+    tomorrow's post to anyone hitting `/rest/v1/articles` today, making
+    scheduling cosmetic. Authenticated co-authors still see everything.
+    **Consequence:** a scheduled post goes live on the next *rebuild* after its
+    timestamp passes, not at the timestamp. With CI on a nightly 07:00 UTC cron,
+    that is the effective granularity — raise the cron frequency if scheduling
+    needs to be tighter than a day.
+  - Homepage **"Longer reads" now comes from `articles`**, not `screen_media` —
+    screen_media had been doing double duty as an article store before this
+    existed, and is now just the video library. New homepage tile, both footers,
+    site nav, and the search index/filters all carry the section
+    (`g: 'article'`). Reuses the existing `.essay` component: no new CSS.
+  - `article` is registered in `entity_types`, so posts can be either side of a
+    curated "Related" link.
+
 ## Character Dossier — additional sections to build
 
 Grouped by intent. Rough order = priority within each group.

@@ -275,6 +275,44 @@ const ENTITIES = {
       { col: 'description',  label: 'Description',   kind: 'rich' },
     ],
   },
+  articles: {
+    label: 'News & articles',
+    table: 'articles',
+    titleCol: 'title',
+    orderBy: { col: 'published_at', ascending: false },
+    listCols: ['title', 'slug', 'kind', 'published_at'],
+    mediaJoin: { table: 'media_articles', fk: 'article_id' },
+    relatedType: 'article',
+    fields: [
+      { col: 'title',        label: 'Title',        kind: 'text', required: true },
+      { col: 'slug',         label: 'Slug',         kind: 'slug', required: true },
+      { col: 'kind',         label: 'Kind',         kind: 'lookup', table: 'article_kinds', required: true, initial: 'news' },
+      { col: 'dek',          label: 'Dek (standfirst / teaser — also the meta description)', kind: 'textarea' },
+      { col: 'author_id',    label: 'Byline (editor)', kind: 'fk', table: 'editors',
+        fkCols: 'id, display_name, slug', fkOrder: 'display_name',
+        fkLabel: (e) => `${e.display_name} · ${e.slug}` },
+      // Future timestamp = scheduled: RLS hides it from the anon key until then,
+      // so it stays out of the public site AND the pre-rendered build. Blank on a
+      // new record means "now" (the column defaults to now()).
+      { col: 'published_at', label: 'Published (YYYY-MM-DD HH:MM — a future time schedules it)', kind: 'text' },
+      { col: 'body',         label: 'Body',         kind: 'rich' },
+    ],
+  },
+  editors: {
+    label: 'Editors',
+    table: 'editors',
+    titleCol: 'display_name',
+    orderBy: { col: 'display_name', ascending: true },
+    listCols: ['display_name', 'slug'],
+    // Byline identities for the site's own co-authors — kept separate from
+    // `creators` (Kirby, Pérez et al) so site staff never land in a "Created by"
+    // credit. Public-safe fields only: no email, no auth linkage.
+    fields: [
+      { col: 'display_name', label: 'Display name (the byline)', kind: 'text', required: true },
+      { col: 'slug',         label: 'Slug',                      kind: 'slug', required: true },
+      { col: 'bio',          label: 'Short bio',                 kind: 'textarea' },
+    ],
+  },
   artwork: {
     label: 'Artwork',
     table: 'artwork',
@@ -362,6 +400,7 @@ const VOCAB_TABLES = {
   screen_media_kinds:     'Screen media kinds',
   interview_formats:      'Interview formats',
   merchandise_categories: 'Merchandise categories',
+  article_kinds:          'Article kinds',
 };
 // Curated "Related" links live in one polymorphic table (related_items) — see
 // its migration. Each linkable type maps a related_items type slug to the table
@@ -498,16 +537,18 @@ $('logout').addEventListener('click', () => db.auth.signOut());
 db.auth.onAuthStateChange(() => refreshAuth());
 
 // ---- menu (grouped dropdown in the header bar) --------------------------
-// Groups the 14 entities so daily-use content sits apart from the rarely
+// Groups the 16 entities so daily-use content sits apart from the rarely
 // touched lookup tables. Keys must match ENTITIES; any entity left out of a
 // group would simply not appear, so keep this in sync when adding tables.
 const MENU_GROUPS = [
   { label: 'Content',      keys: ['characters', 'releases', 'variations'] },
+  { label: 'Editorial',    keys: ['articles', 'editors'] },
   { label: 'Media',        keys: ['publications', 'screen_media', 'interviews', 'merchandise', 'artwork', 'creators', 'media'] },
   { label: 'Structure',    keys: ['lines', 'series', 'teams'] },
   { label: 'Vocabularies', keys: ['statuses', 'alignments', 'release_types', 'rarity_levels', 'variation_types',
                                   'media_types', 'rights_statuses', 'artwork_types', 'publication_kinds',
-                                  'screen_media_kinds', 'interview_formats', 'merchandise_categories'] },
+                                  'screen_media_kinds', 'interview_formats', 'merchandise_categories',
+                                  'article_kinds'] },
 ];
 
 // One dropdown per group, laid out as a menubar in the header. The group
@@ -1883,6 +1924,7 @@ const VIEW_DIRS = {
   screen_media: 'media',
   creators:     'creators',
   merchandise:  'merchandise',
+  articles:     'news',
 };
 
 async function openDrawer(row) {

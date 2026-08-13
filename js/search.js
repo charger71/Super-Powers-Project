@@ -13,6 +13,7 @@
   const GROUP_LABEL = {
     character: 'Character', toy: 'Toy', comic: 'Comic',
     media: 'Media', merch: 'Merchandise', creator: 'Creator',
+    article: 'News',
   };
   const MAX_RESULTS = 200;
 

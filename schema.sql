@@ -101,7 +101,8 @@ begin
   foreach t in array array[
     'alignments', 'release_types', 'rarity_levels', 'variation_types',
     'media_types', 'rights_statuses', 'artwork_types',
-    'publication_kinds', 'screen_media_kinds', 'interview_formats', 'merchandise_categories'
+    'publication_kinds', 'screen_media_kinds', 'interview_formats', 'merchandise_categories',
+    'article_kinds'
   ] loop
     execute format($f$
       create table %I (
@@ -148,6 +149,8 @@ insert into interview_formats (slug, name, sort_order) values
 insert into merchandise_categories (slug, name, sort_order) values
   ('apparel','Apparel',0), ('housewares','Housewares',1),
   ('party','Party',2), ('publishing','Publishing',3);
+insert into article_kinds (slug, name, sort_order) values
+  ('news','News',0), ('feature','Feature',1), ('guide','Guide',2);
 
 -- ============================================================
 -- Characters (canonical identity — line-agnostic)
@@ -516,6 +519,51 @@ create table media_merchandise (
 create index media_merchandise_merch_idx on media_merchandise (merchandise_id);
 
 -- ============================================================
+-- News & articles (the editorial section)
+-- ============================================================
+-- One table with a `kind` lookup rather than separate news/article tables —
+-- a dated news blurb and a long-form feature differ in length and cadence,
+-- not in shape. Same call publications and screen_media make with their kinds.
+
+-- Byline identities for the site's own co-authors. Deliberately separate from
+-- `creators` (real-world comic people) so site staff never pollute a "Created
+-- by" credit, and deliberately NOT tied to auth.users — that table isn't
+-- readable with the anon key the pre-render build uses, so a byline sourced
+-- from it could never render. Holds only what is safe to publish: no email.
+create table editors (
+  id           uuid primary key default gen_random_uuid(),
+  slug         text unique not null,
+  display_name text not null,
+  bio          text,
+  created_at   timestamptz default now(),
+  updated_at   timestamptz default now()
+);
+
+create table articles (
+  id           uuid primary key default gen_random_uuid(),
+  slug         text unique not null,
+  title        text not null,
+  kind         text not null references article_kinds(slug) on update cascade on delete restrict,
+  dek          text,                                   -- standfirst / teaser
+  body         text,                                   -- rich HTML from the admin editor
+  author_id    uuid references editors(id) on delete set null,
+  published_at timestamptz not null default now(),     -- future = scheduled, see RLS below
+  created_at   timestamptz default now(),
+  updated_at   timestamptz default now()
+);
+create index articles_published_idx on articles (published_at desc);
+create index articles_kind_idx      on articles (kind, published_at desc);
+
+create table media_articles (
+  media_id   uuid references media_assets(id) on delete cascade,
+  article_id uuid references articles(id)     on delete cascade,
+  sort_order smallint default 0,
+  is_primary boolean default false,           -- hero image
+  primary key (media_id, article_id)
+);
+create index media_articles_article_idx on media_articles (article_id);
+
+-- ============================================================
 -- Curated "Related items" — a hand-curated, cross-type "see also"
 --
 -- The ONE deliberate exception to "typed join tables, no polymorphic pair":
@@ -539,7 +587,8 @@ create table entity_types (
 insert into entity_types (slug, name, sort_order) values
   ('character','Character',0), ('release','Toy',1), ('publication','Comic',2),
   ('screen_media','Media',3), ('creator','Creator',4),
-  ('merchandise','Merchandise',5), ('interview','Interview',6);
+  ('merchandise','Merchandise',5), ('interview','Interview',6),
+  ('article','Article',7);
 
 create table related_items (
   source_type text not null references entity_types(slug) on update cascade on delete restrict,
@@ -566,6 +615,7 @@ begin
     'artwork','publications','screen_media','interviews','merchandise',
     'alignments','release_types','rarity_levels','variation_types','media_types','rights_statuses',
     'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories',
+    'article_kinds','editors','articles',
     'entity_types','related_items'
   ] loop
     execute format(
@@ -594,6 +644,7 @@ begin
     'screen_media','interviews','merchandise','merchandise_characters','media_merchandise',
     'alignments','release_types','rarity_levels','variation_types','media_types','rights_statuses',
     'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories',
+    'article_kinds','editors','media_articles',
     'entity_types','related_items'
   ] loop
     execute format('alter table %I enable row level security', t);
@@ -604,6 +655,19 @@ begin
        using (true) with check (true)', t);
   end loop;
 end $$;
+
+-- `articles` is the ONE table deliberately held out of the loop above: it must
+-- not get a blanket `using (true)` read. Articles carry a published_at that may
+-- be in the future (scheduled), and the front end and the pre-render build both
+-- read through PostgREST with the anon key — so a blanket policy would serve
+-- tomorrow's article to anyone who asked /rest/v1/articles today. Filtering only
+-- in the build would make scheduling cosmetic. Authenticated co-authors still
+-- see everything, so they can preview and correct what they just scheduled.
+alter table articles enable row level security;
+create policy "public read published" on articles
+  for select to anon using (published_at <= now());
+create policy "authors write" on articles
+  for all to authenticated using (true) with check (true);
 
 -- ============================================================
 -- Storage: one public bucket for media uploads

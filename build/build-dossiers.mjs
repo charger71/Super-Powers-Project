@@ -363,6 +363,28 @@ async function fetchCreators() {
   }
 }
 
+// News & articles — the editorial section. Newest first.
+//
+// Scheduling needs no filter here: articles carries a published_at that may be
+// in the future, and its RLS policy only exposes rows where published_at <=
+// now() to the anon key this build uses. A scheduled post is therefore invisible
+// to the build until its time comes — the hold is enforced in the database, not
+// by this fetch. Consequence worth knowing: a post goes live on the NEXT
+// rebuild after its timestamp passes, not at the timestamp itself.
+async function fetchArticles() {
+  try {
+    return await rest(
+      'articles?select=*,' +
+      `media_articles(is_primary,sort_order,${MEDIA_EMBED}),` +
+      'editors(display_name,slug)' +
+      '&order=published_at.desc'
+    );
+  } catch {
+    console.warn('Articles unavailable (is the articles migration applied?) — building without the news section.');
+    return [];
+  }
+}
+
 // Curated "related items" — a hand-curated, cross-type "see also". One
 // polymorphic table (related_items) holds directed links (source -> target),
 // NOT auto-mirrored. The target columns carry no FK (deliberate — see the
@@ -447,6 +469,7 @@ const SITE_SECTIONS = [
   ['/comics/index.html', 'Comics'],
   ['/media/index.html', 'Media'],
   ['/merchandise/index.html', 'Merch'],
+  ['/news/index.html', 'News'],
   ['/timeline/index.html', 'Timeline'],
   ['/search/index.html', 'Search'],
 ];
@@ -518,6 +541,7 @@ ${body}
             <li><a href="/creators/index.html">Creators</a></li>
             <li><a href="/media/index.html">In the Media</a></li>
             <li><a href="/merchandise/index.html">Merchandise</a></li>
+            <li><a href="/news/index.html">News &amp; Articles</a></li>
             <li><a href="/search/index.html">Search</a></li>
           </ul>
         </div>
@@ -579,6 +603,11 @@ const specRowHtml = (label, htmlValue) =>
 const specRowNote = (value) =>
   value ? `<div class="spec-row spec-row--note"><dd>${esc(value)}</dd></div>` : '';
 
+// Records are keyed `name` (characters, releases, creators, merchandise) or
+// `title` (publications, screen_media, articles) — accept either, or the label
+// silently renders empty.
+const pagerLabel = (row) => row.name ?? row.title ?? '';
+
 function pager(kind, prev, next) {
   if (!prev || !next) return '';
   return `
@@ -586,11 +615,11 @@ function pager(kind, prev, next) {
     <div class="wrap dossier-pager__inner">
       <a href="/${kind}/${esc(prev.slug)}.html" class="dossier-pager__prev">
         <p class="dek">◄ Previous</p>
-        <span class="dossier-pager__label">${esc(prev.name)}</span>
+        <span class="dossier-pager__label">${esc(pagerLabel(prev))}</span>
       </a>
       <a href="/${kind}/${esc(next.slug)}.html" class="dossier-pager__next">
         <p class="dek">Next ►</p>
-        <span class="dossier-pager__label">${esc(next.name)}</span>
+        <span class="dossier-pager__label">${esc(pagerLabel(next))}</span>
       </a>
     </div>
   </nav>`;
@@ -670,7 +699,7 @@ function headshotFigure(media, label, fallbackAlt) {
 // doesn't resolve (deleted target, unknown type) — the caller drops it, so a
 // dead link degrades to "the card disappears", never a broken page. Kept in
 // lockstep with entity_types and the admin's RELATED_TYPES.
-function buildRelatedResolver({ characters, releases, publications, screenMedia, creators, merchandise }) {
+function buildRelatedResolver({ characters, releases, publications, screenMedia, creators, merchandise, articles = [] }) {
   const byId = (arr) => new Map(arr.map((x) => [x.id, x]));
   const TYPES = {
     character:    { map: byId(characters),  dir: 'dossier',  label: 'Character',
@@ -685,6 +714,8 @@ function buildRelatedResolver({ characters, releases, publications, screenMedia,
                     name: (k) => k.name,  thumb: (k) => mediaUrl(sortedMedia(k.media_creators)[0]) },
     merchandise:  { map: byId(merchandise), dir: 'merchandise', label: 'Merchandise',
                     name: (m) => m.name,  thumb: (m) => mediaUrl(sortedMedia(m.media_merchandise)[0]) },
+    article:      { map: byId(articles),    dir: 'news',     label: 'Article',
+                    name: (a) => a.title, thumb: (a) => articleHero(a) },
   };
   return (type, id) => {
     const t = TYPES[type];
@@ -2120,7 +2151,7 @@ ${sections}`;
 
 const initials = (s) => ((String(s).match(/\b[A-Za-z0-9]/g) ?? []).slice(0, 2).join('') || '★').toUpperCase();
 
-function renderHome(characters, releases, screenMedia, merchandise, publicationCount) {
+function renderHome(characters, releases, screenMedia, merchandise, publicationCount, articles = []) {
   // Featured character: Superman (the golden record) if present, else the
   // first character that has a portrait, else whatever's first.
   const hero = characters.find((c) => c.slug === 'superman')
@@ -2193,23 +2224,11 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
   ];
   const statsLine = stats.map(([n, l]) => `<span><b>${n}</b> ${esc(l)}</span>`).join('\n        ');
 
-  // "Longer reads" — the media articles (screen_media), newest first.
-  const essays = screenMedia.slice()
-    .sort((a, b) => new Date(b.updated_at ?? 0) - new Date(a.updated_at ?? 0))
-    .slice(0, 3);
-  const essaysBlock = essays.map((s) => {
-    const poster = screenPoster(s) ?? PLACEHOLDER;
-    const kindLabel = KIND_LABELS[s.kind] ?? titleCase((s.kind ?? 'media').replaceAll('_', ' '));
-    const teaser = stripTags(s.description ?? '').slice(0, 150);
-    const foot = [titleCase((s.kind ?? '').replaceAll('_', ' ')), s.year].filter(Boolean).join(' · ');
-    return `<article class="essay">
-          <img class="essay__photo" src="${esc(poster)}" alt="${esc(s.media_assets?.alt_text ?? s.title)}">
-          <p class="essay__kicker">In the Media · ${esc(kindLabel)}</p>
-          <h3><a href="/media/${esc(s.slug)}.html">${esc(s.title)}</a></h3>
-          ${teaser ? `<p>${esc(teaser)}</p>` : ''}
-          <div class="essay__foot"><span>${esc(foot)}</span><span>Read →</span></div>
-        </article>`;
-  }).join('\n        ');
+  // "Longer reads" — the newest posts from the editorial section. This used to
+  // be fed by screen_media, which was doing double duty as an article store
+  // before `articles` existed; screen_media is now just the video library.
+  const essays = articles.slice(0, 3);
+  const essaysBlock = essays.map(articleCard).join('\n        ');
 
   const essaysSection = essays.length ? `
   <!-- FEATURED ESSAYS -->
@@ -2348,6 +2367,13 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
           <span class="tile__arrow" aria-hidden="true">→</span>
         </a>
 
+        <a class="tile" data-accent="blue" href="/news/index.html">
+          <p class="tile__kicker">From the desk</p>
+          <h3 class="tile__title">News &amp; Articles</h3>
+          <p class="tile__desc">Additions to the archive, research write-ups, and long reads on the line and the people behind it.</p>
+          <span class="tile__arrow" aria-hidden="true">→</span>
+        </a>
+
         <a class="tile" data-accent="yellow" href="/search/index.html">
           <p class="tile__kicker">Cross-reference</p>
           <h3 class="tile__title">Search &amp; Filters</h3>
@@ -2396,6 +2422,7 @@ ${essaysSection}
             <li><a href="/comics/index.html">Comic Database</a></li>
             <li><a href="/media/index.html">In the Media</a></li>
             <li><a href="/merchandise/index.html">Merchandise</a></li>
+            <li><a href="/news/index.html">News &amp; Articles</a></li>
             <li><a href="/search/index.html">Search</a></li>
           </ul>
         </div>
@@ -2529,7 +2556,7 @@ function renderTimeline(releases, publications, screenMedia) {
 // relative to /search/index.html (one level deep) so they resolve correctly
 // wherever the site is mounted — matching the relativize() philosophy, which
 // can't reach a JSON file or a fetch() inside a static script.
-function buildSearchIndex(characters, releases, publications, screenMedia, merchandise, creators) {
+function buildSearchIndex(characters, releases, publications, screenMedia, merchandise, creators, articles = []) {
   const kw = (...parts) => parts.flat().filter(Boolean).join(' ').toLowerCase();
   const idx = [];
 
@@ -2576,6 +2603,14 @@ function buildSearchIndex(characters, releases, publications, screenMedia, merch
       k: 'Creator', y: '', m: kw(cr.role, cr.roles),
     });
   }
+  for (const a of articles) {
+    idx.push({
+      t: a.title, u: `../news/${a.slug}.html`, g: 'article',
+      k: ARTICLE_KIND_LABELS[a.kind] ?? titleCase((a.kind ?? 'article').replaceAll('_', ' ')),
+      y: new Date(a.published_at ?? Date.now()).getFullYear(),
+      m: kw(a.kind, a.dek, a.editors?.display_name),
+    });
+  }
   return idx;
 }
 
@@ -2585,7 +2620,7 @@ function renderSearch(indexCount) {
   const filters = [
     ['all', 'Everything'], ['character', 'Characters'], ['toy', 'Toys'],
     ['comic', 'Comics'], ['media', 'Media'], ['merch', 'Merchandise'],
-    ['creator', 'Creators'],
+    ['creator', 'Creators'], ['article', 'News'],
   ];
   const filterBtns = filters.map(([g, label], i) =>
     `<button type="button" class="search-filter${i === 0 ? ' is-active' : ''}" data-group="${g}">${esc(label)}</button>`
@@ -2617,7 +2652,8 @@ function renderSearch(indexCount) {
           <a href="/comics/index.html">Comics</a>,
           <a href="/media/index.html">Media</a>,
           <a href="/merchandise/index.html">Merchandise</a>,
-          <a href="/creators/index.html">Creators</a>.</p>
+          <a href="/creators/index.html">Creators</a>,
+          <a href="/news/index.html">News</a>.</p>
       </noscript>
     </div>
   </section>
@@ -2631,18 +2667,162 @@ function renderSearch(indexCount) {
   });
 }
 
+// ---- news & articles ----------------------------------------------------
+
+const ARTICLE_KIND_LABELS = { news: 'News', feature: 'Feature', guide: 'Guide' };
+const articleKind = (a) => ARTICLE_KIND_LABELS[a.kind] ?? titleCase((a.kind ?? 'article').replaceAll('_', ' '));
+
+const articleDate = (a) => new Date(a.published_at ?? a.created_at ?? Date.now())
+  .toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+const articleHero = (a) => mediaUrl(sortedMedia(a.media_articles)[0]);
+
+// The teaser used on cards and in meta tags: the authored dek if there is one,
+// else the opening of the body with its HTML stripped.
+const articleTeaser = (a, len = 160) =>
+  stripTags(a.dek || a.body || '').replace(/\s+/g, ' ').trim().slice(0, len);
+
+// One card in a feed. Reuses the existing `.essay` component (the homepage
+// "Longer reads" block), so the section needs no new CSS.
+function articleCard(a) {
+  const hero = articleHero(a) ?? PLACEHOLDER;
+  const alt = sortedMedia(a.media_articles)[0]?.alt_text ?? a.title;
+  const teaser = articleTeaser(a, 150);
+  const byline = a.editors?.display_name;
+  const foot = [articleDate(a), byline ? `By ${byline}` : null].filter(Boolean).join(' · ');
+  return `<article class="essay">
+          <img class="essay__photo" src="${esc(hero)}" alt="${esc(alt)}">
+          <p class="essay__kicker">${esc(articleKind(a))}</p>
+          <h3><a href="/news/${esc(a.slug)}.html">${esc(a.title)}</a></h3>
+          ${teaser ? `<p>${esc(teaser)}</p>` : ''}
+          <div class="essay__foot"><span>${esc(foot)}</span><span>Read →</span></div>
+        </article>`;
+}
+
+// The section index — a flat reverse-chronological feed. Deliberately NOT
+// grouped by kind the way the toy/comic indexes group by line/kind: for news,
+// recency is the organizing principle, and the kind reads off each card's
+// kicker anyway.
+function renderArticleIndex(articles) {
+  const feed = articles.length ? `
+  <section class="featured">
+    <div class="wrap">
+      <div class="featured__grid">
+        ${articles.map(articleCard).join('\n        ')}
+      </div>
+    </div>
+  </section>` : `
+  <section class="dossier-figures">
+    <div class="wrap">
+      <p class="media-empty">Nothing published yet. Write a post under <strong>News &amp; articles</strong> in the admin, set its published date, and rebuild.</p>
+    </div>
+  </section>`;
+
+  const description = 'News, features, and guides from the Archive84 desk — additions to the archive, research write-ups, and long reads on the Kenner and McFarlane Super Powers lines.';
+
+  const body = `
+  <section class="dossier-head">
+    <div class="wrap">
+${backAndCrumb([
+  { label: 'Home', href: '/index.html' },
+  { label: 'News' },
+])}
+
+      <div class="dossier-head__tags">
+        <span class="dossier-tag dossier-tag--red">Editorial</span>
+      </div>
+
+      <h1 class="dossier-title">News &amp; Articles</h1>
+      <p class="dossier-aliases">Additions to the archive, research write-ups, and long reads</p>
+    </div>
+  </section>
+${feed}`;
+
+  return pageShell({ title: 'News & Articles', description, ogImage: articles.length ? (articleHero(articles[0]) ?? PLACEHOLDER) : PLACEHOLDER, body });
+}
+
+function renderArticlePage(a, adj, related = '') {
+  const media = sortedMedia(a.media_articles);
+  const hero = mediaUrl(media[0]) ?? PLACEHOLDER;
+  const heroAlt = media[0]?.alt_text ?? a.title;
+  const byline = a.editors?.display_name;
+  const description = articleTeaser(a, 158) || `${a.title} — Archive84.`;
+
+  const heroBlock = `
+        <figure class="release-gallery-block">
+          <img src="${esc(hero)}" alt="${esc(heroAlt)}" loading="lazy">
+          ${media[0]?.credit ? `<figcaption>Photo: ${esc(media[0].credit)}</figcaption>` : ''}
+        </figure>`;
+
+  const bodyBlock = a.body ? `
+        <section class="dossier-about">
+          ${richText(a.body)}
+        </section>` : '';
+
+  const spec = specRows([
+    ['Kind', articleKind(a)],
+    ['Published', articleDate(a)],
+    ['By', byline],
+  ]);
+
+  const subtitle = [articleDate(a), byline ? `By ${byline}` : null].filter(Boolean).join(' · ');
+
+  const body = `
+  <section class="dossier-head">
+    <div class="wrap">
+${backAndCrumb([
+  { label: 'Home', href: '/index.html' },
+  { label: 'News', href: '/news/index.html' },
+  { label: a.title },
+])}
+
+      <div class="dossier-head__tags">
+        <span class="dossier-tag dossier-tag--red">${esc(articleKind(a))}</span>
+      </div>
+
+      <h1 class="dossier-title">${esc(a.title)}</h1>
+      ${subtitle ? `<p class="dossier-aliases">${esc(subtitle)}</p>` : ''}
+    </div>
+  </section>
+
+  <section class="dossier-body">
+    <div class="wrap dossier-body__grid">
+
+      <article class="dossier-lede">
+        ${a.dek ? `<p class="dek">${esc(a.dek)}</p>` : ''}
+${media.length ? heroBlock : ''}
+${bodyBlock}
+      </article>
+
+      <div class="dossier-sidebar">
+        <aside class="dossier-spec">
+          <p class="dek">Details</p>
+          <dl>
+            ${spec}
+          </dl>
+        </aside>
+${related}
+      </div>
+
+    </div>
+  </section>
+${pager('news', adj?.prev, adj?.next)}`;
+
+  return pageShell({ title: a.title, description, ogImage: hero, body });
+}
+
 // ---- main ---------------------------------------------------------------
 
-const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems, lineInfoById] = await Promise.all([
+const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems, lineInfoById, articles] = await Promise.all([
   fetchCharacters(), fetchReleases(), fetchPublicationsByCharacter(), fetchEnemiesByCharacter(),
   fetchCreatorsByCharacter(), fetchVariationsByRelease(), fetchScreenMedia(), fetchMerchandise(),
   rest(`publications?select=*,media_publications(is_primary,sort_order,${MEDIA_EMBED}),publication_creators(role,creators(name,slug)),publication_characters(characters(name,slug))&order=kind.asc,year.asc`).catch(() => []),
-  fetchCreators(), fetchRelatedItems(), fetchLineInfoById(),
+  fetchCreators(), fetchRelatedItems(), fetchLineInfoById(), fetchArticles(),
 ]);
 
 // Resolve curated related_items against the rows we just fetched. `relatedFor`
 // yields a ready-to-embed sidebar block (or '') for any source record.
-const resolveRelatedTarget = buildRelatedResolver({ characters, releases, publications: allPublications, screenMedia, creators, merchandise });
+const resolveRelatedTarget = buildRelatedResolver({ characters, releases, publications: allPublications, screenMedia, creators, merchandise, articles });
 const relatedFor = (type, id) => relatedSidebar(resolveRelated(relatedItems.get(`${type}:${id}`), resolveRelatedTarget));
 
 if (!characters.length && !releases.length && !screenMedia.length && !merchandise.length) {
@@ -2660,6 +2840,7 @@ await mkdir(join(root, 'comics'), { recursive: true });
 await mkdir(join(root, 'creators'), { recursive: true });
 await mkdir(join(root, 'timeline'), { recursive: true });
 await mkdir(join(root, 'search'), { recursive: true });
+await mkdir(join(root, 'news'), { recursive: true });
 
 const adjacent = (arr, i) => arr.length > 1
   ? { prev: arr[(i - 1 + arr.length) % arr.length], next: arr[(i + 1) % arr.length] }
@@ -2709,6 +2890,24 @@ for (const [i, sm] of screenMedia.entries()) {
   if (await writeIfChanged(join(root, 'media', `${sm.slug}.html`), html)) {
     written++;
     console.log(`built media/${sm.slug}.html`);
+  } else skipped++;
+}
+
+// News & articles — reverse-chronological index + one page per post.
+// `articles` holds only what RLS exposed to the anon key, so anything with a
+// future published_at is simply absent here and no page is written for it.
+{
+  const html = renderArticleIndex(articles);
+  if (await writeIfChanged(join(root, 'news', 'index.html'), html)) {
+    written++;
+    console.log('built news/index.html');
+  } else skipped++;
+}
+for (const [i, a] of articles.entries()) {
+  const html = renderArticlePage(a, adjacent(articles, i), relatedFor('article', a.id));
+  if (await writeIfChanged(join(root, 'news', `${a.slug}.html`), html)) {
+    written++;
+    console.log(`built news/${a.slug}.html`);
   } else skipped++;
 }
 
@@ -2774,7 +2973,7 @@ for (const [dir, html] of [
 
 // Search — client-side index (JSON) + the search page that queries it
 {
-  const index = buildSearchIndex(characters, releases, allPublications, screenMedia, merchandise, creators);
+  const index = buildSearchIndex(characters, releases, allPublications, screenMedia, merchandise, creators, articles);
   if (await writeIfChanged(join(root, 'search-index.json'), JSON.stringify(index))) {
     written++;
     console.log(`built search-index.json (${index.length} records)`);
@@ -2788,7 +2987,7 @@ for (const [dir, html] of [
 
 // Home page — generated from live data (hero, latest additions, stats, reads)
 {
-  const html = renderHome(characters, releases, screenMedia, merchandise, allPublications.length);
+  const html = renderHome(characters, releases, screenMedia, merchandise, allPublications.length, articles);
   if (await writeIfChanged(join(root, 'index.html'), html)) {
     written++;
     console.log('built index.html');
