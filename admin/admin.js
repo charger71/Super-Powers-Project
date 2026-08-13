@@ -11,6 +11,19 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const publicUrl = (path) => `${SUPABASE_URL}/storage/v1/object/public/media/${path}`;
 
+// "now" as an ISO-8601 string carrying the browser's own UTC offset, e.g.
+// 2026-08-13T21:30-07:00. Postgres parses the offset, so a timestamptz lands on
+// the instant the author meant — typing bare local time into a UTC session would
+// silently shift the publish time by the offset.
+function localTimestamp(d = new Date()) {
+  const pad = (n) => String(Math.floor(Math.abs(n))).padStart(2, '0');
+  const off = -d.getTimezoneOffset();                  // minutes east of UTC
+  const sign = off >= 0 ? '+' : '-';
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    + `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    + `${sign}${pad(off / 60)}:${pad(off % 60)}`;
+}
+
 // ---- controlled vocab ---------------------------------------------------
 // Every controlled vocabulary is now an editable lookup table (see the
 // VOCAB_TABLES block below and migration 20260727000000). There are no
@@ -292,9 +305,16 @@ const ENTITIES = {
         fkCols: 'id, display_name, slug', fkOrder: 'display_name',
         fkLabel: (e) => `${e.display_name} · ${e.slug}` },
       // Future timestamp = scheduled: RLS hides it from the anon key until then,
-      // so it stays out of the public site AND the pre-rendered build. Blank on a
-      // new record means "now" (the column defaults to now()).
-      { col: 'published_at', label: 'Published (YYYY-MM-DD HH:MM — a future time schedules it)', kind: 'text' },
+      // so it stays out of the public site AND the pre-rendered build.
+      //
+      // Prefilled with "now" and required, rather than left blank to inherit the
+      // column default: an empty text field is submitted as an explicit null
+      // (see buildPayload), and an explicit null violates NOT NULL — a column
+      // default only applies when the key is absent entirely. Prefilling carries
+      // the browser's UTC offset so the time you type is the time you meant,
+      // whatever timezone the database session is in.
+      { col: 'published_at', label: 'Published (a future time schedules it)', kind: 'text',
+        required: true, initial: () => localTimestamp() },
       { col: 'body',         label: 'Body',         kind: 'rich' },
     ],
   },
@@ -1950,7 +1970,10 @@ async function openDrawer(row) {
   }
 
   const fields = await Promise.all(def.fields.map(async (f) => {
-    const value = row ? row[f.col] : (f.initial ?? null);
+    // `initial` may be a function for values that depend on when the record is
+    // created (a timestamp), not just static defaults like 'US' or 'en'.
+    const initial = typeof f.initial === 'function' ? f.initial() : f.initial;
+    const value = row ? row[f.col] : (initial ?? null);
 
     // Rich fields must NOT sit inside a <label>: a label forwards clicks to its
     // first labelable descendant — here the Bold button — so clicking anywhere
