@@ -1,7 +1,8 @@
-// Archive84 admin — auth + CRUD for characters, releases, and media.
+// Archive84 admin — auth + CRUD for every content table.
 // Lean by design (see CLAUDE.md): generic form renderer driven by the
-// entity definitions below, so adding the remaining entities is config,
-// not new code.
+// entity definitions below, so adding an entity is config, not new code.
+// (Occasionally a join table predating the generic link editor needs a
+// sort_order column added first — see the artwork migration.)
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
@@ -274,6 +275,34 @@ const ENTITIES = {
       { col: 'description',  label: 'Description',   kind: 'rich' },
     ],
   },
+  artwork: {
+    label: 'Artwork',
+    table: 'artwork',
+    titleCol: 'title',
+    orderBy: { col: 'title', ascending: true },
+    listCols: ['title', 'slug', 'type', 'year'],
+    // No relatedType: 'artwork' is not in entity_types, so it can be neither
+    // source nor target of a curated "Related" link yet. Add the entity_types
+    // row first if artwork ever gets public pages.
+    linkJoins: [
+      // who drew it, and who it depicts — the two questions every style guide
+      // page and card-art scan needs answered
+      { label: 'Creators', table: 'artwork_creators', fk: 'artwork_id', targetFk: 'creator_id', targetTable: 'creators' },
+      { label: 'Characters (depicted)', table: 'artwork_characters', fk: 'artwork_id', targetFk: 'character_id', targetTable: 'characters' },
+    ],
+    fields: [
+      { col: 'title',       label: 'Title',       kind: 'text', required: true },
+      { col: 'slug',        label: 'Slug',        kind: 'slug', required: true },
+      { col: 'type',        label: 'Type',        kind: 'lookup', table: 'artwork_types', required: true },
+      { col: 'year',        label: 'Year',        kind: 'number' },
+      { col: 'description', label: 'Description', kind: 'rich' },
+      // the scan/photo itself — one asset, like interviews. Attribution lives on
+      // the asset (credit/rights/alt captured at upload in the Media tab).
+      { col: 'media_id',    label: 'Image (media asset)', kind: 'fk', table: 'media_assets',
+        fkCols: 'id, caption, alt_text, credit', fkOrder: 'created_at',
+        fkLabel: (m) => `${m.caption || m.alt_text || 'untitled'} · ${m.credit}` },
+    ],
+  },
   creators: {
     label: 'Creators',
     table: 'creators',
@@ -469,12 +498,12 @@ $('logout').addEventListener('click', () => db.auth.signOut());
 db.auth.onAuthStateChange(() => refreshAuth());
 
 // ---- menu (grouped dropdown in the header bar) --------------------------
-// Groups the 13 entities so daily-use content sits apart from the rarely
+// Groups the 14 entities so daily-use content sits apart from the rarely
 // touched lookup tables. Keys must match ENTITIES; any entity left out of a
 // group would simply not appear, so keep this in sync when adding tables.
 const MENU_GROUPS = [
   { label: 'Content',      keys: ['characters', 'releases', 'variations'] },
-  { label: 'Media',        keys: ['publications', 'screen_media', 'interviews', 'merchandise', 'creators', 'media'] },
+  { label: 'Media',        keys: ['publications', 'screen_media', 'interviews', 'merchandise', 'artwork', 'creators', 'media'] },
   { label: 'Structure',    keys: ['lines', 'series', 'teams'] },
   { label: 'Vocabularies', keys: ['statuses', 'alignments', 'release_types', 'rarity_levels', 'variation_types',
                                   'media_types', 'rights_statuses', 'artwork_types', 'publication_kinds',
