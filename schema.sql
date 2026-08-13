@@ -501,8 +501,19 @@ create table merchandise (
 create table merchandise_characters (
   merchandise_id uuid references merchandise(id) on delete cascade,
   character_id   uuid references characters(id)  on delete cascade,
+  sort_order     int default 0,                   -- editorial order in the admin's link editor
   primary key (merchandise_id, character_id)
 );
+-- merchandise attaches photos like every other content type; images still flow
+-- through media_assets so credit/rights/alt are captured at upload.
+create table media_merchandise (
+  media_id       uuid references media_assets(id) on delete cascade,
+  merchandise_id uuid references merchandise(id)  on delete cascade,
+  sort_order     smallint default 0,
+  is_primary     boolean default false,           -- hero image
+  primary key (media_id, merchandise_id)
+);
+create index media_merchandise_merch_idx on media_merchandise (merchandise_id);
 
 -- ============================================================
 -- Curated "Related items" — a hand-curated, cross-type "see also"
@@ -580,7 +591,7 @@ begin
     'media_assets','media_releases','media_characters','media_creators','media_variations','media_lines',
     'artwork','artwork_creators','artwork_characters',
     'publications','media_publications','publication_creators','publication_characters',
-    'screen_media','interviews','merchandise','merchandise_characters',
+    'screen_media','interviews','merchandise','merchandise_characters','media_merchandise',
     'alignments','release_types','rarity_levels','variation_types','media_types','rights_statuses',
     'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories',
     'entity_types','related_items'
