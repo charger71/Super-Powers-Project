@@ -243,9 +243,29 @@ The build order from `CLAUDE.md` is the authoritative "when"; this doc is the
   columns each, verified by diffing two real databases. Any future difference is
   a genuine regression, which makes the reference file checkable again.
 
-  General lesson worth remembering: **any migration that adds a column to
-  `releases` must also recreate `release_full`**, or the view silently falls
-  behind again.
+- **Schema drift check (built 2026-08-13)** — `build/check-schema.sh` +
+  `npm run check:schema`, wired to CI as `.github/workflows/schema-check.yml`
+  (Postgres 16 service, runs only when `schema.sql` or `supabase/migrations/**`
+  change). Both drift modes are silent, which is the whole problem: schema.sql
+  lost an entire table without anyone noticing, and `release_full` lost two
+  columns with no error or warning. The only thing that catches either is
+  running them and comparing.
+
+  The script applies every migration to one scratch database and `schema.sql` to
+  another, then fails on any difference. It catches three things:
+  1. a migration that does not apply,
+  2. `schema.sql` disagreeing with the migrations (either direction),
+  3. a **view behind its table** — generalized from `release_full`, since
+     `select *` freezes at CREATE VIEW time. Add future view/table pairs to the
+     `values ('release_full','releases')` list.
+
+  Each failure prints the specific columns and the fix. Verified by
+  reintroducing all three bugs and confirming it fails on each, then passes once
+  restored — a check nobody has watched fail is not known to work.
+
+  This is what replaces "remember to recreate the view": **any migration adding
+  a column to `releases` must also recreate `release_full`**, and now CI says so
+  instead of a comment hoping someone reads it.
 
 ## Character Dossier — additional sections to build
 

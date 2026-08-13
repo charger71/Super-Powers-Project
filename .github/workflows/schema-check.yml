@@ -1,0 +1,65 @@
+name: Schema check
+
+# Proves schema.sql and supabase/migrations/ still describe the same database,
+# and that no view has fallen behind its table.
+#
+# This exists because both failure modes are silent. schema.sql drifted far
+# enough to lose an entire table (media_merchandise) without anyone noticing,
+# and release_full quietly lost two columns because Postgres freezes `select *`
+# at CREATE VIEW time — no error, no warning, just a view that is wrong. The
+# only thing that catches either is running them and comparing, so: run them.
+#
+# Runs only when the schema actually changes; it needs a database, not the site.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'schema.sql'
+      - 'supabase/migrations/**'
+      - 'build/check-schema.sh'
+      - '.github/workflows/schema-check.yml'
+  pull_request:
+    paths:
+      - 'schema.sql'
+      - 'supabase/migrations/**'
+      - 'build/check-schema.sh'
+      - '.github/workflows/schema-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+
+    # Matches the Postgres major version Supabase runs, so `select *` expansion,
+    # RLS, and information_schema behave the same way they do in production.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Check for schema drift
+        run: ./build/check-schema.sh

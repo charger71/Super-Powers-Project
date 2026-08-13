@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build/build-dossiers.mjs"
+    "build": "node build/build-dossiers.mjs",
+    "check:schema": "./build/check-schema.sh"
   }
 }
