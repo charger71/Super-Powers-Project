@@ -327,6 +327,7 @@ create table media_assets (
   id             uuid primary key default gen_random_uuid(),
   type           text not null references media_types(slug) on update cascade on delete restrict,
   storage_path   text,                         -- Supabase Storage object path (photos/scans)
+  original_path  text,                         -- pre-crop file; set once on first crop, null = never cropped
   embed_url      text,                         -- YouTube/Vimeo (video)
   poster_path    text,                         -- video thumbnail
   width          int,
