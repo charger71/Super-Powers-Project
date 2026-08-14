@@ -45,6 +45,52 @@
       <table class="list" id="list"></table>
     </section>
 
+    <!-- USERS — own account for everyone, co-author admin for admins -->
+    <section class="panel" id="users-panel" hidden>
+      <h2 class="panel__title">Users</h2>
+
+      <p class="users__recovery" id="users-recovery" hidden>
+        Recovery link accepted — set a new password below.
+      </p>
+
+      <div class="users__block">
+        <h3>My account <span class="users__role" id="my-role"></span></h3>
+        <form class="users__form" id="account-email-form">
+          <label>Email
+            <input type="email" id="account-email" autocomplete="email" required>
+          </label>
+          <button type="submit">Change email</button>
+          <span class="users__hint">A confirmation link goes to the new address; the change lands when it's clicked.</span>
+        </form>
+        <form class="users__form" id="account-password-form">
+          <label>New password
+            <input type="password" id="account-password" autocomplete="new-password" minlength="8" required>
+          </label>
+          <button type="submit">Change password</button>
+          <span class="users__hint">At least 8 characters.</span>
+        </form>
+        <p class="users__status" id="account-status"></p>
+      </div>
+
+      <div class="users__block" id="coauthors-block" hidden>
+        <h3>Co-authors</h3>
+        <form class="users__form" id="invite-form">
+          <label>Invite by email
+            <input type="email" id="invite-email" required>
+          </label>
+          <button type="submit">Send invite</button>
+          <span class="users__hint">They get a link to set their own password, and start as an editor.</span>
+        </form>
+        <table class="list" id="users-list"></table>
+        <p class="users__status" id="users-status"></p>
+      </div>
+
+      <p class="users__note" id="users-editor-note" hidden>
+        Only admins can change another co-author's email or password. Ask an admin
+        if you need someone added or reset.
+      </p>
+    </section>
+
     <!-- BULK MEDIA UPLOAD -->
     <section class="editor" id="bulk-panel" hidden>
       <div class="editor__head">

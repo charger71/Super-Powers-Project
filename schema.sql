@@ -608,6 +608,40 @@ create table related_items (
 create index on related_items (source_type, source_id);
 
 -- ============================================================
+-- Accounts & access levels
+-- Every table above is "trust everyone" — any co-author writes anything.
+-- CREDENTIALS are the exception: user_roles says who may change another
+-- co-author's email or password, invite someone, or delete an account.
+-- Enforced by the admin-users Edge Function — the only holder of the
+-- service_role key — which re-checks this table on every call.
+-- ============================================================
+create table user_roles (
+  user_id     uuid primary key references auth.users(id) on delete cascade,
+  role        text not null default 'editor' check (role in ('admin', 'editor')),
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+
+-- named to match the migration rather than the trg_%s_updated loop below
+create trigger set_updated_at before update on user_roles
+  for each row execute function set_updated_at();
+
+-- New accounts (invited from the admin or created in the Supabase dashboard)
+-- land as 'editor'. An admin promotes them from Admin ▸ Account ▸ Users.
+-- The live database also carries a one-time seed setting the project owner to
+-- 'admin' — a bootstrap, not part of the schema; see the user_roles migration.
+create or replace function handle_new_user_role()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.user_roles (user_id) values (new.id)
+  on conflict (user_id) do nothing;
+  return new;
+end $$;
+
+create trigger on_auth_user_created after insert on auth.users
+  for each row execute function handle_new_user_role();
+
+-- ============================================================
 -- updated_at triggers
 -- ============================================================
 do $$
@@ -671,6 +705,16 @@ create policy "public read published" on articles
   for select to anon using (published_at <= now());
 create policy "authors write" on articles
   for all to authenticated using (true) with check (true);
+
+-- `user_roles` is the other hold-out, for the opposite reason: it gets NO write
+-- policy at all. A blanket "authors write" would let any co-author promote
+-- themselves to admin with the publishable key, which is the whole thing this
+-- table exists to prevent. Co-authors may read it (the admin needs its own
+-- level to decide what to render); roles change only through the admin-users
+-- Edge Function's service_role client, which bypasses RLS by design.
+alter table user_roles enable row level security;
+create policy "authors read roles" on user_roles
+  for select to authenticated using (true);
 
 -- ============================================================
 -- Storage: one public bucket for media uploads

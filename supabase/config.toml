@@ -385,6 +385,12 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# The admin's Users panel. verify_jwt stays on (the default): the function only
+# ever acts for a signed-in admin, and it re-checks user_roles itself.
+[functions.admin-users]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

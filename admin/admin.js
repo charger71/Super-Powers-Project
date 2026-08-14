@@ -9,6 +9,11 @@ import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
 
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Read before supabase-js consumes (and clears) the auth hash: an invite or
+// password-reset link arrives as #access_token=…&type=invite|recovery, and the
+// Users panel uses it to prompt for a new password on arrival.
+const INITIAL_AUTH_TYPE = new URLSearchParams(location.hash.slice(1)).get('type');
+
 const publicUrl = (path) => `${SUPABASE_URL}/storage/v1/object/public/media/${path}`;
 
 // "now" as an ISO-8601 string carrying the browser's own UTC offset, e.g.
@@ -456,7 +461,10 @@ for (const [table, label] of Object.entries(VOCAB_TABLES)) {
 }
 
 // ---- state --------------------------------------------------------------
-const state = { entity: 'characters', rows: [], editing: null, sort: null };
+// `view` is 'entity' (a table's list/editor) or 'users' (the account panel,
+// which is not backed by an ENTITIES definition). `role` is this signed-in
+// account's level — 'admin' or 'editor'; see the user_roles migration.
+const state = { entity: 'characters', rows: [], editing: null, sort: null, view: 'entity', role: 'editor' };
 
 const $ = (id) => document.getElementById(id);
 
@@ -479,6 +487,7 @@ function setHash(h) {
 
 function parseHash() {
   const [entity, recordId] = decodeURIComponent(location.hash.slice(1)).split('/');
+  if (entity === 'users') return { entity: 'users', recordId: null };
   return { entity: ENTITIES[entity] ? entity : null, recordId: recordId || null };
 }
 
@@ -486,6 +495,8 @@ function parseHash() {
 // record if one is named. Used on first authed load and on external hash edits.
 async function applyRoute() {
   const { entity, recordId } = parseHash();
+  if (entity === 'users') { showUsers(); return; }
+  hideUsers();
   if (entity) state.entity = entity;
   renderMenu();
   await loadList();
@@ -516,9 +527,21 @@ async function refreshAuth() {
   // events (token refresh) must NOT reopen/reset an editor you're using, so
   // they just refresh the list data underneath.
   if (session) {
+    await loadMyRole();
     if (!routed) { routed = true; applyRoute(); }
-    else loadList();
+    else if (state.view !== 'users') loadList();
   }
+}
+
+// This account's level, read straight from user_roles (every co-author may
+// select it). Only decides what the UI offers — the Edge Function re-checks it
+// before touching anyone's credentials.
+async function loadMyRole() {
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) { state.role = 'editor'; return; }
+  const { data } = await db.from('user_roles')
+    .select('role').eq('user_id', user.id).maybeSingle();
+  state.role = data?.role ?? 'editor';
 }
 
 // ---- rebuild (local dev server only — see build/serve.mjs) --------------
@@ -554,7 +577,20 @@ $('login-form').addEventListener('submit', async (e) => {
 });
 
 $('logout').addEventListener('click', () => db.auth.signOut());
-db.auth.onAuthStateChange(() => refreshAuth());
+
+// A reset or invite link lands here as #access_token=…&type=recovery|invite.
+// supabase-js consumes the hash and signs the session in; both cases mean "this
+// person needs to set a password", so drop them straight on the Users panel.
+db.auth.onAuthStateChange((event) => {
+  refreshAuth();
+  if (event === 'PASSWORD_RECOVERY' || INITIAL_AUTH_TYPE === 'invite') {
+    routed = true;                  // don't let applyRoute route away from it
+    $('users-recovery').hidden = false;
+    setHash('users');
+    showUsers();
+    $('account-password').focus();
+  }
+});
 
 // ---- menu (grouped dropdown in the header bar) --------------------------
 // Groups the 16 entities so daily-use content sits apart from the rarely
@@ -569,20 +605,31 @@ const MENU_GROUPS = [
                                   'media_types', 'rights_statuses', 'artwork_types', 'publication_kinds',
                                   'screen_media_kinds', 'interview_formats', 'merchandise_categories',
                                   'article_kinds'] },
+  { label: 'Account',      keys: ['users'] },
 ];
+
+// Menu entries that aren't ENTITIES rows — their own panel, not the generic
+// list/editor. Keyed the same way so MENU_GROUPS stays one flat list.
+//
+// Account ▸ Users is sign-in ACCOUNTS (auth.users + user_roles). Not to be
+// confused with Editorial ▸ Editors, which is byline identities with no auth
+// linkage at all — and note the near-collision: an account's role is 'editor',
+// which has nothing to do with a row in the `editors` table.
+const MENU_VIEWS = { users: 'Users' };
 
 // One dropdown per group, laid out as a menubar in the header. The group
 // holding the current entity is marked .is-current; the current entity itself
 // is .active inside its panel.
 function renderMenu() {
   const bar = $('menu');
+  const current = state.view === 'users' ? 'users' : state.entity;
   bar.replaceChildren(...MENU_GROUPS.map((group) => {
     const wrap = document.createElement('div');
     wrap.className = 'menu';
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'menu__button' + (group.keys.includes(state.entity) ? ' is-current' : '');
+    btn.className = 'menu__button' + (group.keys.includes(current) ? ' is-current' : '');
     btn.setAttribute('aria-haspopup', 'true');
     btn.setAttribute('aria-expanded', 'false');
     const caret = document.createElement('span');
@@ -598,16 +645,23 @@ function renderMenu() {
     panel.setAttribute('role', 'menu');
     panel.hidden = true;
     for (const key of group.keys) {
-      const def = ENTITIES[key];
-      if (!def) continue;
+      const label = ENTITIES[key]?.label ?? MENU_VIEWS[key];
+      if (!label) continue;
       const item = document.createElement('button');
       item.type = 'button';
-      item.className = 'menu__item' + (key === state.entity ? ' active' : '');
+      item.className = 'menu__item' + (key === current ? ' active' : '');
       item.setAttribute('role', 'menuitem');
-      item.textContent = def.label;
+      item.textContent = label;
       item.addEventListener('click', () => {
         closeMenus();
-        if (key === state.entity) return;
+        if (key === current) return;
+        if (MENU_VIEWS[key]) {         // panel view (Users) — no entity list
+          closeDrawer();
+          setHash(key);
+          showUsers();
+          return;
+        }
+        hideUsers();
         state.entity = key;
         closeDrawer();
         setHash(state.entity);  // record the new entity's list in the URL
@@ -638,6 +692,268 @@ function closeMenus() {
 // click-away and Escape close whichever dropdown is open
 document.addEventListener('click', (e) => { if (!$('menu').contains(e.target)) closeMenus(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+
+// ---- users (Account ▸ Users) --------------------------------------------
+// Two levels, per the user_roles migration:
+//   editor — their own email + password, nothing else
+//   admin  — the above, plus every co-author's email, password, role, invites
+//            and deletion
+// Own-account changes go straight through supabase-js on the publishable key
+// (auth.updateUser only ever touches the caller). Everything cross-user goes to
+// the admin-users Edge Function, which holds the service_role key and re-checks
+// the caller's role — hiding the panel here is convenience, not the control.
+
+// Call the Edge Function with the current session's JWT. Errors come back as
+// { error } with a readable message; anything else is surfaced as-is.
+async function adminUsersFn(action, payload = {}) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) throw new Error('Session expired — sign in again.');
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+  return body;
+}
+
+// Where Supabase should send invite / password-reset links back to: this admin,
+// with no hash (the token arrives as one).
+const adminUrl = () => location.href.split('#')[0];
+
+function setStatus(id, message, isError = false) {
+  const el = $(id);
+  el.textContent = message;
+  el.classList.toggle('is-error', isError);
+  if (message && !isError) setTimeout(() => { if (el.textContent === message) el.textContent = ''; }, 6000);
+}
+
+function showUsers() {
+  state.view = 'users';
+  $('drawer').hidden = true;
+  state.editing = null;
+  if (!$('bulk-panel').hidden) closeBulk();
+  $('list-panel').hidden = true;
+  $('users-panel').hidden = false;
+  renderMenu();
+  loadUsers();
+}
+
+function hideUsers() {
+  if (state.view !== 'users') return;
+  state.view = 'entity';
+  $('users-panel').hidden = true;
+  $('list-panel').hidden = false;
+}
+
+async function loadUsers() {
+  const { data: { user } } = await db.auth.getUser();
+  $('account-email').value = user?.email ?? '';
+  $('account-password').value = '';
+  $('my-role').textContent = state.role;
+
+  const isAdmin = state.role === 'admin';
+  $('coauthors-block').hidden = !isAdmin;
+  $('users-editor-note').hidden = isAdmin;
+  if (!isAdmin) return;
+
+  try {
+    const { users } = await adminUsersFn('list');
+    renderUsersList(users);
+  } catch (err) {
+    $('users-list').replaceChildren();
+    setStatus('users-status', `Couldn't load co-authors: ${err.message}`, true);
+  }
+}
+
+const signInLabel = (iso) => iso
+  ? new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  : 'never';
+
+function renderUsersList(users) {
+  const table = $('users-list');
+  const head = document.createElement('tr');
+  for (const label of ['Email', 'Role', 'Last sign-in', '']) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    head.append(th);
+  }
+  const rows = [head];
+
+  for (const u of users) {
+    const tr = document.createElement('tr');
+
+    const email = document.createElement('td');
+    email.textContent = u.email + (u.is_self ? ' (you)' : '');
+    if (!u.confirmed) {
+      const pending = document.createElement('span');
+      pending.className = 'users__pending';
+      pending.textContent = 'invite pending';
+      email.append(' ', pending);
+    }
+
+    const role = document.createElement('td');
+    const roleSel = document.createElement('select');
+    for (const value of ['admin', 'editor']) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = value;
+      opt.selected = value === u.role;
+      roleSel.append(opt);
+    }
+    roleSel.addEventListener('change', async () => {
+      try {
+        await adminUsersFn('set_role', { user_id: u.id, role: roleSel.value });
+        setStatus('users-status', `${u.email} is now ${roleSel.value}.`);
+        if (u.is_self) { await loadMyRole(); }
+        loadUsers();
+      } catch (err) {
+        roleSel.value = u.role;                     // server refused — put it back
+        setStatus('users-status', err.message, true);
+      }
+    });
+    role.append(roleSel);
+
+    const seen = document.createElement('td');
+    seen.textContent = signInLabel(u.last_sign_in_at);
+
+    const actions = document.createElement('td');
+    actions.className = 'users__actions';
+    actions.append(
+      userActionButton('Change email', () => openUserForm(tr, u, 'email')),
+      userActionButton('Set password', () => openUserForm(tr, u, 'password')),
+      userActionButton('Send reset', () => sendReset(u.email)),
+      userActionButton('Delete', () => deleteUser(u), 'danger'),
+    );
+
+    tr.append(email, role, seen, actions);
+    rows.push(tr);
+  }
+
+  table.replaceChildren(...rows);
+}
+
+function userActionButton(label, onClick, className = '') {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = className;
+  btn.textContent = label;
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+// Inline editor row beneath the co-author being changed — one at a time, so the
+// table never turns into a wall of open inputs.
+function openUserForm(tr, user, kind) {
+  for (const open of $('users-list').querySelectorAll('.users__editrow')) open.remove();
+
+  const row = document.createElement('tr');
+  row.className = 'users__editrow';
+  const cell = document.createElement('td');
+  cell.colSpan = 4;
+
+  const form = document.createElement('form');
+  form.className = 'users__form';
+
+  const label = document.createElement('label');
+  label.textContent = kind === 'email' ? `New email for ${user.email}` : `New password for ${user.email}`;
+  const input = document.createElement('input');
+  input.type = kind === 'email' ? 'email' : 'password';
+  input.required = true;
+  input.autocomplete = kind === 'email' ? 'off' : 'new-password';
+  if (kind === 'email') input.value = user.email;
+  else input.minLength = 8;
+  label.append(input);
+
+  const save = document.createElement('button');
+  save.type = 'submit';
+  save.textContent = 'Save';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', () => row.remove());
+
+  form.append(label, save, cancel);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    save.disabled = true;
+    try {
+      if (kind === 'email') {
+        await adminUsersFn('set_email', { user_id: user.id, email: input.value.trim() });
+        setStatus('users-status', `Email changed to ${input.value.trim()}.`);
+      } else {
+        await adminUsersFn('set_password', { user_id: user.id, password: input.value });
+        setStatus('users-status', `Password set for ${user.email}. Tell them out of band.`);
+      }
+      row.remove();
+      loadUsers();
+    } catch (err) {
+      setStatus('users-status', err.message, true);
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  cell.append(form);
+  row.append(cell);
+  tr.after(row);
+  input.focus();
+}
+
+// Password-reset mail needs no admin rights — it only ever sends a link to the
+// address itself — so it goes direct rather than through the Edge Function.
+async function sendReset(email) {
+  const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: adminUrl() });
+  setStatus('users-status', error ? error.message : `Reset link sent to ${email}.`, !!error);
+}
+
+async function deleteUser(user) {
+  if (!confirm(`Delete ${user.email}? Their account is removed for good. Content they entered stays.`)) return;
+  try {
+    await adminUsersFn('delete', { user_id: user.id });
+    setStatus('users-status', `${user.email} deleted.`);
+    loadUsers();
+  } catch (err) {
+    setStatus('users-status', err.message, true);
+  }
+}
+
+// --- own account (any signed-in co-author) --------------------------------
+
+$('account-email-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = $('account-email').value.trim();
+  const { error } = await db.auth.updateUser({ email });
+  setStatus('account-status', error ? error.message : `Confirmation link sent to ${email}.`, !!error);
+});
+
+$('account-password-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const { error } = await db.auth.updateUser({ password: $('account-password').value });
+  if (!error) {
+    $('account-password').value = '';
+    $('users-recovery').hidden = true;
+  }
+  setStatus('account-status', error ? error.message : 'Password changed.', !!error);
+});
+
+$('invite-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = $('invite-email').value.trim();
+  try {
+    await adminUsersFn('invite', { email, redirect_to: adminUrl() });
+    $('invite-email').value = '';
+    setStatus('users-status', `Invite sent to ${email}. They start as an editor.`);
+    loadUsers();
+  } catch (err) {
+    setStatus('users-status', err.message, true);
+  }
+});
 
 // ---- list ---------------------------------------------------------------
 async function loadList() {
