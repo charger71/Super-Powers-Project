@@ -648,3 +648,127 @@ input.invalid { border-color: var(--danger); }
 .rte-img-dialog__actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
 .rte-img-dialog__actions button { width: auto; }
 .rte-img-dialog__actions .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* image cropper -----------------------------------------------------------
+   The shaded surround is the crop box's own giant box-shadow (clipped by the
+   stage) rather than four separate overlay elements — one element to keep in
+   sync with the geometry instead of five. */
+.cropper {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 1rem;
+  max-width: min(92vw, 900px);
+  background: var(--paper);
+}
+.cropper::backdrop { background: rgba(0, 0, 0, 0.55); }
+
+.cropper__stage {
+  position: relative;
+  overflow: hidden;
+  line-height: 0;
+  /* The crop box is positioned in percentages, and percentages resolve against
+     this element — so it has to hug the image exactly. Left at full width, a
+     letterboxed image would put "100%" wider than the picture itself. */
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  /* a checkerboard, so a transparent PNG reads as transparent and not as white */
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #e9e9ef 25%, transparent 25%, transparent 75%, #e9e9ef 75%),
+    linear-gradient(45deg, #e9e9ef 25%, transparent 25%, transparent 75%, #e9e9ef 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+  touch-action: none; /* pointer drags must not scroll the dialog */
+}
+.cropper__img {
+  display: block;
+  max-width: 100%;
+  max-height: 65vh;
+  margin: 0 auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.cropper__box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid #fff;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+  cursor: move;
+}
+/* rule-of-thirds guides */
+.cropper__box::before,
+.cropper__box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+}
+.cropper__box::before {
+  border-left: 1px solid #fff;
+  border-right: 1px solid #fff;
+  margin: 0 33.333%;
+}
+.cropper__box::after {
+  border-top: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+  margin: 33.333% 0;
+}
+
+.cropper__handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+}
+.cropper__handle--nw { top: -6px; left: -6px; cursor: nwse-resize; }
+.cropper__handle--n  { top: -6px; left: 50%; margin-left: -6px; cursor: ns-resize; }
+.cropper__handle--ne { top: -6px; right: -6px; cursor: nesw-resize; }
+.cropper__handle--w  { top: 50%; left: -6px; margin-top: -6px; cursor: ew-resize; }
+.cropper__handle--e  { top: 50%; right: -6px; margin-top: -6px; cursor: ew-resize; }
+.cropper__handle--sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+.cropper__handle--s  { bottom: -6px; left: 50%; margin-left: -6px; cursor: ns-resize; }
+.cropper__handle--se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+
+/* under an aspect lock only the corners stay live — see cropper.js */
+.cropper__box--locked .cropper__handle--n,
+.cropper__box--locked .cropper__handle--s,
+.cropper__box--locked .cropper__handle--w,
+.cropper__box--locked .cropper__handle--e { display: none; }
+
+.cropper__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+.cropper__bar button { width: auto; }
+.cropper__bar .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.cropper__field {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--ink-mid);
+}
+.cropper__aspect { width: auto; }
+.cropper__dims {
+  font-size: 0.8rem;
+  color: var(--ink-mid);
+  font-variant-numeric: tabular-nums;
+  margin-right: auto; /* pushes the buttons to the right edge */
+}
+
+/* crop / revert row under the drawer preview */
+.drawer__imgtools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.drawer__imgtools button { width: auto; }
+.drawer__imgtools .hint { font-size: 0.78rem; color: var(--ink-mid); margin: 0; }

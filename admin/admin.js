@@ -6,6 +6,7 @@
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
+import { cropImage, imageSize, isCroppable } from './cropper.js';
 
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -2263,6 +2264,108 @@ const VIEW_DIRS = {
   articles:     'news',
 };
 
+// ---- crop --------------------------------------------------------------
+// Cropping writes a new object and repoints the row at it, so every existing
+// attachment, credit and related link survives untouched — same reasoning as
+// replacing a file in place. The file the asset started with is remembered in
+// original_path, so a crop is always undoable and a re-crop always starts from
+// the full original instead of stacking one lossy crop on the last.
+
+const fileBase = (path) => path.split('/').pop().replace(/\.[^.]+$/, '');
+
+// A row's crop derivative, if it has one — i.e. a stored file that is safe to
+// delete because it is NOT the original. Null once we'd be deleting the last
+// full-resolution copy.
+const supersededFile = (row) =>
+  row.original_path && row.storage_path !== row.original_path ? row.storage_path : null;
+
+async function applyCrop(row) {
+  const result = await cropImage(publicUrl(row.storage_path), { fileName: fileBase(row.storage_path) });
+  if (!result) return; // dismissed
+
+  $('form-status').textContent = 'Cropping…';
+  // uploadFile keys its object name off file.name, so wrap the blob in a File
+  const file = new File([result.blob], result.name, { type: result.blob.type });
+  const { path } = await uploadFile(file);
+  const stale = supersededFile(row);
+
+  const { data, error } = await db.from('media_assets').update({
+    storage_path: path,
+    width: result.width,
+    height: result.height,
+    // set once: the first crop records the original, later crops leave it be
+    original_path: row.original_path ?? row.storage_path,
+  }).eq('id', row.id).select().single();
+  if (error) throw new Error(error.message);
+
+  if (stale && stale !== path) await db.storage.from('media').remove([stale]);
+
+  state.editing = data;
+  loadList();
+  await openDrawer(data);
+  $('form-status').textContent = `Cropped to ${result.width} × ${result.height}.`;
+}
+
+async function revertCrop(row) {
+  if (!confirm('Restore the original, uncropped file? The cropped version is deleted.')) return;
+  $('form-status').textContent = 'Restoring…';
+  const original = row.original_path;
+  const { width, height } = await imageSize(publicUrl(original));
+
+  const { data, error } = await db.from('media_assets')
+    .update({ storage_path: original, original_path: null, width, height })
+    .eq('id', row.id).select().single();
+  if (error) throw new Error(error.message);
+
+  const stale = supersededFile(row);
+  if (stale) await db.storage.from('media').remove([stale]);
+
+  state.editing = data;
+  loadList();
+  await openDrawer(data);
+  $('form-status').textContent = 'Original restored.';
+}
+
+// Crop/revert controls under the drawer's image preview.
+function imageTools(row) {
+  const tools = document.createElement('div');
+  tools.className = 'drawer__imgtools';
+
+  if (!isCroppable(row.storage_path)) {
+    const hint = document.createElement('p');
+    hint.className = 'hint';
+    // SVG and PDF are deliberately excluded — see cropper.js
+    hint.textContent = 'Cropping is available for JPEG, PNG and WebP files.';
+    tools.append(hint);
+    return tools;
+  }
+
+  const crop = document.createElement('button');
+  crop.type = 'button';
+  crop.textContent = 'Crop…';
+  crop.addEventListener('click', async () => {
+    try { await applyCrop(row); }
+    catch (err) { $('form-status').textContent = err.message; }
+  });
+  tools.append(crop);
+
+  if (row.original_path) {
+    const revert = document.createElement('button');
+    revert.type = 'button';
+    revert.textContent = 'Restore original';
+    revert.addEventListener('click', async () => {
+      try { await revertCrop(row); }
+      catch (err) { $('form-status').textContent = err.message; }
+    });
+    const hint = document.createElement('p');
+    hint.className = 'hint';
+    hint.textContent = 'Cropped — the original is kept.';
+    tools.append(revert, hint);
+  }
+
+  return tools;
+}
+
 async function openDrawer(row) {
   const def = ENTITIES[state.entity];
   state.editing = row;
@@ -2351,19 +2454,35 @@ async function openDrawer(row) {
     return label;
   }));
 
-  // upload entities get a file input on new records, a preview when editing
+  // upload entities get a file input on new records; when editing, the current
+  // file previews above a replace picker. Replacing swaps the file on THIS row
+  // rather than making a second record, so every existing attachment, credit
+  // and related link keeps pointing at the same asset.
   if (def.upload) {
     const label = document.createElement('label');
     label.classList.add('span-2');
+    // the crop/revert buttons live OUTSIDE the label: anything inside it
+    // forwards its clicks to the file input, so a <button> in there would
+    // open the file picker on top of the cropper.
+    let tools = null;
     if (row) {
       if (row.storage_path) {
-        label.textContent = 'File';
+        label.textContent = 'File — pick a new one to replace it';
         const img = document.createElement('img');
         img.className = 'drawer__preview';
         img.src = publicUrl(row.storage_path);
         img.alt = row.alt_text ?? '';
         label.append(img);
+        tools = imageTools(row);
+        tools.classList.add('span-2');
+      } else {
+        label.textContent = 'File (this asset is embed-only — adding a file replaces the embed)';
       }
+      const file = document.createElement('input');
+      file.type = 'file';
+      file.name = '_file';
+      file.accept = 'image/*,.pdf';
+      label.append(file);
     } else {
       label.textContent = 'File (or give an embed URL below)';
       const file = document.createElement('input');
@@ -2372,7 +2491,7 @@ async function openDrawer(row) {
       file.accept = 'image/*,.pdf';
       label.append(file);
     }
-    fields.unshift(label);
+    fields.unshift(...(tools ? [label, tools] : [label]));
   }
 
   $('drawer-fields').replaceChildren(...fields);
@@ -2452,15 +2571,24 @@ $('record-form').addEventListener('submit', async (e) => {
   const payload = collectPayload();
   $('form-status').textContent = 'Saving…';
 
+  // swapped the file on an existing row? `replacedPath` is the object the row
+  // used to serve (null when it was embed-only), cleaned up once the swap commits
+  let replacedFile = false;
+  let replacedPath = null;
+
   try {
-    if (def.upload && !state.editing) {
+    if (def.upload) {
       const file = $('record-form').querySelector('[name="_file"]')?.files[0];
       if (file) {
         const { path, width, height } = await uploadFile(file);
         payload.storage_path = path;
         payload.width = width;
         payload.height = height;
-      } else if (!payload.embed_url) {
+        if (state.editing) {
+          replacedFile = true;
+          replacedPath = state.editing.storage_path ?? null;
+        }
+      } else if (!state.editing && !payload.embed_url) {
         throw new Error('Pick a file or provide an embed URL.');
       }
     }
@@ -2475,11 +2603,20 @@ $('record-form').addEventListener('submit', async (e) => {
 
     state.editing = data;
     $('form-status').textContent = 'Saved.';
+
+    // the swap is committed, so the old file is now unreferenced — drop it.
+    // Order matters: upload → update → delete, so a failure here leaves an
+    // orphaned object rather than a row pointing at a file that's gone.
+    if (replacedPath && replacedPath !== data.storage_path) {
+      await db.storage.from('media').remove([replacedPath]);
+    }
+
     // refresh the (hidden) list so it's current when the user goes Back
     loadList();
     // a brand-new record becomes an edit: re-render so the relationship/media
-    // pickers unlock, the Delete button appears, and the title flips to "Edit"
-    if (wasNew) {
+    // pickers unlock, the Delete button appears, and the title flips to "Edit".
+    // A replaced file re-renders too, so the preview shows what's now stored.
+    if (wasNew || replacedFile) {
       await openDrawer(data);
       $('form-status').textContent = 'Saved.';
     }
@@ -2497,7 +2634,10 @@ $('delete').addEventListener('click', async () => {
   const { error } = await db.from(def.table).delete().eq('id', row.id);
   if (error) { $('form-status').textContent = error.message; return; }
   if (def.upload && row.storage_path) {
-    await db.storage.from('media').remove([row.storage_path]);
+    // a cropped asset owns two objects — the crop being served and the
+    // original behind it. Both go, or the original is orphaned in the bucket.
+    const paths = [...new Set([row.storage_path, row.original_path].filter(Boolean))];
+    await db.storage.from('media').remove(paths);
   }
   closeDrawer();
   loadList();
