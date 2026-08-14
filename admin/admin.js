@@ -306,6 +306,11 @@ const ENTITIES = {
       { col: 'title',        label: 'Title',        kind: 'text', required: true },
       { col: 'slug',         label: 'Slug',         kind: 'slug', required: true },
       { col: 'kind',         label: 'Kind',         kind: 'lookup', table: 'article_kinds', required: true, initial: 'news' },
+      // The image that heads the post. Not a column — it is the primary row in
+      // media_articles, the same one the "Attached media" section below flags,
+      // so there is exactly one source of truth for the hero. This field just
+      // puts it where you'd expect to find it.
+      { col: '_hero',        label: 'Post image',   kind: 'hero' },
       { col: 'dek',          label: 'Dek (standfirst / teaser — also the meta description)', kind: 'textarea' },
       { col: 'author_id',    label: 'Byline (editor)', kind: 'fk', table: 'editors',
         fkCols: 'id, display_name, slug', fkOrder: 'display_name',
@@ -2112,6 +2117,195 @@ async function renderMediaSection(def, row) {
   // tab. Credit/rights/alt are captured here too (see CLAUDE.md non-negotiable
   // #1) — the same required fields the Media editor and bulk upload enforce.
   box.append(renderInlineUpload(def, row, join, links.length === 0));
+
+  // The Post image field reads the same join rows, so anything that changed
+  // them here — attach, detach, ☆ make primary, reorder — has just made it
+  // stale. No-ops for entities without the field.
+  renderHeroPicker(def, row);
+}
+
+// ---- post image ---------------------------------------------------------
+// The hero that heads a post. This is NOT a column: it is the primary row in
+// the record's media join, the same flag the "Attached media" grid below sets,
+// so the two controls can never disagree. The field exists because "scroll to
+// the bottom, attach an asset, then click ☆ make primary" is not a thing
+// anyone guesses — and the build reads that flag first (sortedMedia sorts
+// is_primary ahead of sort_order) to pick the card image, the page hero and
+// the og:image.
+//
+// Writes land immediately rather than on form submit, because the join row
+// belongs to a different table than the form's payload.
+
+async function renderHeroPicker(def, row, host = document.getElementById('hero-pick')) {
+  if (!host) return;
+  host.replaceChildren();
+  const join = def.mediaJoin;
+  if (!join) return;
+
+  // An unsaved record has no id, so there is nothing to hang a join row on.
+  if (!row) {
+    const hint = document.createElement('p');
+    hint.className = 'hint';
+    hint.textContent = 'Save the post first — then you can give it an image.';
+    host.append(hint);
+    return;
+  }
+
+  const { data: links, error } = await db.from(join.table)
+    .select(`media_id, is_primary, media_assets(*)`)
+    .eq(join.fk, row.id)
+    .order('sort_order');
+  if (error) { host.textContent = error.message; return; }
+
+  // Mirror the build's own precedence (see sortedMedia in build-dossiers.mjs):
+  // the flagged primary leads, otherwise the lowest sort_order does. Showing
+  // anything else here would promise a hero the site won't actually render.
+  const ordered = (links ?? []).slice()
+    .sort((a, b) => (b.is_primary - a.is_primary) || 0);
+  const lead = ordered[0];
+
+  const preview = document.createElement('div');
+  preview.className = 'hero-pick__preview';
+  if (lead?.media_assets?.storage_path) {
+    const img = document.createElement('img');
+    img.src = publicUrl(lead.media_assets.storage_path);
+    img.alt = lead.media_assets.alt_text ?? '';
+    preview.append(img);
+    const meta = document.createElement('div');
+    meta.className = 'hero-pick__meta';
+    const cap = document.createElement('p');
+    cap.textContent = lead.media_assets.caption || lead.media_assets.alt_text || '(untitled)';
+    const cred = document.createElement('p');
+    cred.className = 'hint';
+    cred.textContent = lead.media_assets.credit;
+    meta.append(cap, cred);
+    // Only worth saying when it is implicit rather than chosen — an unflagged
+    // lead is the one the build would fall back to, not one anyone picked.
+    if (!lead.is_primary) {
+      const note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent = 'Leading by default — nothing is flagged as primary.';
+      meta.append(note);
+    }
+    preview.append(meta);
+  } else {
+    const none = document.createElement('p');
+    none.className = 'hint';
+    none.textContent = lead ? 'The attached asset is an embed, not an image.' : 'No post image yet.';
+    preview.append(none);
+  }
+  host.append(preview);
+
+  const actions = document.createElement('div');
+  actions.className = 'hero-pick__actions';
+
+  const choose = document.createElement('button');
+  choose.type = 'button';
+  choose.textContent = lead ? 'Change…' : 'Choose…';
+  choose.addEventListener('click', async () => {
+    const mediaId = await chooseMediaDialog();
+    if (!mediaId) return;
+    try {
+      await setPostImage(def, row, mediaId, links ?? []);
+      renderMediaSection(def, row); // re-renders this picker on the way through
+    } catch (err) { $('form-status').textContent = err.message; }
+  });
+  actions.append(choose);
+
+  // Uploading a brand-new asset reuses the block in "Attached media" — it
+  // already enforces credit/rights/alt at upload (non-negotiable #1), and
+  // duplicating that form here would be a second place to keep it correct.
+  const upload = document.createElement('button');
+  upload.type = 'button';
+  upload.textContent = 'Upload…';
+  upload.addEventListener('click', () => {
+    const details = document.querySelector('#drawer-media .media-upload');
+    if (!details) return;
+    details.open = true;
+    details.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  actions.append(upload);
+
+  if (lead) {
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', async () => {
+      // Detaches rather than just clearing the flag: with the flag cleared the
+      // asset would still be attached, and the build would still lead with it.
+      // "Remove" has to mean the image stops heading the post.
+      await db.from(join.table).delete().eq(join.fk, row.id).eq('media_id', lead.media_id);
+      renderMediaSection(def, row);
+    });
+    actions.append(remove);
+  }
+
+  host.append(actions);
+}
+
+// Attach `mediaId` if it isn't already, then make it the sole primary.
+async function setPostImage(def, row, mediaId, links) {
+  const join = def.mediaJoin;
+  if (!links.some((l) => l.media_id === mediaId)) {
+    const { error } = await db.from(join.table).insert({ media_id: mediaId, [join.fk]: row.id });
+    if (error) throw new Error(error.message);
+  }
+  // clear then set — is_primary is a plain boolean, not a constraint, so the
+  // old hero has to be stood down explicitly
+  await db.from(join.table).update({ is_primary: false }).eq(join.fk, row.id);
+  const { error } = await db.from(join.table).update({ is_primary: true })
+    .eq(join.fk, row.id).eq('media_id', mediaId);
+  if (error) throw new Error(error.message);
+}
+
+// Pick an image from the library. Resolves with a media id, or null if
+// dismissed. Images only — an embed cannot head a post.
+async function chooseMediaDialog() {
+  const { data: assets, error } = await db.from('media_assets')
+    .select('id, caption, alt_text, credit, storage_path')
+    .not('storage_path', 'is', null)
+    .order('created_at', { ascending: false });
+  if (error) { alert(error.message); return null; }
+  if (!assets?.length) { alert('No images yet — upload one under Attached media, or in the Media tab.'); return null; }
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'media-choose';
+  const h = document.createElement('h3');
+  h.textContent = 'Choose a post image';
+  const grid = document.createElement('div');
+  grid.className = 'media-choose__grid';
+
+  let picked = null;
+  for (const m of assets) {
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'media-choose__cell';
+    const img = document.createElement('img');
+    img.src = publicUrl(m.storage_path);
+    img.alt = m.alt_text ?? '';
+    img.loading = 'lazy';
+    const cap = document.createElement('span');
+    cap.textContent = m.caption || m.alt_text || m.credit || '(untitled)';
+    cell.append(img, cap);
+    cell.addEventListener('click', () => { picked = m.id; dialog.close(); });
+    grid.append(cell);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'media-choose__actions';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', () => dialog.close());
+  actions.append(cancel);
+
+  dialog.append(h, grid, actions);
+  document.body.append(dialog);
+  dialog.showModal();
+
+  await new Promise((resolve) => dialog.addEventListener('close', resolve, { once: true }));
+  dialog.remove();
+  return picked;
 }
 
 // Shared credit/rights/type/source carried between consecutive inline uploads,
@@ -2407,6 +2601,25 @@ async function openDrawer(row) {
       return wrap;
     }
 
+    // Same reasoning as rich fields: buttons inside a <label> would have their
+    // clicks forwarded to the first labelable descendant.
+    if (f.kind === 'hero') {
+      const wrap = document.createElement('div');
+      wrap.className = 'field-rich span-2';
+      const cap = document.createElement('span');
+      cap.className = 'field-rich__cap';
+      cap.textContent = f.label;
+      const host = document.createElement('div');
+      host.id = 'hero-pick';
+      host.className = 'hero-pick';
+      wrap.append(cap, host);
+      // Populated async — it needs the join rows. The host is passed directly
+      // because this element is not in the document yet; later re-renders
+      // (from renderMediaSection) find it by id instead.
+      renderHeroPicker(def, row, host);
+      return wrap;
+    }
+
     const label = document.createElement('label');
     label.textContent = f.label;
 
@@ -2528,6 +2741,9 @@ function collectPayload() {
   const form = $('record-form');
   const payload = {};
   for (const f of def.fields) {
+    // not a column on this table — it writes to the media join, immediately,
+    // on its own. Nothing to collect, and no form control to read.
+    if (f.kind === 'hero') continue;
     if (f.kind === 'rich') {
       const ed = form.querySelector(`.rte[data-col="${f.col}"]`);
       const html = ed ? sanitizeHtml(ed.innerHTML) : '';
