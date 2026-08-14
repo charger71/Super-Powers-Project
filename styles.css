@@ -1487,6 +1487,10 @@ a.aux__item { display: block; text-decoration: none; }
 
 .release-gallery-block { margin: 0 0 2rem; }
 .release-gallery-block .dek { margin: 0 0 0.75rem; }
+/* An article's lead image is the one place this block wraps a bare <img>
+   instead of a .release-gallery grid — the grid's own images are rounded by
+   `.release-gallery img`, so the lead needs saying separately to match. */
+.release-gallery-block > img { border-radius: var(--radius); }
 /* the release page heads its gallery with the shared section head instead of a
    dek — keep the same gap above the grid */
 .release-gallery-block .dossier-section-head { margin-bottom: 0.75rem; }
@@ -2051,7 +2055,7 @@ a.figure-card:focus-visible {
 .lb-trigger img { cursor: zoom-in; }
 /* rich-text prose images are lightbox triggers themselves (not a full-width
    button wrapper) — keep them at natural size within the text column */
-img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; }
+img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; border-radius: var(--radius); }
 
 /* ---------- PROSE FIGURE ---------- */
 /* A prose image (from the rich-text editor's media picker) wrapped with its
