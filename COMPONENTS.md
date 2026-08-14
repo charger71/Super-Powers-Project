@@ -171,15 +171,20 @@ Mono uppercase nav. `[aria-current]` dims the current crumb.
 
 ### Dossier body — `.dossier-body` / `.dossier-body__grid`
 Two columns: main article (`.dossier-lede`) + `.dossier-sidebar`. Collapses to one column
-under 800px.
+under 800px. Each main-column section (`.dossier-lede__more`, `.dossier-spec`,
+`.release-gallery-block`, `.dossier-about`, `.release-sources`) carries a 2rem margin top
+**and** bottom, so the rhythm holds in any order — adjacent margins collapse, so the gap
+between two sections stays 2rem instead of doubling. Keep that pair on anything new.
 
 - **`.dossier-lede`** — lead article; first paragraph is enlarged. Rich-text children
   (`h2`–`h4`, `ul`/`ol`, `table`, `blockquote`, `hr`, `a`, `small`) are all styled — this
   is the admin-editor output surface. Same styling applies inside `.dossier-about`.
   - **`.dossier-lede__more`** — an optional second rich-text block under the Overview
-    (character `overview_extra`). Deliberately plain body-copy prose, **not** the enlarged
-    blue lede — wrap it in this div so its paragraphs escape the `> p:first-of-type` rule.
-- **`.dossier-spec`** — yellow "Vital Stats" block: `.dek` heading + `dl` of `.spec-row`
+    (character `overview_extra`, release `overview_text`). Deliberately plain body-copy
+    prose, **not** the enlarged blue lede — wrap it in this div so its paragraphs escape
+    the `> p:first-of-type` rule. Carries its own bottom margin so whatever follows
+    (the spec block, the About box) sits clear of it.
+- **`.dossier-spec`** — yellow "Vital Stats" / "Specifications" block: `.dek` heading + `dl` of `.spec-row`
   (`dt` brand label / `dd` italic value). `dd a` (e.g. the "Created by" creator links)
   is underlined blue → red on hover. `.spec-row--note` is a titleless full-width row
   (`dd` only) for the character `random_fact` aside that closes the list.
@@ -282,17 +287,22 @@ Prev/next yellow blocks (`.dossier-pager__next` right-aligns).
   social / portfolio); `.dek` heading + `ul` of `a`. URLs are stored plain and
   the build derives each label from its domain (Twitter, ArtStation, …).
 - **`.release-gallery-block` / `.release-gallery`** — all attached photography;
-  `figure` + `figcaption` (mono, truncated), images `contain` on white. The main
-  column opens with an optional **Overview** (`.dek` + enlarged lede + a standard
-  `.dossier-lede__more` body, from the release's `overview_lede` / `overview_text`)
-  above this gallery.
+  `figure` + `figcaption` (mono, truncated), images `contain` on white. On the
+  release page the block is headed by a `.dossier-section-head` **h2**
+  ("Photography") rather than a `.dek` — merchandise and comic pages still use
+  the plain `.dek`. The main column above it runs: **Overview** (`.dek` +
+  enlarged lede + a `.dossier-lede__more` body, from the release's
+  `overview_lede` / `overview_text`), then the yellow `.dossier-spec`
+  **Specifications** block — the same main-column placement the character
+  dossier gives its Vital Statistics — then this gallery.
 - **Loose figure photo** — the out-of-package ('loose' role) shot at the top of
-  the sidebar, above the specs. Reuses the character page's portrait treatment:
+  the sidebar. Reuses the character page's portrait treatment:
   `.dossier-portrait-frame` wrapping a `.dossier-portrait` image (here a
   lightbox trigger, so it opens the shared release gallery), with the mono
   `Photo: …` credit as a `.dek.dek--sm` line beneath — the figure stands in for
-  the character artwork.
-- **`.release-manufacturer`** — under the specifications: the LINE's manufacturer
+  the character artwork. The linked character's `.powers-card` follows directly
+  beneath it (same card as the dossier's — it's a character-level artifact).
+- **`.release-manufacturer`** — in the sidebar under the powers card: the LINE's manufacturer
   logo (`__logo`, from `media_lines`) + name (`__name`, not the line name) on a
   white card, both linking to the line's `manufacturer_website` when set.
 - **`.release-variations` / `.variation-card`** — documented variants: per-card

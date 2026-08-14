@@ -655,6 +655,33 @@ function powerBubbleBlock(actionFeature) {
       </div>` : '';
 }
 
+// The 1984 powers card — a character-level artifact (logo/name, epithet, then
+// the card-back Powers / Weaknesses / Enemies / Secret Identity prose). Shared
+// by the character dossier and the release page, which shows the linked
+// character's card under its loose figure. No card content -> nothing renders.
+function powersCardBlock(c) {
+  if (!c) return '';
+  const logoMedia = pickMedia(c.media_characters, ['logo'])[0];
+  if (!(c.powers || c.weaknesses || c.aka?.length || c.enemies || c.epithet || logoMedia)) return '';
+
+  const header = logoMedia
+    ? `<img class="powers-card__logo" src="${esc(mediaUrl(logoMedia))}" alt="${esc(logoMedia.alt_text ?? c.name + ' logo')}">`
+    : `<h2 class="powers-card__name">${esc(c.name)}</h2>`;
+
+  // Epithet — the tagline under the logo ("The Man of Steel"), rendered all-caps.
+  const epithet = c.epithet ? `<p class="powers-card__epithet">${esc(c.epithet)}</p>` : '';
+
+  return `
+      <aside class="powers-card">
+        ${header}
+        ${epithet}
+        ${c.powers ? `<div class="powers-card__section"><h3>Powers</h3><p>${esc(c.powers)}</p></div>` : ''}
+        ${c.weaknesses ? `<div class="powers-card__section"><h3>Weaknesses</h3><p>${esc(c.weaknesses)}</p></div>` : ''}
+        ${c.enemies ? `<div class="powers-card__section"><h3>Enemies</h3><p>${esc(c.enemies)}</p></div>` : ''}
+        ${c.aka?.length ? `<div class="powers-card__section"><h3>Secret Identity</h3><p>${esc(c.aka.join(' · '))}</p></div>` : ''}
+      </aside>`;
+}
+
 function headshotFigure(media, label, fallbackAlt) {
   const src = mediaUrl(media) ?? PLACEHOLDER;
   return `<figure>
@@ -730,7 +757,6 @@ function renderCharacterPage(c, releases, publications, enemyList, creatorList, 
   const portrait = mediaUrl(portraitMedia) ?? PLACEHOLDER;
   const portraitAlt = portraitMedia?.alt_text ?? `${c.name} character artwork — DC Comics`;
 
-  const logoMedia = pickMedia(c.media_characters, ['logo'])[0];
   const headshotMedia = pickMedia(c.media_characters, ['headshot'])[0];
   const alterEgoMedia = pickMedia(c.media_characters, ['alter_ego'])[0];
 
@@ -841,24 +867,9 @@ function renderCharacterPage(c, releases, publications, enemyList, creatorList, 
           ${richText(c.bio)}
         </section>` : '';
 
-  const powersHeader = logoMedia
-    ? `<img class="powers-card__logo" src="${esc(mediaUrl(logoMedia))}" alt="${esc(logoMedia.alt_text ?? c.name + ' logo')}">`
-    : `<h2 class="powers-card__name">${esc(c.name)}</h2>`;
-
-  // Epithet — the tagline under the logo ("The Man of Steel"), rendered all-caps.
-  const epithet = c.epithet ? `<p class="powers-card__epithet">${esc(c.epithet)}</p>` : '';
-
   const powerBubble = powerBubbleBlock(firstFigure?.action_feature);
 
-  const powersCard = (c.powers || c.weaknesses || c.aka?.length || c.enemies || c.epithet || logoMedia) ? `
-      <aside class="powers-card">
-        ${powersHeader}
-        ${epithet}
-        ${c.powers ? `<div class="powers-card__section"><h3>Powers</h3><p>${esc(c.powers)}</p></div>` : ''}
-        ${c.weaknesses ? `<div class="powers-card__section"><h3>Weaknesses</h3><p>${esc(c.weaknesses)}</p></div>` : ''}
-        ${c.enemies ? `<div class="powers-card__section"><h3>Enemies</h3><p>${esc(c.enemies)}</p></div>` : ''}
-        ${c.aka?.length ? `<div class="powers-card__section"><h3>Secret Identity</h3><p>${esc(c.aka.join(' · '))}</p></div>` : ''}
-      </aside>` : '';
+  const powersCard = powersCardBlock(c);
 
   const headshots = (headshotMedia || alterEgoMedia) ? `
       <div class="dossier-headshots">
@@ -924,7 +935,7 @@ ${pager('dossier', adj?.prev, adj?.next)}`;
 
 // ---- release page -------------------------------------------------------
 
-function renderReleasePage(r, variations, adj, related = '', siblings = [], lineInfo = null) {
+function renderReleasePage(r, variations, adj, related = '', siblings = [], lineInfo = null, character = null) {
   const media = sortedMedia(r.media_releases);
   const hero = mediaUrl(media[0]) ?? PLACEHOLDER;  // og:image only
 
@@ -1057,11 +1068,25 @@ function renderReleasePage(r, variations, adj, related = '', siblings = [], line
         ${richText(r.overview_lede)}
         ${r.overview_text ? `<div class="dossier-lede__more">${richText(r.overview_text)}</div>` : ''}` : '';
 
+  // Specifications sit in the main column directly under the Overview body
+  // (the same place the character dossier puts its Vital Statistics), not in
+  // the sidebar.
+  const specSection = `
+        <aside class="dossier-spec">
+          <p class="dek">Specifications</p>
+          <dl>
+            ${spec}
+          </dl>
+        </aside>`;
+
   // Gallery lives in the main column above Notes and shows every image
-  // (the former hero is just the first gallery item now).
+  // (the former hero is just the first gallery item now). Headed with the
+  // shared .dossier-section-head treatment rather than a plain dek.
   const galleryInline = media.length ? `
         <section class="release-gallery-block">
-          <p class="dek">Photography</p>
+          <div class="dossier-section-head">
+            <h2>Photography</h2>
+          </div>
           <div class="release-gallery">
             ${media.map((m) => `<figure>
               ${lbTrigger(m, `rel-${r.slug}`, r.name)}
@@ -1084,7 +1109,11 @@ function renderReleasePage(r, variations, adj, related = '', siblings = [], line
         <div class="dossier-portrait-frame">${lbTrigger(looseMedia, `rel-${r.slug}`, r.name, 'dossier-portrait')}</div>
         ${looseMedia.credit ? `<p class="dek dek--sm">Photo: ${esc(looseMedia.credit)}</p>` : ''}` : '';
 
-  // Manufacturer branding under the specifications — the line's manufacturer
+  // The linked character's 1984 powers card, under the loose figure. It's a
+  // character-level artifact, so every release of a figure carries the same one.
+  const powersCard = powersCardBlock(character);
+
+  // Manufacturer branding in the sidebar — the line's manufacturer
   // LOGO + NAME (not the line name), linking to the manufacturer website if set.
   const manuName = lineInfo?.manufacturer;
   const manuLogo = mediaUrl(lineInfo?.logo);
@@ -1134,6 +1163,7 @@ ${backAndCrumb([
 
       <article class="dossier-lede">
 ${overviewSection}
+${specSection}
 ${galleryInline}
 ${notesSection}
 ${creditsSection}
@@ -1143,12 +1173,7 @@ ${sourcesSection}
       <div class="dossier-sidebar">
       ${powerBubble}
 ${looseBlock}
-        <aside class="dossier-spec">
-          <p class="dek">Specifications</p>
-          <dl>
-            ${spec}
-          </dl>
-        </aside>
+${powersCard}
 ${manufacturerBlock}
 ${related}
       </div>
@@ -2680,6 +2705,8 @@ for (const [i, c] of characters.entries()) {
   } else skipped++;
 }
 
+const characterById = new Map(characters.map((c) => [c.id, c]));
+
 for (const [i, r] of releases.entries()) {
   const variations = variationsByRelease.get(r.id) ?? [];
   // Other releases of the same figure in the same line (Series 1/2/3 etc).
@@ -2687,7 +2714,10 @@ for (const [i, r] of releases.entries()) {
   const siblings = r.character_id
     ? releases.filter((o) => o.id !== r.id && o.character_id === r.character_id && o.line_id === r.line_id)
     : [];
-  const html = renderReleasePage(r, variations, adjacent(releases, i), relatedFor('release', r.id), siblings, lineInfoById.get(r.line_id));
+  // full character record (for the powers card) — the release's own embed only
+  // carries name + slug
+  const linkedCharacter = r.character_id ? characterById.get(r.character_id) ?? null : null;
+  const html = renderReleasePage(r, variations, adjacent(releases, i), relatedFor('release', r.id), siblings, lineInfoById.get(r.line_id), linkedCharacter);
   if (await writeIfChanged(join(root, 'release', `${r.slug}.html`), html)) {
     written++;
     console.log(`built release/${r.slug}.html`);
