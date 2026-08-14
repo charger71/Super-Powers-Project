@@ -772,3 +772,84 @@ input.invalid { border-color: var(--danger); }
 }
 .drawer__imgtools button { width: auto; }
 .drawer__imgtools .hint { font-size: 0.78rem; color: var(--ink-mid); margin: 0; }
+
+/* post image field --------------------------------------------------------
+   A compact view of the record's primary attachment, sitting up in the form
+   where you'd look for it. The Attached media grid below is the same data. */
+.hero-pick {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+  background: #fff;
+}
+.hero-pick__preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.hero-pick__preview img {
+  width: 140px;
+  height: 92px;
+  object-fit: cover;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  flex: none;
+}
+.hero-pick__meta p { margin: 0 0 0.15rem; font-size: 0.85rem; }
+.hero-pick .hint { font-size: 0.78rem; color: var(--ink-mid); margin: 0; }
+.hero-pick__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.hero-pick__actions button { width: auto; }
+
+/* image chooser dialog */
+.media-choose {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 1.25rem;
+  max-width: min(92vw, 760px);
+  background: var(--paper);
+}
+.media-choose::backdrop { background: rgba(0, 0, 0, 0.45); }
+.media-choose h3 { margin: 0 0 0.75rem; }
+.media-choose__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.6rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.media-choose__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.35rem;
+  width: auto;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  cursor: pointer;
+}
+.media-choose__cell:hover { border-color: var(--accent); }
+.media-choose__cell img {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+.media-choose__cell span {
+  font-size: 0.75rem;
+  color: var(--ink-mid);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.media-choose__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.9rem;
+}
+.media-choose__actions button { width: auto; }
