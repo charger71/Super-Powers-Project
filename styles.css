@@ -1072,6 +1072,9 @@ a.aux__item { display: block; text-decoration: none; }
    its paragraphs clear of the `> p:first-of-type` lede rule. */
 .dossier-lede__more {
   margin-top: 1.25rem;
+  /* breathing room before whatever follows the overview body — the spec block
+     on a release page, the About block on a dossier */
+  margin-bottom: 2rem;
 }
 .dossier-lede__more p {
   font-family: var(--font-body);
@@ -1082,12 +1085,16 @@ a.aux__item { display: block; text-decoration: none; }
 }
 .dossier-lede__more p:last-child { margin-bottom: 0; }
 
-/* Vital Stats — full-width block below the overview, 2-col spec grid */
+/* Vital Stats — full-width block below the overview, 2-col spec grid.
+   Every main-column section carries the same 2rem top AND bottom margin so it
+   stands apart from whatever follows (adjacent margins collapse, so the gap
+   between two sections stays 2rem rather than doubling). */
 .dossier-spec {
   background: var(--color-yellow);
   padding: clamp(1.25rem, 2vw, 1.75rem);
   border-radius: var(--radius);
   margin-top: 2rem;
+  margin-bottom: 2rem;
 }
 .dossier-spec .dek {
   font-family: var(--font-body);
@@ -1158,6 +1165,7 @@ a.aux__item { display: block; text-decoration: none; }
   border-radius: var(--radius);
   padding: clamp(1.25rem, 2vw, 1.75rem);
   margin-top: 2rem;
+  margin-bottom: 2rem;
 }
 /* the section's own title (About / Notes) — first child only, so editor-authored
    <h3> subheadings inside the article don't inherit the red underline */
@@ -1378,7 +1386,7 @@ a.aux__item { display: block; text-decoration: none; }
   text-decoration: none;
 }
 .release-charlink:hover { text-decoration: underline; }
-.release-sources { margin-top: 1.5rem; }
+.release-sources { margin: 2rem 0; }
 .release-sources ul {
   margin: 0.5rem 0 0;
   padding-left: 1.1rem;
@@ -1479,6 +1487,9 @@ a.aux__item { display: block; text-decoration: none; }
 
 .release-gallery-block { margin: 0 0 2rem; }
 .release-gallery-block .dek { margin: 0 0 0.75rem; }
+/* the release page heads its gallery with the shared section head instead of a
+   dek — keep the same gap above the grid */
+.release-gallery-block .dossier-section-head { margin-bottom: 0.75rem; }
 .release-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
