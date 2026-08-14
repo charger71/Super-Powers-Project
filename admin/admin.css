@@ -215,6 +215,76 @@ input.invalid { border-color: var(--danger); }
 }
 .list .row-dup:hover { background: var(--accent); color: #fff; opacity: 1; }
 
+/* users panel (Account ▸ Users) — own account for everyone, the co-author
+   table only for admins. Plain like the rest of the admin. */
+.users__block {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.users__block h3 { margin: 0 0 0.75rem; font-size: 1rem; }
+.users__role {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 10px;
+  padding: 0.1rem 0.5rem;
+  vertical-align: 0.1rem;
+}
+.users__form {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.users__form label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--ink-mid);
+  min-width: 18rem;
+}
+.users__form button { width: auto; }
+.users__hint { font-size: 0.8rem; color: var(--ink-mid); flex: 1 1 12rem; }
+.users__status { margin: 0; font-size: 0.85rem; color: var(--ink-mid); min-height: 1.2em; }
+.users__status.is-error { color: var(--danger); }
+.users__note { font-size: 0.85rem; color: var(--ink-mid); }
+.users__recovery {
+  background: #fff6d8;
+  border: 1px solid #e0c86a;
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+}
+.users__pending { font-size: 0.75rem; color: var(--danger); }
+/* the co-author table's rows aren't clickable (the buttons are), so no hover
+   pointer, and actions need room to sit on one line */
+#users-list tr:hover td { background: none; cursor: default; }
+#users-list td { max-width: none; }
+.users__actions { text-align: right; white-space: nowrap; }
+.users__actions button {
+  width: auto;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  background: transparent;
+  color: var(--accent);
+  margin-left: 0.35rem;
+}
+.users__actions button:hover { background: var(--accent); color: #fff; opacity: 1; }
+.users__actions button.danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.users__actions button.danger:hover { background: var(--danger); color: #fff; }
+.users__editrow td { background: #f0f0fa; }
+.users__editrow .users__form { margin: 0; }
+
 /* full-page editor (replaces the list while editing) */
 .editor {
   background: #fff;

@@ -44,6 +44,13 @@ since multiple authors will be entering densely cross-linked records.
 **Access model:** public reads everything; authenticated co-authors write everything.
 No draft/approval workflow — this is a deliberate "trust everyone, publish direct" decision.
 
+The one exception is **credentials**. `user_roles` gives each account `admin` or `editor`:
+editors get content plus their own email/password; admins also get Admin ▸ Account ▸ Users
+(change any co-author's email or password, invite, promote, delete). That runs through the
+`admin-users` Edge Function — the only place the `service_role` key lives, since the admin
+is a static page. It re-checks the caller's role on every call; the UI hiding the panel is
+convenience, not the control. **Never put `service_role` in `admin/` or `js/`.**
+
 ---
 
 ## Non-negotiables (expensive to retrofit)
