@@ -2268,8 +2268,15 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
     <div class="wrap">
       <div class="featured__head">
         <div>
-          <p class="dek">From the archive —</p>
-          <h2 class="featured__title">Longer reads</h2>
+          <!-- One name per section: the directory tile and /news/ both call
+               this "From the desk" / "News & Articles". The homepage used to
+               say "From the archive" (which also collided with the directory
+               block's "In this archive") and "Longer reads" — but this block
+               is articles.slice(0, 3), the newest posts of ANY kind, so it
+               was describing a filter that does not exist. Personality in the
+               eyebrow, the section's real name in the title. -->
+          <p class="dek">From the desk —</p>
+          <h2 class="featured__title">News &amp; Articles</h2>
         </div>
       </div>
 
