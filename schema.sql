@@ -364,7 +364,7 @@ create table media_characters (
   character_id uuid references characters(id)   on delete cascade,
   sort_order   smallint default 0,
   is_primary   boolean default false,
-  role         text not null default 'artwork',  -- artwork|logo|headshot|alter_ego
+  role         text not null default 'artwork',  -- artwork|feature|logo|headshot|alter_ego ('feature' = homepage hero photo)
   primary key (media_id, character_id)
 );
 create index on media_characters (character_id, role);
