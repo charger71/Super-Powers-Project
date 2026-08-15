@@ -7,6 +7,11 @@ supabase/.temp/
 # macOS
 .DS_Store
 
+# Article drafts staged for paste into the admin editor. The canonical copy of
+# this text is the `articles` table in Supabase — tracking it here would mean
+# two copies that drift apart.
+/drafts/
+
 # Generated site output — built from Supabase by build/build-dossiers.mjs and
 # deployed by .github/workflows/rebuild.yml. Not committed; CI regenerates it.
 /index.html

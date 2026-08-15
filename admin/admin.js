@@ -1123,6 +1123,12 @@ const RTE_ALLOWED = {
   IMG: ['src', 'alt', 'class', 'data-gallery', 'data-credit', 'data-caption'],
 };
 
+// Unknown tags get unwrapped (their text is content). These are the exception:
+// their text content is markup, not prose, so unwrapping a <style> from a
+// pasted web page or a Word/Docs clipboard would spill raw CSS into the
+// article. Drop the element and everything inside it.
+const RTE_DROP = new Set(['STYLE', 'SCRIPT', 'HEAD', 'TITLE', 'META', 'LINK', 'NOSCRIPT']);
+
 const INLINE_FMT = new Set(['B', 'STRONG', 'I', 'EM', 'U']);
 const BLOCK_TAGS = new Set([
   'P', 'H2', 'H3', 'H4', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'HR',
@@ -1158,6 +1164,7 @@ function sanitizeHtml(html) {
       if (child.nodeType === 8) { child.remove(); continue; }   // comments
       if (child.nodeType !== 1) continue;                       // keep text nodes
       const tag = child.tagName;
+      if (RTE_DROP.has(tag)) { child.remove(); continue; }      // markup, not prose
       if (!RTE_ALLOWED[tag] || isFakeEmphasis(child)) {         // unwrap unknown / fake-bold tags
         clean(child);
         while (child.firstChild) node.insertBefore(child.firstChild, child);
@@ -1170,7 +1177,16 @@ function sanitizeHtml(html) {
       if (tag === 'A') {
         const href = child.getAttribute('href') || '';
         if (!/^(https?:|mailto:|\/)/i.test(href)) child.removeAttribute('href');
-        else { child.setAttribute('rel', 'noopener'); child.setAttribute('target', '_blank'); }
+        // Only leaving the site opens a new tab. Root-relative hrefs are our own
+        // pages — an editorial guide cross-links a dozen of them, and _blank on
+        // every one buries the reader in tabs. The attribute loop above already
+        // stripped any target/rel, so re-saving old content fixes itself.
+        // `//host/path` is protocol-relative and goes off-site despite the
+        // leading slash — it is external, not one of ours.
+        else if (!href.startsWith('/') || href.startsWith('//')) {
+          child.setAttribute('rel', 'noopener');
+          child.setAttribute('target', '_blank');
+        }
       }
       if (tag === 'IMG') {
         // drop images with no usable src; ensure alt exists (a11y — never null)
@@ -1395,13 +1411,26 @@ function buildRichField(field, value) {
   editor.dataset.col = field.col;
   editor.innerHTML = toEditableHtml(value);
 
-  // Paste as clean, paragraph-aware text. Kills formatting cruft from Word /
-  // Google Docs / web pages — notably the "<b style='font-weight:normal'>"
-  // wrapper that otherwise bolds an entire pasted block. Use the toolbar to
-  // re-apply bold/italic/headings intentionally.
+  // Paste keeps the structure the whitelist already allows — headings, lists,
+  // tables, links — by running the clipboard's HTML through the same sanitizer
+  // that guards save. That is what kills the formatting cruft from Word /
+  // Google Docs / web pages, including the "<b style='font-weight:normal'>"
+  // wrapper that otherwise bolds an entire pasted block (see isFakeEmphasis) —
+  // the old handler achieved that by discarding every tag, which also threw
+  // away links and made a prepared draft impossible to paste in.
+  //
+  // A plain-text clipboard still becomes paragraph-aware <p> blocks, so
+  // "paste as plain text" (Ctrl/Cmd+Shift+V) offers no text/html flavor and
+  // keeps the strip-everything behaviour when that is what you want.
   editor.addEventListener('paste', (e) => {
     e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData)?.getData('text/plain') ?? '';
+    const data = e.clipboardData || window.clipboardData;
+    const pastedHtml = data?.getData('text/html') ?? '';
+    if (pastedHtml.trim()) {
+      const clean = sanitizeHtml(pastedHtml);
+      if (clean) { document.execCommand('insertHTML', false, clean); return; }
+    }
+    const text = data?.getData('text/plain') ?? '';
     if (!text) return;
     const html = text.split(/\n\s*\n/).filter((b) => b.trim())
       .map((b) => `<p>${escHtml(b.trim()).replace(/\n/g, '<br>')}</p>`)
