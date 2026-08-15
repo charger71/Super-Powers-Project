@@ -432,7 +432,11 @@ button { font: inherit; cursor: pointer; }
      admin cropper's preset, which 21:9 did not. */
   aspect-ratio: 16 / 9;
   width: 100%;
-  object-fit: contain;
+  /* cover, so a feature photo fills the banner edge to edge rather than
+     letterboxing. The trade is that anything not 16:9 gets centre-cropped —
+     including the 'artwork' fallback, which is vertical card art. Give a
+     featured character a 'feature' photo and this is moot. */
+  object-fit: cover;
   display: block;
   margin-bottom: 1.5rem;
 }
