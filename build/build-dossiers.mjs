@@ -2178,17 +2178,24 @@ const initials = (s) => ((String(s).match(/\b[A-Za-z0-9]/g) ?? []).slice(0, 2).j
 
 function renderHome(characters, releases, screenMedia, merchandise, publicationCount, articles = []) {
   // Featured character: Superman (the golden record) if present, else the
-  // first character that has a portrait, else whatever's first.
+  // first character that has something to show, else whatever's first.
   const hero = characters.find((c) => c.slug === 'superman')
-    ?? characters.find((c) => pickMedia(c.media_characters, ['artwork']).length)
+    ?? characters.find((c) => pickMedia(c.media_characters, ['feature', 'artwork']).length)
     ?? characters[0];
 
   let heroBlock = '';
   if (hero) {
     const heroReleases = releasesForCharacter(releases, hero).sort(releaseOrder);
     const heroFig = heroReleases.find((r) => r.type === 'figure');
-    const heroPortrait = mediaUrl(pickMedia(hero.media_characters, ['artwork'])[0]
-      ?? pickMedia(hero.media_characters, ['headshot'])[0]) ?? PLACEHOLDER;
+    // The homepage hero wants an editorial, article-style photo — a wide shot
+    // that carries a headline — not the vertical character artwork the dossier
+    // pages use. That is what the 'feature' role is for: a picture chosen for
+    // this slot. Artwork and headshot stay as fallbacks so a character without
+    // one still leads the homepage with its best available image.
+    const heroMedia = pickMedia(hero.media_characters, ['feature'])[0]
+      ?? pickMedia(hero.media_characters, ['artwork'])[0]
+      ?? pickMedia(hero.media_characters, ['headshot'])[0];
+    const heroPortrait = mediaUrl(heroMedia) ?? PLACEHOLDER;
     const heroDek = (hero.aka ?? []).slice(0, 3).join(' · ') || hero.first_appearance || '';
     const heroLede = stripTags((hero.overview ?? hero.bio ?? '').split(/\n\s*\n/)[0] ?? '').slice(0, 440)
       || `${hero.name} in the DC Super Powers Collection.`;
@@ -2206,7 +2213,7 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
         Updated ${esc(heroUpdated)}
       </span>
 
-      <img class="hero__photo" src="${esc(heroPortrait)}" alt="${esc(hero.name)} — DC Super Powers Collection">
+      <img class="hero__photo" src="${esc(heroPortrait)}" alt="${esc(heroMedia?.alt_text ?? `${hero.name} — DC Super Powers Collection`)}">
 
       <h2 id="hero-title" class="hero__title">${esc(hero.name)}</h2>
       ${heroDek ? `<p class="hero__dek">${esc(heroDek)}</p>` : ''}
@@ -2715,13 +2722,17 @@ function articleCard(a) {
   const teaser = articleTeaser(a, 150);
   const byline = a.editors?.display_name;
   const foot = [articleDate(a), byline ? `By ${byline}` : null].filter(Boolean).join(' · ');
-  return `<article class="essay">
+  // The whole card is the link, matching figureCard / comic-card / video-card —
+  // the photo is the biggest thing on it and was the one part that did nothing
+  // when clicked. That means no inner <a> around the title: nesting anchors is
+  // invalid, and the h3 keeps its colour from `.essay h3` regardless.
+  return `<a class="essay" href="/news/${esc(a.slug)}.html">
           <img class="essay__photo" src="${esc(hero)}" alt="${esc(alt)}">
           <p class="essay__kicker">${esc(articleKind(a))}</p>
-          <h3><a href="/news/${esc(a.slug)}.html">${esc(a.title)}</a></h3>
+          <h3>${esc(a.title)}</h3>
           ${teaser ? `<p>${esc(teaser)}</p>` : ''}
           <div class="essay__foot"><span>${esc(foot)}</span><span>Read →</span></div>
-        </article>`;
+        </a>`;
 }
 
 // The section index — a flat reverse-chronological feed. Deliberately NOT

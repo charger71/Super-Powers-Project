@@ -49,7 +49,10 @@ const ENTITIES = {
     // roles let one attached asset be the logo (SVG, replaces the powers-card
     // text name), a headshot, or an alter-ego headshot — vs. the default
     // artwork pool the portrait is chosen from.
-    mediaJoin: { table: 'media_characters', fk: 'character_id', roles: ['artwork', 'logo', 'headshot', 'alter_ego'] },
+    // 'feature' is the homepage hero slot — an editorial, article-style photo
+    // for when this character is the one being highlighted. Without it the
+    // homepage falls back to 'artwork', which is shaped for the dossier page.
+    mediaJoin: { table: 'media_characters', fk: 'character_id', roles: ['artwork', 'feature', 'logo', 'headshot', 'alter_ego'] },
     // curated cross-type "Related" links (related_items) — this record's source type
     relatedType: 'character',
     // many-to-many links edited as searchable pickers, never hand-typed ids
