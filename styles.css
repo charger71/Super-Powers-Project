@@ -766,7 +766,13 @@ button { font: inherit; cursor: pointer; }
   padding: clamp(1rem, 1.75vw, 1.25rem);
 }
 .essay__photo { aspect-ratio: 4 / 3; }
-img.essay__photo { width: 100%; object-fit: contain; display: block; }
+/* cover, so a post image fills the 4:3 card instead of letterboxing inside it
+   — same call as .hero__photo. Anything not 4:3 is centre-cropped. */
+img.essay__photo {
+  width: 100%;
+  object-fit: cover;
+  display: block;
+}
 /* generated homepage: latest-addition rows link to their record */
 a.aux__item { display: block; text-decoration: none; }
 .essay h3 a { color: inherit; text-decoration: none; }
