@@ -267,6 +267,9 @@ input.invalid { border-color: var(--danger); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* variation names run longer than most — give that column more room before
+   it ellipsizes */
+.list[data-entity="variations"] td.col-name { max-width: 28rem; }
 .list th {
   font-size: 0.75rem;
   text-transform: uppercase;

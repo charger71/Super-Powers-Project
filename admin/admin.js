@@ -178,7 +178,7 @@ const ENTITIES = {
   variations: {
     label: 'Variations',
     table: 'release_variations',
-    listCols: ['name', 'slug', 'variation_type', 'rarity', 'sort_order'],
+    listCols: ['name', 'slug', 'variation_type', 'sort_order'],
     // variations carry their own photos, attached like any other media
     mediaJoin: { table: 'media_variations', fk: 'variation_id' },
     fields: [
@@ -1018,6 +1018,7 @@ function compareRows(a, b, col, dir) {
 
 function listCell(row, col) {
   const td = document.createElement('td');
+  td.className = 'col-' + col;   // lets a specific column's width be overridden per entity
   if (col === '_thumb') {
     if (row.storage_path) {
       const img = document.createElement('img');
@@ -1040,6 +1041,7 @@ function listCell(row, col) {
 
 function renderList() {
   const def = ENTITIES[state.entity];
+  $('list').dataset.entity = state.entity;
   $('list-title').textContent = def.label;
   $('bulk-upload').hidden = !def.upload;
   const filter = $('list-filter').value.trim().toLowerCase();
