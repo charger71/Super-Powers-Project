@@ -239,7 +239,7 @@ async function fetchVariationsByRelease() {
   try {
     rows = await rest(
       'release_variations?select=*,' +
-      `media_variations(is_primary,sort_order,${MEDIA_EMBED})&order=sort_order`
+      `media_variations(is_primary,sort_order,${MEDIA_EMBED})`
     );
   } catch (err) {
     console.warn('Variations unavailable (is the release_variations migration applied?) — building without them.');
@@ -250,6 +250,10 @@ async function fetchVariationsByRelease() {
     list.push(v);
     map.set(v.release_id, list);
   }
+  // Sorted in JS (like sortedMedia above) rather than trusting a bare DB
+  // `order=` alone — most variations still sit at the sort_order default, and
+  // Postgres doesn't guarantee a stable order among ties.
+  for (const list of map.values()) list.sort((a, b) => a.sort_order - b.sort_order);
   return map;
 }
 
