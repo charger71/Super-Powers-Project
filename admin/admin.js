@@ -531,7 +531,9 @@ async function refreshAuth() {
   $('rebuild').hidden = !session;
   $('rebuild-all-wrap').hidden = !session;
   $('menu').hidden = !session;
+  $('menu-toggle').hidden = !session;
   $('user-email').textContent = session?.user?.email ?? '';
+  if (!session) closeMobileMenu();
   // First authed load restores the hash (entity + open record). Later auth
   // events (token refresh) must NOT reopen/reset an editor you're using, so
   // they just refresh the list data underneath.
@@ -663,6 +665,7 @@ function renderMenu() {
       item.textContent = label;
       item.addEventListener('click', () => {
         closeMenus();
+        closeMobileMenu();
         if (key === current) return;
         if (MENU_VIEWS[key]) {         // panel view (Users) — no entity list
           closeDrawer();
@@ -698,9 +701,28 @@ function closeMenus() {
   for (const b of $('menu').querySelectorAll('.menu__button')) b.setAttribute('aria-expanded', 'false');
 }
 
-// click-away and Escape close whichever dropdown is open
-document.addEventListener('click', (e) => { if (!$('menu').contains(e.target)) closeMenus(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+// mobile: nav + account controls collapse behind a hamburger toggle below the
+// bar's breakpoint (see .bar__collapse in admin.css) — this folds it back up
+const barEl = document.querySelector('.bar');
+function closeMobileMenu() {
+  $('bar-collapse').classList.remove('is-open');
+  $('menu-toggle').setAttribute('aria-expanded', 'false');
+}
+$('menu-toggle').addEventListener('click', () => {
+  const willOpen = !$('bar-collapse').classList.contains('is-open');
+  $('bar-collapse').classList.toggle('is-open', willOpen);
+  $('menu-toggle').setAttribute('aria-expanded', String(willOpen));
+  if (!willOpen) closeMenus();  // folding the whole nav also folds any open dropdown
+});
+
+// click-away and Escape close whichever dropdown (and, on mobile, the nav) is open
+document.addEventListener('click', (e) => {
+  if (!$('menu').contains(e.target)) closeMenus();
+  if (!barEl.contains(e.target)) closeMobileMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { closeMenus(); closeMobileMenu(); }
+});
 
 // ---- users (Account ▸ Users) --------------------------------------------
 // Two levels, per the user_roles migration:
