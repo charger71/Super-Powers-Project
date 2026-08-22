@@ -178,7 +178,7 @@ const ENTITIES = {
   variations: {
     label: 'Variations',
     table: 'release_variations',
-    listCols: ['name', 'slug', 'variation_type', 'rarity'],
+    listCols: ['name', 'slug', 'variation_type', 'rarity', 'sort_order'],
     // variations carry their own photos, attached like any other media
     mediaJoin: { table: 'media_variations', fk: 'variation_id' },
     fields: [
