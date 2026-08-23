@@ -635,7 +635,7 @@ function pager(kind, prev, next) {
 // dossier page, 'loose' in the Toy Database. Falls back to all release media so
 // a release without a role-specific photo still shows its best available image
 // rather than a placeholder.
-function figureCard(r, roles) {
+function figureCard(r, roles, { showCredit = true } = {}) {
   const roleMedia = roles ? pickMedia(r.media_releases, roles) : [];
   const media = roleMedia.length ? roleMedia : sortedMedia(r.media_releases);
   const front = mediaUrl(media[0]) ?? PLACEHOLDER;
@@ -655,7 +655,7 @@ function figureCard(r, roles) {
     r.status !== 'released' ? r.status.replaceAll('_', ' ') : null,
     r.type !== 'figure' ? r.type.replaceAll('_', ' ') : null,
   ].filter(Boolean).join(' · ');
-  const credit = media[0]?.credit ? `<p class="figure-card__meta">Photo: ${esc(media[0].credit)}</p>` : '';
+  const credit = showCredit && media[0]?.credit ? `<p class="figure-card__meta">Photo: ${esc(media[0].credit)}</p>` : '';
   return `<a class="figure-card" href="/release/${esc(r.slug)}.html">
           ${flip}
           <h3>${esc(r.name)}</h3>
@@ -2063,7 +2063,7 @@ function renderToyIndex(releases) {
       <div class="toy-wave">
         <h3 class="toy-wave__head">${esc(wn)}${w.year < 9999 ? ` · ${esc(w.year)}` : ''}</h3>
         <div class="figures-grid">
-          ${w.releases.map((r) => figureCard(r, ['loose'])).join('\n          ')}
+          ${w.releases.map((r) => figureCard(r, ['loose'], { showCredit: false })).join('\n          ')}
         </div>
       </div>`).join('\n');
     return `
