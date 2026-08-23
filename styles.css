@@ -1511,7 +1511,7 @@ a.essay:focus-visible {
   color: var(--color-ink-mid);
   font-weight: 700;
 }
-.variation-card__notes { color: var(--color-ink-mid); font-size: var(--step--1); }
+.variation-card__notes { margin-top: 1rem; color: var(--color-ink-mid); font-size: var(--step--1); }
 
 .release-gallery-block { margin: 0 0 2rem; }
 .release-gallery-block .dek { margin: 0 0 0.75rem; }
