@@ -1070,7 +1070,7 @@ function renderReleasePage(r, variations, adj, related = '', siblings = [], line
             </div>
             ${v.description ? richText(v.description) : ''}
             ${vValues ? `<p class="variation-card__values">${esc(vValues)}</p>` : ''}
-            ${v.notes ? `<div class="variation-card__notes">${richText(v.notes)}</div>` : ''}
+            ${v.notes ? `<div class="variation-card__notes"><p class="dek">Notes</p>${richText(v.notes)}</div>` : ''}
           </div>
         </li>`;
         }).join('\n        ')}
