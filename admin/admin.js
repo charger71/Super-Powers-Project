@@ -405,13 +405,14 @@ const ENTITIES = {
     // Attribution is captured AT upload — credit/rights/alt are required
     // here on purpose (see CLAUDE.md non-negotiable #1).
     fields: [
-      { col: 'type',       label: 'Type',       kind: 'lookup', table: 'media_types', required: true, initial: 'photo' },
-      { col: 'credit',     label: 'Credit *',   kind: 'text', required: true },
-      { col: 'rights',     label: 'Rights *',   kind: 'lookup', table: 'rights_statuses', required: true },
-      { col: 'alt_text',   label: 'Alt text *', kind: 'text', required: true },
-      { col: 'caption',    label: 'Caption',    kind: 'text' },
-      { col: 'source_url', label: 'Source URL', kind: 'text' },
-      { col: 'embed_url',  label: 'Embed URL (video — instead of a file)', kind: 'text' },
+      { col: 'type',        label: 'Type',       kind: 'lookup', table: 'media_types', required: true, initial: 'photo' },
+      { col: 'credit',      label: 'Credit *',   kind: 'text', required: true },
+      { col: 'rights',      label: 'Rights *',   kind: 'lookup', table: 'rights_statuses', required: true },
+      { col: 'alt_text',    label: 'Alt text *', kind: 'text', required: true },
+      { col: 'caption',     label: 'Caption',    kind: 'text' },
+      { col: 'description', label: 'Description (internal notes — not shown on the public site)', kind: 'textarea' },
+      { col: 'source_url',  label: 'Source URL', kind: 'text' },
+      { col: 'embed_url',   label: 'Embed URL (video — instead of a file)', kind: 'text' },
     ],
   },
 };
@@ -2403,19 +2404,20 @@ function renderInlineUpload(def, row, join, isFirst) {
     return i;
   };
 
-  const typeSel   = document.createElement('select');
-  const rightsSel = document.createElement('select');
+  const typeSel       = document.createElement('select');
+  const rightsSel     = document.createElement('select');
   fillLookupSelect(typeSel, 'media_types', stickyMedia.type ?? 'photo');
   fillLookupSelect(rightsSel, 'rights_statuses', stickyMedia.rights);
-  const creditIn  = textInput('e.g. Photo © Jane Collector, used with permission');
-  const altIn     = textInput('Describe the image for a11y + SEO');
-  const captionIn = textInput('Optional');
-  const sourceIn  = textInput('Optional');
+  const creditIn      = textInput('e.g. Photo © Jane Collector, used with permission');
+  const altIn         = textInput('Describe the image for a11y + SEO');
+  const captionIn     = textInput('Optional');
+  const descriptionIn = textInput('Optional — internal notes, not shown on the public site');
+  const sourceIn      = textInput('Optional');
   // carry the last-used shared attribution into this upload
   creditIn.value = stickyMedia.credit ?? '';
   sourceIn.value = stickyMedia.source_url ?? '';
-  const embedIn   = textInput('For video instead of a file');
-  const fileIn    = document.createElement('input');
+  const embedIn       = textInput('For video instead of a file');
+  const fileIn        = document.createElement('input');
   fileIn.type = 'file';
   fileIn.accept = 'image/*,.pdf';
 
@@ -2428,6 +2430,7 @@ function renderInlineUpload(def, row, join, isFirst) {
     field('Credit *', creditIn, true),
     field('Alt text *', altIn, true),
     field('Caption', captionIn),
+    field('Description', descriptionIn, true),
     field('Source URL', sourceIn),
     field('Embed URL', embedIn, true),
     field('File', fileIn, true),
@@ -2463,6 +2466,7 @@ function renderInlineUpload(def, row, join, isFirst) {
         credit,
         alt_text: alt,
         caption: captionIn.value.trim() || null,
+        description: descriptionIn.value.trim() || null,
         source_url: sourceIn.value.trim() || null,
         embed_url: embed || null,
       };
@@ -3003,7 +3007,12 @@ function renderBulkGrid() {
     cap.placeholder = 'Caption (optional)';
     cap.className = 'bulk-caption';
 
-    card.append(img, name, alt, cap);
+    const desc = document.createElement('input');
+    desc.type = 'text';
+    desc.placeholder = 'Description (optional, internal notes)';
+    desc.className = 'bulk-description';
+
+    card.append(img, name, alt, cap, desc);
     return card;
   }));
 }
@@ -3059,6 +3068,7 @@ $('bulk-submit').addEventListener('click', async () => {
         ...shared,
         alt_text: card.querySelector('.bulk-alt').value.trim(),
         caption: card.querySelector('.bulk-caption').value.trim() || null,
+        description: card.querySelector('.bulk-description').value.trim() || null,
         storage_path: path,
         width,
         height,
