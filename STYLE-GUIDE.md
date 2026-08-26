@@ -29,8 +29,8 @@ a UI color. Body ink is dark blue, never black.
 
 | Token | Value | Role |
 |---|---|---|
-| `--color-blue-lt` | `#4EB6E3` | Light-blue surfaces (strip, masthead, section fields) |
-| `--color-blue` | `#33327A` | **Body ink**, dark surfaces, primary type |
+| `--color-blue-lt` | `#4EB6E3` | Light-blue surfaces (masthead, section fields) |
+| `--color-blue` | `#33327A` | **Body ink**, dark surfaces (strip, footer, stats), primary type |
 | `--color-red` | `#EE4C41` | Accent, tags, CTAs-on-hover, section dividers |
 | `--color-yellow` | `#FBEC3E` | Highlight surfaces, hero section, hover reveals |
 | `--color-white` | `#F4F4EE` | Page background (warm off-white, not pure white) |
@@ -117,9 +117,8 @@ Use the step tokens — never a raw `rem`/`px` font-size for display text.
 
 - **Star** — the house mark. Yellow five-point star, rendered as a CSS `mask` (no
   external asset). Inline as `.star` (with `--white` / `--dark` / `--red` variants), as a
-  repeating `.star-bar` row, or as a giant bleed decoration behind sections/tiles.
-- **Diagonal card-back stripe** — a faint `repeating-linear-gradient` at -45° used on
-  brand-color fills to echo Kenner card texture. Present in `.thumb`.
+  repeating `.star-bar` row, as the mobile nav toggle icon, or as a giant bleed
+  decoration behind sections/tiles.
 - **Halftone dots** — orange (or blue) radial-gradient dot field with a diagonal mask,
   used on pullquotes.
 

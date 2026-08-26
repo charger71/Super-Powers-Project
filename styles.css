@@ -219,10 +219,13 @@ button { font: inherit; cursor: pointer; }
 }
 .photo-well--yellow .photo-well__caption { color: var(--color-blue); opacity: 0.7; }
 
-/* ---------- HEADER (strip + masthead, one light-blue block) ---------- */
+/* ---------- HEADER (strip + masthead) ---------- */
+/* Strip: a dark-blue utility bar (site search lives here) sitting above the
+   light-blue masthead — the two-tone chrome gives the search box somewhere
+   with real contrast to live. */
 .strip {
-  background: var(--color-blue-lt);
-  color: var(--color-blue);
+  background: var(--color-blue);
+  color: var(--color-white);
 }
 .strip__inner {
   display: flex;
@@ -241,6 +244,46 @@ button { font: inherit; cursor: pointer; }
   font-weight: 900;
 }
 
+/* Site search — right-aligned in the strip (space-between does the work as
+   long as it's the brand's only sibling). Plain GET to the search page, which
+   already supports a deep-linked ?q= (see js/search.js). */
+.strip__search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.strip__search input[type="search"] {
+  width: clamp(8rem, 20vw, 14rem);
+  background: var(--color-blue-dk);
+  border: 1px solid rgba(var(--rgb-white), 0.4);
+  border-radius: var(--radius);
+  color: var(--color-white);
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  padding: 0.4rem 0.65rem;
+}
+.strip__search input[type="search"]::placeholder { color: rgba(var(--rgb-white), 0.65); }
+.strip__search input[type="search"]:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-color: var(--color-yellow);
+}
+.strip__search button {
+  background: none;
+  border: 0;
+  color: var(--color-yellow);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--step--1);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.2rem;
+}
+.strip__search button:hover,
+.strip__search button:focus-visible { color: var(--color-white); }
+
 .masthead {
   position: relative;
   background: var(--color-blue-lt);
@@ -257,8 +300,14 @@ button { font: inherit; cursor: pointer; }
   gap: 1rem 1.5rem;
   flex-wrap: wrap;
 }
-/* Home masthead: wordmark + dek as a left block, nav top-aligned to their right. */
+/* Home masthead: wordmark + dek as a left block, top-aligned. The nav claims
+   a full-width row of its own below them — flex-basis: 100% forces the wrap
+   inside .masthead__inner's existing flex-wrap regardless of viewport width —
+   with its links centered and spaced evenly edge to edge. The compact subpage
+   masthead is untouched, so it keeps wordmark + nav on one row. */
 .masthead:not(.masthead--compact) .masthead__inner { align-items: flex-start; }
+.masthead:not(.masthead--compact) .site-nav { flex-basis: 100%; }
+.masthead:not(.masthead--compact) .site-nav__menu { flex: 1; justify-content: space-evenly; }
 .masthead__head { flex: 1 1 auto; }
 .site-nav { display: flex; align-items: center; }
 .site-nav__menu {
@@ -302,25 +351,6 @@ button { font: inherit; cursor: pointer; }
   color: var(--color-blue);
   cursor: pointer;
 }
-.site-nav__bars {
-  position: relative;
-  display: block;
-  width: 22px;
-  height: 2px;
-  background: currentColor;
-}
-.site-nav__bars::before,
-.site-nav__bars::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  width: 22px;
-  height: 2px;
-  background: currentColor;
-}
-.site-nav__bars::before { top: -7px; }
-.site-nav__bars::after  { top:  7px; }
-
 @media (max-width: 760px) {
   .site-nav__toggle { display: inline-flex; }
   .site-nav__menu {
@@ -331,6 +361,11 @@ button { font: inherit; cursor: pointer; }
     top: 100%;
     z-index: 30;
     flex-direction: column;
+    /* Undo the desktop rule's align-items: center — links are full-width
+       rows here, not a centered cluster, and .site-nav__menu a below already
+       renders each as display:block so it fills whatever this stretches to. */
+    align-items: stretch;
+    justify-content: flex-start;
     gap: 0;
     background: var(--color-blue-lt);
     border-top: 2px solid var(--color-blue);
@@ -543,28 +578,11 @@ button { font: inherit; cursor: pointer; }
   align-items: center;
 }
 .aux__list li:last-child { border-bottom: 1px solid var(--color-rule); }
-.thumb {
+.aux__photo {
   width: 56px; height: 56px;
-  display: grid; place-items: center;
-  font-family: var(--font-brand);
-  font-weight: 900;
-  font-size: 1.35rem;
+  object-fit: cover;
   background: var(--color-blue-lt);
-  color: var(--color-blue);
-  position: relative;
-  overflow: hidden;
 }
-.thumb::before {
-  content: "";
-  position: absolute; inset: 0;
-  background: repeating-linear-gradient(
-    -45deg, transparent 0 8px, rgba(255,255,255,0.08) 8px 9px
-  );
-  pointer-events: none;
-}
-.thumb--red    { background: var(--color-red);    color: var(--color-yellow); }
-.thumb--yellow { background: var(--color-yellow); color: var(--color-blue); }
-.thumb--blue   { background: var(--color-blue);   color: var(--color-yellow); }
 
 .aux__item strong {
   display: block;
@@ -957,7 +975,7 @@ a.essay:focus-visible {
 .hero__cta,
 .hero__eyebrow .tag,
 .card__tab,
-.thumb,
+.aux__photo,
 .hero__photo,
 .photo-well,
 .essay__photo {

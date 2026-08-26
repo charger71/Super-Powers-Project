@@ -17,13 +17,20 @@ fill real content.
 ## Page chrome (every page)
 
 ### Edition strip — `.strip`
-Thin light-blue bar at the very top: just the brand mark. On subpages the brand is a link home
-(`<a class="strip__brand" href="/index.html">`).
+Thin dark-blue bar at the very top: the brand mark, plus a site search box (`.strip__search`)
+right-aligned by `.strip__inner`'s `space-between` — it's the brand's only sibling, so that
+alone pushes it to the edge. On subpages the brand is a link home
+(`<a class="strip__brand" href="/index.html">`). The search box is a plain GET form to
+`/search/index.html`, which already deep-links `?q=` (see `js/search.js`) — no extra JS needed.
 
 ```html
 <div class="strip">
   <div class="wrap strip__inner">
     <span class="strip__brand"><span class="star" aria-hidden="true"></span> ARCHIVE84</span>
+    <form class="strip__search" action="/search/index.html" role="search">
+      <input type="search" name="q" placeholder="Search the archive…" aria-label="Search the archive">
+      <button type="submit">Search</button>
+    </form>
   </div>
 </div>
 ```
@@ -51,16 +58,20 @@ the dek; the compact subpage version (`.masthead--compact` + `.wordmark--link`) 
 ```
 
 ### Section nav — `.site-nav`
-Primary site nav, lives in the masthead. Futura-uppercase links inline on desktop; below 760px they
-collapse behind a `☰ Menu` button into a full-width dropdown anchored to the masthead (toggled by
-`/js/nav.js`, which flips `aria-expanded` on the button — the CSS reveals the menu off that). Keep
-the `id="site-menu"` / `aria-controls="site-menu"` pairing so the toggle and the script find each
-other. Add `aria-current="page"` to the link for the current section to underline it.
+Primary site nav, lives in the masthead. On the home (non-compact) masthead the nav breaks onto
+its own full-width row below the wordmark/dek (`flex-basis: 100%` forces the wrap) with its links
+spaced evenly edge to edge (`justify-content: space-evenly`); the compact subpage masthead keeps
+wordmark + nav on one row, Futura-uppercase links inline. Below 760px links collapse behind a
+star-icon `Menu` button into a full-width dropdown anchored to the masthead, its links stretched
+to fill the dropdown's width (toggled by `/js/nav.js`, which flips `aria-expanded` on the button —
+the CSS reveals the menu off that). Keep the `id="site-menu"` / `aria-controls="site-menu"`
+pairing so the toggle and the script find each other. Add `aria-current="page"` to the link for
+the current section to underline it.
 
 ```html
 <nav class="site-nav" aria-label="Sections">
   <button class="site-nav__toggle" type="button" aria-expanded="false" aria-controls="site-menu">
-    <span class="site-nav__bars" aria-hidden="true"></span>Menu
+    <span class="star" aria-hidden="true"></span>Menu
   </button>
   <ul class="site-nav__menu" id="site-menu">
     <li><a href="/characters/index.html">Characters</a></li>
@@ -99,9 +110,10 @@ sidebar card (`.aux`).
 - **`.hero`** — `.hero__eyebrow` (with a red `.tag`), `.hero__photo` (21:9), `.hero__title`
   (display, step-5), `.hero__dek`, `.hero__lede` (drop cap), `.hero__meta` (rule-bracketed
   key/value row), `.hero__cta` (blue button, arrow appended, inverts to yellow on hover).
-- **`.aux`** — white card. `.aux__heading`, then `.aux__list` of `li` rows, each a
-  `.thumb` (`--red`/`--yellow`/`--blue`) + `a.aux__item` (`strong` title + `small` label),
-  closed by an `.aux__more` link.
+- **`.aux`** — white card. `.aux__heading`, then `.aux__list` of `li` rows, each a real
+  56×56 `img.aux__photo` (`object-fit: cover` — the character's headshot, or the best
+  available photo for a toy/video/merch item) + `a.aux__item` (`strong` title + `small`
+  label), closed by an `.aux__more` link.
 
 ```html
 <aside class="aux">
@@ -109,7 +121,7 @@ sidebar card (`.aux`).
   <h2 class="aux__heading">New in the Archive</h2>
   <ul class="aux__list">
     <li>
-      <div class="thumb thumb--blue">B</div>
+      <img class="aux__photo" src="…batman-headshot.png" alt="Batman">
       <a class="aux__item" href="dossier/batman.html">
         <strong>Batman</strong><small>Character Dossier</small>
       </a>
