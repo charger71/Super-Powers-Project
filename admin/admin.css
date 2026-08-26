@@ -45,6 +45,12 @@ input, select, textarea {
 }
 textarea { min-height: 7rem; resize: vertical; }
 input.invalid { border-color: var(--danger); }
+input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+}
 
 /* top bar */
 .bar {

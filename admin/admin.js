@@ -86,6 +86,10 @@ const ENTITIES = {
       { col: 'powers',             label: 'Powers',              kind: 'textarea' },
       { col: 'weaknesses',         label: 'Weaknesses',          kind: 'textarea' },
       { col: 'enemies',            label: 'Enemies (card text)', kind: 'textarea' },
+      // exclusive: only one character across the table may have this true —
+      // checking it here stands down whoever currently holds it (see the
+      // submit handler) and the DB's partial unique index backs that up.
+      { col: 'is_homepage_feature', label: 'Feature on homepage (the hero dossier — only one at a time)', kind: 'checkbox', exclusive: true },
     ],
   },
   releases: {
@@ -2706,6 +2710,11 @@ async function openDrawer(row) {
       input = document.createElement('textarea');
       input.name = f.col;
       input.value = value ?? '';
+    } else if (f.kind === 'checkbox') {
+      input = document.createElement('input');
+      input.type = 'checkbox';
+      input.name = f.col;
+      input.checked = Boolean(value);
     } else {
       input = document.createElement('input');
       input.name = f.col;
@@ -2811,6 +2820,10 @@ function collectPayload() {
       continue;
     }
     const el = form.querySelector(`[name="${f.col}"]`);
+    if (f.kind === 'checkbox') {
+      payload[f.col] = el.checked;
+      continue;
+    }
     const raw = el.value.trim();
     if (f.kind === 'array') {
       payload[f.col] = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
@@ -2866,6 +2879,16 @@ $('record-form').addEventListener('submit', async (e) => {
         }
       } else if (!state.editing && !payload.embed_url) {
         throw new Error('Pick a file or provide an embed URL.');
+      }
+    }
+
+    // Exclusive checkbox fields (e.g. "Feature on homepage") — at most one
+    // row across the table may have it true, so standing this one up stands
+    // the previous holder down first. clear then set, same as is_primary.
+    for (const f of def.fields) {
+      if (f.kind === 'checkbox' && f.exclusive && payload[f.col]) {
+        const { error } = await db.from(def.table).update({ [f.col]: false }).eq(f.col, true);
+        if (error) throw new Error(error.message);
       }
     }
 
