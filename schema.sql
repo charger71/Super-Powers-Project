@@ -333,6 +333,7 @@ create table media_assets (
   width          int,
   height         int,
   caption        text,
+  description    text,                         -- internal notes about the asset; never rendered on the public site (see caption)
   alt_text       text,                         -- capture at upload; a11y + SEO
   credit         text not null,                -- '© J. Collector'
   source_url     text,
