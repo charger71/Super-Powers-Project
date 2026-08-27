@@ -300,14 +300,10 @@ button { font: inherit; cursor: pointer; }
   gap: 1rem 1.5rem;
   flex-wrap: wrap;
 }
-/* Home masthead: wordmark + dek as a left block, top-aligned. The nav claims
-   a full-width row of its own below them — flex-basis: 100% forces the wrap
-   inside .masthead__inner's existing flex-wrap regardless of viewport width —
-   with its links centered and spaced evenly edge to edge. The compact subpage
-   masthead is untouched, so it keeps wordmark + nav on one row. */
+/* Home masthead: wordmark + dek as a left block, nav top-aligned to their
+   right — same one-row nav as the compact subpage masthead below, just
+   top-aligned instead of centered since the title+dek block is taller. */
 .masthead:not(.masthead--compact) .masthead__inner { align-items: flex-start; }
-.masthead:not(.masthead--compact) .site-nav { flex-basis: 100%; }
-.masthead:not(.masthead--compact) .site-nav__menu { flex: 1; justify-content: space-evenly; }
 .masthead__head { flex: 1 1 auto; }
 .site-nav { display: flex; align-items: center; }
 .site-nav__menu {

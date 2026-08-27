@@ -58,15 +58,14 @@ the dek; the compact subpage version (`.masthead--compact` + `.wordmark--link`) 
 ```
 
 ### Section nav — `.site-nav`
-Primary site nav, lives in the masthead. On the home (non-compact) masthead the nav breaks onto
-its own full-width row below the wordmark/dek (`flex-basis: 100%` forces the wrap) with its links
-spaced evenly edge to edge (`justify-content: space-evenly`); the compact subpage masthead keeps
-wordmark + nav on one row, Futura-uppercase links inline. Below 760px links collapse behind a
-star-icon `Menu` button into a full-width dropdown anchored to the masthead, its links stretched
-to fill the dropdown's width (toggled by `/js/nav.js`, which flips `aria-expanded` on the button —
-the CSS reveals the menu off that). Keep the `id="site-menu"` / `aria-controls="site-menu"`
-pairing so the toggle and the script find each other. Add `aria-current="page"` to the link for
-the current section to underline it.
+Primary site nav, lives in the masthead. Same one-row layout on every page — home and subpage
+masthead alike — wordmark/dek to the left, Futura-uppercase links inline to their right (the home
+masthead just top-aligns the nav against the taller title+dek block instead of centering it).
+Below 760px links collapse behind a star-icon `Menu` button into a full-width dropdown anchored
+to the masthead, its links stretched to fill the dropdown's width (toggled by `/js/nav.js`, which
+flips `aria-expanded` on the button — the CSS reveals the menu off that). Keep the
+`id="site-menu"` / `aria-controls="site-menu"` pairing so the toggle and the script find each
+other. Add `aria-current="page"` to the link for the current section to underline it.
 
 ```html
 <nav class="site-nav" aria-label="Sections">
