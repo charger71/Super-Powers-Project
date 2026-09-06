@@ -371,6 +371,44 @@ attribution convention. Images with neither stay bare.
 
 ---
 
+## Reader (mini-comic pages)
+
+Native `<dialog class="reader">` — the same shared-dialog pattern as the
+lightbox (`.reader__inner`, round `.reader__close`/`__prev`/`__next`), plus a
+page counter and numbered translation pins. Opened by any **`.reader-trigger`**
+button instead of `.lb-trigger`, so the two never bind to the same element.
+
+A publication's gallery uses the reader once there's something to page
+through — **2+ attached images, or a single image that already carries
+translation pins** — and the plain lightbox otherwise (see
+`renderPublicationPage` in `build/build-dossiers.mjs`).
+
+```html
+<button class="reader-trigger" data-gallery="pub-<slug>"
+        data-full="…" data-title="…" data-credit="…" data-caption="…"
+        data-source-lang="pt"
+        data-captions='[{"n":1,"x":42,"y":18,"translated":"…","original":"…","language":"en"}]'>
+  <img src="…" alt="…">
+</button>
+```
+
+`data-captions` is a JSON array, pre-serialized at build time from
+`publication_page_captions` (keyed by that page's `media_id`) so the reader
+needs no database call of its own. `x`/`y` are 0–100 percent of the page
+image, not pixels — `js/reader.js` positions each `.reader__pin` with an
+inline `left`/`top` in that unit, so it survives any display size.
+`data-source-lang` carries the publication's own `language` (e.g. `pt` for an
+Estrela print), used as the `lang` attribute on a pin's optional original-text
+line for correct screen-reader pronunciation.
+
+Pins render directly on the page — there's no separate show/hide-translations
+toggle; a page simply has as many pins as it has captions. Clicking, tapping,
+or focusing a pin (a real `<button>`, keyboard-reachable) opens a single
+shared `.reader__callout` with the translated line and, if present, an
+italicized original-language line underneath.
+
+---
+
 ## Timeline page (`.timeline` + multi-event years)
 
 The chronological spine at `/timeline/index.html` reuses the editorial

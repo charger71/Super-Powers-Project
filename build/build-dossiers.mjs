@@ -20,7 +20,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Stand-in until real photography is attached (see CLAUDE.md conventions).
 const PLACEHOLDER = '../assets/sp-palceholder.jpg';
 
-const MEDIA_EMBED = 'media_assets(storage_path,embed_url,alt_text,credit)';
+const MEDIA_EMBED = 'media_assets(id,storage_path,embed_url,alt_text,credit)';
 // The screen-media VIDEO asset, plus poster_path/caption/source_url — used where
 // video embeds, captions, and attribution links render (the media hub + detail
 // pages). The !media_id hint is required because screen_media now has a second
@@ -160,6 +160,30 @@ const lbTrigger = (m, gallery, title, imgClass = '', btnClass = '') => {
     + ` data-credit="${m.credit ? esc('Photo: ' + m.credit) : ''}"`
     + ` data-caption="${esc(m.caption ?? m.alt_text ?? '')}">`
     + `<img class="${imgClass}" src="${esc(url)}" alt="${esc(alt)}" loading="lazy"></button>`;
+};
+
+// A clickable comic page that opens the sequential reader instead of the
+// plain lightbox. Same data-attribute contract as lbTrigger (gallery
+// grouping, full image, title, credit, caption) plus each translation pin's
+// position + text, pre-serialized so the reader needs no DB fetch of its own.
+const readerTrigger = (m, gallery, title, captions, sourceLang) => {
+  const url = mediaUrl(m);
+  const alt = m.alt_text ?? title;
+  const caps = (captions ?? []).map((c) => ({
+    n: c.sort_order,
+    x: Number(c.x_pct),
+    y: Number(c.y_pct),
+    translated: c.translated_text,
+    original: c.original_text || null,
+    language: c.language,
+  }));
+  return `<button type="button" class="reader-trigger" data-gallery="${esc(gallery)}"`
+    + ` data-full="${esc(url)}" data-title="${esc(title)}"`
+    + ` data-credit="${m.credit ? esc('Photo: ' + m.credit) : ''}"`
+    + ` data-caption="${esc(m.caption ?? m.alt_text ?? '')}"`
+    + ` data-source-lang="${esc(sourceLang || '')}"`
+    + ` data-captions="${esc(JSON.stringify(caps))}">`
+    + `<img src="${esc(url)}" alt="${esc(alt)}" loading="lazy"></button>`;
 };
 
 // consistent global ordering for release prev/next + grouping
@@ -578,6 +602,29 @@ ${body}
     </div>
   </dialog>
   <script src="/js/lightbox.js" defer></script>
+
+  <!-- Comic reader — opened by any .reader-trigger on the page (see /js/reader.js) -->
+  <dialog class="reader" id="reader" aria-label="Comic reader">
+    <div class="reader__inner">
+      <button class="reader__close" type="button" data-action="close" aria-label="Close">&times;</button>
+      <button class="reader__prev"  type="button" data-action="prev"  aria-label="Previous page">&#8249;</button>
+      <button class="reader__next"  type="button" data-action="next"  aria-label="Next page">&#8250;</button>
+      <div class="reader__stage">
+        <img class="reader__img" id="reader-img" src="" alt="">
+        <div class="reader__pins" id="reader-pins"></div>
+        <div class="reader__callout" id="reader-callout" hidden>
+          <p class="reader__callout-translated" id="reader-callout-translated"></p>
+          <p class="reader__callout-original" id="reader-callout-original" lang=""></p>
+        </div>
+      </div>
+      <figcaption class="reader__caption">
+        <p class="dek" id="reader-status"></p>
+        <h3 id="reader-title"></h3>
+        <p id="reader-credit"></p>
+      </figcaption>
+    </div>
+  </dialog>
+  <script src="/js/reader.js" defer></script>
   <script src="/js/nav.js" defer></script>
   <script src="/js/power-bubble.js" defer></script>
 
@@ -1614,9 +1661,12 @@ const PUB_KIND_LABEL = {
   book: 'Book', rpg: 'Role-Playing Game',
 };
 
-function renderPublicationPage(p, packedRelease, adj, related = '') {
+function renderPublicationPage(p, packedRelease, adj, related = '', captionsByMedia = new Map()) {
   const media = sortedMedia(p.media_publications);
   const cover = mediaUrl(media[0]) ?? PLACEHOLDER;
+  // 2+ pages, or a single page that already carries translation pins, opens
+  // the sequential reader; a lone plain cover keeps the simpler lightbox.
+  const isReader = media.length > 1 || media.some((m) => captionsByMedia.get(m.id)?.length);
 
   const description = stripTags(p.description ?? `${p.title} — DC Super Powers${p.year ? `, ${p.year}` : ''}.`).slice(0, 158);
   const kindLabel = PUB_KIND_LABEL[p.kind] ?? (p.kind ? titleCase(p.kind.replaceAll('_', ' ')) : null);
@@ -1690,7 +1740,9 @@ ${backAndCrumb([
           <p class="dek">${media.length > 1 ? 'Cover &amp; Interiors' : 'Cover'}</p>
           <div class="release-gallery">
             ${(media.length ? media : [{ storage_path: null, embed_url: cover, alt_text: p.title, credit: '' }]).map((m) => `<figure>
-              ${lbTrigger(m, `pub-${p.slug}`, p.title)}
+              ${isReader
+                ? readerTrigger(m, `pub-${p.slug}`, p.title, captionsByMedia.get(m.id), p.language)
+                : lbTrigger(m, `pub-${p.slug}`, p.title)}
               ${m.credit ? `<figcaption>Scan: ${esc(m.credit)}</figcaption>` : ''}
             </figure>`).join('\n            ')}
           </div>
@@ -2856,17 +2908,26 @@ ${pager('news', adj?.prev, adj?.next)}`;
 
 // ---- main ---------------------------------------------------------------
 
-const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems, lineInfoById, articles] = await Promise.all([
+const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems, lineInfoById, articles, captionRows] = await Promise.all([
   fetchCharacters(), fetchReleases(), fetchPublicationsByCharacter(), fetchEnemiesByCharacter(),
   fetchCreatorsByCharacter(), fetchVariationsByRelease(), fetchScreenMedia(), fetchMerchandise(),
   rest(`publications?select=*,media_publications(is_primary,sort_order,${MEDIA_EMBED}),publication_creators(role,creators(name,slug)),publication_characters(characters(name,slug))&order=kind.asc,year.asc`).catch(() => []),
   fetchCreators(), fetchRelatedItems(), fetchLineInfoById(), fetchArticles(),
+  // Translation pins for comic pages — keyed by media_id (a page image), not
+  // publication_id, since it's not a PostgREST child of publications.
+  rest(`publication_page_captions?select=*&order=sort_order`).catch(() => []),
 ]);
 
 // Resolve curated related_items against the rows we just fetched. `relatedFor`
 // yields a ready-to-embed sidebar block (or '') for any source record.
 const resolveRelatedTarget = buildRelatedResolver({ characters, releases, publications: allPublications, screenMedia, creators, merchandise, articles });
 const relatedFor = (type, id) => relatedSidebar(resolveRelated(relatedItems.get(`${type}:${id}`), resolveRelatedTarget));
+
+const captionsByMedia = new Map();
+for (const cap of captionRows) {
+  if (!captionsByMedia.has(cap.media_id)) captionsByMedia.set(cap.media_id, []);
+  captionsByMedia.get(cap.media_id).push(cap);
+}
 
 if (!characters.length && !releases.length && !screenMedia.length && !merchandise.length) {
   console.log('Nothing in the database — nothing to build.');
@@ -2980,7 +3041,7 @@ for (const [i, m] of merchandise.entries()) {
   const releaseById = new Map(releases.map((r) => [r.id, r]));
   for (const [i, p] of allPublications.entries()) {
     const packed = p.packed_with ? releaseById.get(p.packed_with) : null;
-    const html = renderPublicationPage(p, packed, adjacent(allPublications, i), relatedFor('publication', p.id));
+    const html = renderPublicationPage(p, packed, adjacent(allPublications, i), relatedFor('publication', p.id), captionsByMedia);
     if (await writeIfChanged(join(root, 'comics', `${p.slug}.html`), html)) {
       written++;
       console.log(`built comics/${p.slug}.html`);

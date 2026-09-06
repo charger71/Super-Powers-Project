@@ -456,6 +456,24 @@ create table publication_characters (
   primary key (publication_id, character_id)
 );
 
+-- Translation caption pins — a numbered marker placed at a point on one page
+-- scan (media_assets), not the publication as a whole, since different pages
+-- of the same mini-comic carry different pins. Position is a percent of the
+-- image (0-100) rather than pixels, so it survives any display size.
+create table publication_page_captions (
+  id              uuid primary key default gen_random_uuid(),
+  media_id        uuid not null references media_assets(id) on delete cascade,
+  x_pct           numeric(5,2) not null check (x_pct between 0 and 100),
+  y_pct           numeric(5,2) not null check (y_pct between 0 and 100),
+  translated_text text not null,
+  original_text   text,                       -- optional source-language line
+  language        text not null default 'en', -- language translated_text is in
+  sort_order      smallint default 0,         -- doubles as the pin's number
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+create index on publication_page_captions (media_id);
+
 -- ============================================================
 -- Screen media (cartoons, commercials, VHS)
 -- ============================================================
@@ -654,7 +672,7 @@ begin
     'alignments','release_types','rarity_levels','variation_types','media_types','rights_statuses',
     'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories',
     'article_kinds','editors','articles',
-    'entity_types','related_items'
+    'entity_types','related_items','publication_page_captions'
   ] loop
     execute format(
       'create trigger trg_%s_updated before update on %I
@@ -679,6 +697,7 @@ begin
     'media_assets','media_releases','media_characters','media_creators','media_variations','media_lines',
     'artwork','artwork_creators','artwork_characters',
     'publications','media_publications','publication_creators','publication_characters',
+    'publication_page_captions',
     'screen_media','interviews','merchandise','merchandise_characters','media_merchandise',
     'alignments','release_types','rarity_levels','variation_types','media_types','rights_statuses',
     'artwork_types','publication_kinds','screen_media_kinds','interview_formats','merchandise_categories',

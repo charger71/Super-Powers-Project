@@ -525,6 +525,13 @@ input.invalid { border-color: var(--danger); }
   font-size: 0.7rem;
   padding: 0.2rem 0.45rem;
 }
+.media-card__caption-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.45rem;
+}
 .media-card__role {
   margin-top: 0.5rem;
   font-size: 0.7rem;
@@ -853,3 +860,62 @@ input.invalid { border-color: var(--danger); }
   margin-top: 0.9rem;
 }
 .media-choose__actions button { width: auto; }
+
+/* translation-pin editor (publications' "Captions..." action) */
+.caption-editor {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 1.25rem;
+  max-width: min(92vw, 640px);
+  background: var(--paper);
+}
+.caption-editor::backdrop { background: rgba(0, 0, 0, 0.45); }
+.caption-editor h3 { margin: 0 0 0.35rem; }
+.caption-editor .hint { font-size: 0.8rem; color: var(--ink-mid); margin: 0 0 0.75rem; }
+.caption-editor__stage {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  margin-bottom: 1rem;
+}
+.caption-editor__stage img { display: block; max-width: 100%; max-height: 50vh; }
+/* pointer-events:none lets clicks fall through to the <img> underneath —
+   otherwise this full-size overlay (needed to position pins on top of the
+   image) would swallow every click before it reaches the image's own
+   click-to-add-a-pin handler. */
+.caption-editor__pins { position: absolute; inset: 0; cursor: crosshair; pointer-events: none; }
+.caption-editor__pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.7rem;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.caption-editor__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.caption-editor__row {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr 1fr auto auto auto;
+  gap: 0.4rem;
+  align-items: start;
+}
+.caption-editor__num {
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+  color: var(--ink-mid);
+}
+.caption-editor__row textarea { width: 100%; min-height: 3rem; font: inherit; resize: vertical; }
+.caption-editor__row button { width: auto; }
+.caption-editor > button { width: auto; margin-top: 1rem; }

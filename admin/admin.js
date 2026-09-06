@@ -203,7 +203,9 @@ const ENTITIES = {
     listCols: ['title', 'slug', 'kind', 'year'],
     // cover + interior scans attach like any other media (media_publications);
     // the "attached media" section marks one is_primary as the cover.
-    mediaJoin: { table: 'media_publications', fk: 'publication_id' },
+    // captionable: publications alone get a "Captions..." action on each
+    // attached image, for placing translation pins (publication_page_captions).
+    mediaJoin: { table: 'media_publications', fk: 'publication_id', captionable: true },
     relatedType: 'publication',
     // which canonical characters appear in this comic — the "Comic Appearances"
     // the front end renders on dossiers and comic pages, now editable.
@@ -2082,6 +2084,19 @@ async function renderMediaSection(def, row) {
 
     actions.append(primaryBtn, detachBtn);
     card.append(actions);
+
+    // translation pins — publications only (join.captionable), and only for a
+    // real stored image (nothing to click on for an embed). Its own row below
+    // primary/detach rather than crowded into that action strip.
+    if (join.captionable && m.storage_path) {
+      const capBtn = document.createElement('button');
+      capBtn.type = 'button';
+      capBtn.className = 'media-card__caption-btn';
+      capBtn.textContent = 'Captions…';
+      capBtn.addEventListener('click', () => openCaptionsDialog(m));
+      card.append(capBtn);
+    }
+
     grid.append(card);
   }
   if (reorderable) enableMediaReorder(grid, def, row, join, links.map((l) => l.media_id));
@@ -2338,6 +2353,134 @@ async function chooseMediaDialog() {
   await new Promise((resolve) => dialog.addEventListener('close', resolve, { once: true }));
   dialog.remove();
   return picked;
+}
+
+// Translation-pin editor for one comic page (a media_assets row already
+// attached to a publication). Click the image to drop a new numbered pin;
+// each pin's text/order/deletion is edited in the list below it. Every action
+// writes immediately and re-renders from the DB — same philosophy as
+// renderMediaSection's own attach/detach/primary/reorder actions, rather than
+// a draft-then-save form.
+async function openCaptionsDialog(m) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'caption-editor';
+
+  const h = document.createElement('h3');
+  h.textContent = 'Translation captions';
+  const hint = document.createElement('p');
+  hint.className = 'hint';
+  hint.textContent = 'Click the image to drop a numbered pin, then fill in its translation below.';
+
+  const stage = document.createElement('div');
+  stage.className = 'caption-editor__stage';
+  const img = document.createElement('img');
+  img.src = publicUrl(m.storage_path);
+  img.alt = m.alt_text ?? '';
+  img.draggable = false;
+  const pinsEl = document.createElement('div');
+  pinsEl.className = 'caption-editor__pins';
+  stage.append(img, pinsEl);
+
+  const list = document.createElement('div');
+  list.className = 'caption-editor__list';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.textContent = 'Close';
+  closeBtn.addEventListener('click', () => dialog.close());
+
+  dialog.append(h, hint, stage, list, closeBtn);
+  document.body.append(dialog);
+
+  async function swapOrder(a, b) {
+    await db.from('publication_page_captions').update({ sort_order: b.sort_order }).eq('id', a.id);
+    await db.from('publication_page_captions').update({ sort_order: a.sort_order }).eq('id', b.id);
+    refresh();
+  }
+
+  async function refresh() {
+    const { data: caps, error } = await db.from('publication_page_captions')
+      .select('*').eq('media_id', m.id).order('sort_order');
+    if (error) { alert(error.message); return; }
+
+    pinsEl.replaceChildren();
+    list.replaceChildren();
+
+    caps.forEach((cap, i) => {
+      const pin = document.createElement('span');
+      pin.className = 'caption-editor__pin';
+      pin.style.left = `${cap.x_pct}%`;
+      pin.style.top = `${cap.y_pct}%`;
+      pin.textContent = cap.sort_order;
+      pinsEl.append(pin);
+
+      const row = document.createElement('div');
+      row.className = 'caption-editor__row';
+
+      const num = document.createElement('span');
+      num.className = 'caption-editor__num';
+      num.textContent = cap.sort_order;
+
+      const translated = document.createElement('textarea');
+      translated.placeholder = 'Translated text';
+      translated.value = cap.translated_text ?? '';
+      translated.addEventListener('blur', async () => {
+        const { error } = await db.from('publication_page_captions')
+          .update({ translated_text: translated.value }).eq('id', cap.id);
+        if (error) alert(error.message);
+      });
+
+      const original = document.createElement('textarea');
+      original.placeholder = 'Original text (optional)';
+      original.value = cap.original_text ?? '';
+      original.addEventListener('blur', async () => {
+        const { error } = await db.from('publication_page_captions')
+          .update({ original_text: original.value || null }).eq('id', cap.id);
+        if (error) alert(error.message);
+      });
+
+      const upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.textContent = '▲';
+      upBtn.disabled = i === 0;
+      upBtn.addEventListener('click', () => swapOrder(cap, caps[i - 1]));
+
+      const downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.textContent = '▼';
+      downBtn.disabled = i === caps.length - 1;
+      downBtn.addEventListener('click', () => swapOrder(cap, caps[i + 1]));
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', async () => {
+        await db.from('publication_page_captions').delete().eq('id', cap.id);
+        refresh();
+      });
+
+      row.append(num, translated, original, upBtn, downBtn, delBtn);
+      list.append(row);
+    });
+  }
+
+  img.addEventListener('click', async (ev) => {
+    const r = img.getBoundingClientRect();
+    const x_pct = Math.min(100, Math.max(0, ((ev.clientX - r.left) / r.width) * 100));
+    const y_pct = Math.min(100, Math.max(0, ((ev.clientY - r.top) / r.height) * 100));
+    const { data: existing } = await db.from('publication_page_captions')
+      .select('sort_order').eq('media_id', m.id).order('sort_order', { ascending: false }).limit(1);
+    const next = (existing?.[0]?.sort_order ?? 0) + 1;
+    const { error } = await db.from('publication_page_captions')
+      .insert({ media_id: m.id, x_pct, y_pct, translated_text: '', sort_order: next });
+    if (error) { alert(error.message); return; }
+    refresh();
+  });
+
+  await refresh();
+  dialog.showModal();
+  await new Promise((resolve) => dialog.addEventListener('close', resolve, { once: true }));
+  dialog.remove();
 }
 
 // Shared credit/rights/type/source carried between consecutive inline uploads,

@@ -2323,6 +2323,168 @@ img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; bor
   .dossier-pager__next { text-align: left; }
 }
 
+/* ---------- READER (mini-comic page-flip dialog) ----------
+   Sequential viewer for a publication's pages, opened by .reader-trigger
+   (see js/reader.js) instead of the plain lightbox once there's something to
+   page through. Adds a page counter and numbered translation pins over
+   .lightbox's own structure/tokens. */
+.reader {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: min(920px, 92vw);
+  width: 100%;
+  color: var(--color-blue);
+}
+.reader::backdrop {
+  background: rgba(var(--rgb-blue-dk), 0.88);
+}
+.reader__inner {
+  position: relative;
+  background: var(--color-white);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  gap: 0.75rem;
+}
+/* Shrink-wraps to the image's own rendered box (rather than stretching to
+   the modal's width, like .lightbox__img does) so a pin's x/y percent lines
+   up with the actual picture — no letterboxing to throw the math off. */
+.reader__stage {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+.reader__img {
+  display: block;
+  max-width: 100%;
+  max-height: 78vh;
+  border-radius: calc(var(--radius) - 2px);
+}
+.reader__pins {
+  position: absolute;
+  inset: 0;
+}
+.reader__pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  background: var(--color-blue);
+  color: var(--color-yellow);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--step--2);
+  z-index: 2;
+  transition: transform var(--dur) ease, background var(--dur) ease, color var(--dur) ease;
+}
+.reader__pin:hover,
+.reader__pin:focus-visible,
+.reader__pin[aria-expanded="true"] {
+  background: var(--color-red);
+  color: var(--color-white);
+  transform: translate(-50%, -50%) scale(1.15);
+}
+/* Anchored to the same x/y percent as its pin (set inline by reader.js),
+   nudged up (or down, near the top edge) with a little clearance. Left
+   without overflow:hidden on .reader__inner above so a callout near an edge
+   spills slightly past the card rather than getting clipped. */
+.reader__callout {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 14px));
+  z-index: 3;
+  max-width: min(240px, 68vw);
+  background: var(--color-blue);
+  color: var(--color-yellow);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  box-shadow: 0 6px 18px rgba(var(--rgb-blue-dk), 0.4);
+}
+.reader__callout[hidden] { display: none; }
+.reader__callout--below { transform: translate(-50%, 14px); }
+.reader__callout-translated {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--step--1);
+  line-height: 1.4;
+}
+.reader__callout-original {
+  margin: 0;
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: var(--step--2);
+  opacity: 0.8;
+  line-height: 1.35;
+}
+.reader__caption {
+  align-self: stretch;
+  padding: 0 0.25rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.reader__caption .dek { color: var(--color-red); margin: 0; }
+.reader__caption h3 {
+  font-family: var(--font-brand);
+  font-weight: 900;
+  font-size: var(--step-0);
+  text-transform: uppercase;
+  color: var(--color-blue);
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+.reader__caption p {
+  font-family: var(--font-brand);
+  font-size: var(--step--1);
+  color: var(--color-blue);
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* Reader controls — same treatment as the lightbox's */
+.reader__close,
+.reader__prev,
+.reader__next {
+  position: absolute;
+  z-index: 4;
+  background: var(--color-blue);
+  color: var(--color-yellow);
+  border: 0;
+  cursor: pointer;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-brand);
+  font-weight: 900;
+  font-size: 1.3rem;
+  line-height: 1;
+  border-radius: 50%;
+  transition: transform var(--dur) ease, background var(--dur) ease;
+}
+.reader__close:hover,
+.reader__prev:hover,
+.reader__next:hover { background: var(--color-red); color: var(--color-white); transform: scale(1.08); }
+.reader__close { top: 12px; right: 12px; }
+.reader__prev  { left: 12px;  top: 50%; transform: translateY(-50%); }
+.reader__next  { right: 12px; top: 50%; transform: translateY(-50%); }
+.reader__prev:hover { transform: translateY(-50%) scale(1.08); }
+.reader__next:hover { transform: translateY(-50%) scale(1.08); }
+.reader__prev[hidden],
+.reader__next[hidden] { display: none; }
+
 /* ---------- UNIFORM MONO WEIGHT ----------
    Every mono kicker / label / eyebrow / tag rendered at the same bold weight
    so the mono voice is consistent across the whole page. */
