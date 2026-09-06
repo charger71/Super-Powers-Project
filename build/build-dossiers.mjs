@@ -955,7 +955,6 @@ ${aboutSection}
       <div class="dossier-sidebar">
       ${powerBubble}
       <div class="dossier-portrait-frame"><img class="dossier-portrait" src="${esc(portrait)}" alt="${esc(portraitAlt)}"></div>
-      ${portraitMedia?.credit ? `<p class="dek dek--sm">Photo: ${esc(portraitMedia.credit)}</p>` : ''}
 ${headshots}
 ${powersCard}
 ${related}
