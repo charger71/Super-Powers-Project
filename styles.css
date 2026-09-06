@@ -1037,10 +1037,19 @@ a.essay:focus-visible {
   color: var(--color-white);
   background: var(--color-red);
   border-radius: var(--radius);
+  text-decoration: none;
 }
 .dossier-tag--blue { background: var(--color-blue); }
 .dossier-tag--yellow { background: var(--color-yellow); color: var(--color-blue); }
 .dossier-tag--red { background: var(--color-red); }
+/* Some tags link out (e.g. a character's team, to its team page) — same look,
+   with a small lift on hover/focus for the affordance. */
+a.dossier-tag {
+  transition: transform var(--dur) ease;
+}
+a.dossier-tag:hover, a.dossier-tag:focus-visible {
+  transform: translateY(-2px);
+}
 
 /* Back link — sits above the breadcrumb on generated pages */
 .back-link {
@@ -1517,7 +1526,17 @@ a.essay:focus-visible {
   color: var(--color-blue);
   margin: 0;
 }
+/* Cross-referenced from a line/series page, the heading links back to the
+   parent release (anchored to this card) — same look, underline on hover. */
+.variation-card__head h3 a { text-decoration: none; }
+.variation-card__head h3 a:hover { text-decoration: underline; }
 .variation-card__body p { margin: 0.35rem 0 0; }
+.variation-card__meta {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.04em;
+  color: var(--color-ink-mid);
+}
 .variation-card__values {
   font-family: var(--font-mono);
   font-size: var(--step--1);

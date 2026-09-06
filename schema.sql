@@ -47,7 +47,8 @@ create table lines (
   manufacturer_website text,                    -- manufacturer homepage (logo links here)
   year_start    smallint,
   year_end      smallint,                      -- null = ongoing
-  description   text,
+  overview_lede text,                          -- short enlarged intro, above description
+  description   text,                          -- rich content body for the line's own page
   sort_order    smallint default 0,
   created_at    timestamptz default now(),
   updated_at    timestamptz default now()
@@ -59,7 +60,8 @@ create table series (
   slug          text unique not null,          -- 'kenner-series-3'
   name          text not null,                 -- 'Series 3'
   year          smallint,
-  description   text,
+  overview_lede text,                          -- short enlarged intro, above description
+  description   text,                          -- rich content body for the series' own page
   sort_order    smallint default 0,
   created_at    timestamptz default now(),
   updated_at    timestamptz default now()
@@ -190,11 +192,13 @@ create unique index characters_homepage_feature_key
 
 -- Teams as a proper many-to-many (Justice League, Super Friends, New Gods...)
 create table teams (
-  id          uuid primary key default gen_random_uuid(),
-  slug        text unique not null,
-  name        text not null,
-  created_at  timestamptz default now(),
-  updated_at  timestamptz default now()
+  id            uuid primary key default gen_random_uuid(),
+  slug          text unique not null,
+  name          text not null,
+  overview_lede text,                          -- short enlarged intro, above description
+  description   text,                          -- rich content body for the team's own page
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
 );
 create table character_teams (
   character_id uuid references characters(id) on delete cascade,
@@ -298,6 +302,16 @@ create table release_variations (
   release_id        uuid not null references releases(id) on delete cascade,
   name              text not null,                 -- '31-back card'
   variation_type    text references variation_types(slug) on update cascade on delete restrict,
+  -- The rest mirror the same axes releases vary on. All nullable: null means
+  -- "same as the parent release." region doubles as the country picker for
+  -- variation_type = 'country' (Hong Kong vs Mexico stamp).
+  region            text,
+  line_id           uuid references lines(id)   on delete set null,
+  series_id         uuid references series(id)  on delete set null,
+  release_year      smallint,
+  action_feature    text,
+  accessories       text[] default '{}',
+  card_type         text,
   description       text,
   rarity            text references rarity_levels(slug) on update cascade on delete restrict,
   est_value_loose   numeric(10,2),
@@ -309,6 +323,8 @@ create table release_variations (
   updated_at        timestamptz default now()
 );
 create index on release_variations (release_id);
+create index on release_variations (line_id);
+create index on release_variations (series_id);
 
 -- A release can be designed by several creators, and vice versa.
 create table release_creators (

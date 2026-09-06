@@ -41,6 +41,9 @@ function localTimestamp(d = new Date()) {
 // the stored value is always the row's uuid, never hand-typed.
 // lookup fields render a <select> of an editable vocab table's slugs.
 // mediaJoin wires the "attached media" section into the edit drawer.
+// showIf: { col, equals } hides a field's <label> until another field in the
+// same form equals a given value (e.g. a country picker that only makes sense
+// once Variation type is "Country") — see wireConditionalFields.
 const ENTITIES = {
   characters: {
     label: 'Characters',
@@ -140,7 +143,8 @@ const ENTITIES = {
       { col: 'manufacturer_website', label: 'Manufacturer website (URL)', kind: 'text' },
       { col: 'year_start',   label: 'Year start',   kind: 'number' },
       { col: 'year_end',     label: 'Year end (blank = ongoing)', kind: 'number' },
-      { col: 'description',  label: 'Description',   kind: 'rich' },
+      { col: 'overview_lede', label: 'Overview lede (short enlarged intro, above the description)', kind: 'textarea' },
+      { col: 'description',  label: 'Description (this line\'s own page)', kind: 'rich' },
       { col: 'sort_order',   label: 'Sort order',   kind: 'number' },
     ],
   },
@@ -154,7 +158,8 @@ const ENTITIES = {
       { col: 'name',        label: 'Name',        kind: 'text', required: true },
       { col: 'slug',        label: 'Slug',        kind: 'slug', required: true },
       { col: 'year',        label: 'Year',        kind: 'number' },
-      { col: 'description', label: 'Description', kind: 'textarea' },
+      { col: 'overview_lede', label: 'Overview lede (short enlarged intro, above the description)', kind: 'textarea' },
+      { col: 'description', label: 'Description (this series\' own page)', kind: 'rich' },
       { col: 'sort_order',  label: 'Sort order',  kind: 'number' },
     ],
   },
@@ -177,6 +182,8 @@ const ENTITIES = {
     fields: [
       { col: 'name', label: 'Name', kind: 'text', required: true },
       { col: 'slug', label: 'Slug', kind: 'slug', required: true },
+      { col: 'overview_lede', label: 'Overview lede (short enlarged intro, above the description)', kind: 'textarea' },
+      { col: 'description', label: 'Description (this team\'s own page)', kind: 'rich' },
     ],
   },
   variations: {
@@ -190,6 +197,15 @@ const ENTITIES = {
       { col: 'name',             label: 'Name',            kind: 'text', required: true },
       { col: 'slug',             label: 'Slug',            kind: 'slug', required: true },
       { col: 'variation_type',   label: 'Variation type',  kind: 'lookup', table: 'variation_types' },
+      // only meaningful for a 'country' variation (Hong Kong vs Mexico stamp) —
+      // hidden the rest of the time via showIf, see wireConditionalFields
+      { col: 'region',           label: 'Country / region', kind: 'text', showIf: { col: 'variation_type', equals: 'country' } },
+      { col: 'line_id',          label: 'Line',            kind: 'fk', table: 'lines' },
+      { col: 'series_id',        label: 'Series',          kind: 'fk', table: 'series' },
+      { col: 'release_year',     label: 'Year',            kind: 'number' },
+      { col: 'action_feature',   label: 'Action feature',  kind: 'text' },
+      { col: 'accessories',      label: 'Accessories (comma-separated)', kind: 'array' },
+      { col: 'card_type',        label: 'Card type',       kind: 'text' },
       { col: 'description',      label: 'Description',     kind: 'rich' },
       { col: 'rarity',           label: 'Rarity',          kind: 'lookup', table: 'rarity_levels' },
       { col: 'est_value_loose',  label: 'Est. value loose ($)',  kind: 'number', step: '0.01' },
@@ -2790,6 +2806,9 @@ const VIEW_DIRS = {
   creators:     'creators',
   merchandise:  'merchandise',
   articles:     'news',
+  lines:        'line',
+  series:       'series',
+  teams:        'team',
 };
 
 // ---- crop --------------------------------------------------------------
@@ -2892,6 +2911,25 @@ function imageTools(row) {
   }
 
   return tools;
+}
+
+// Hides a showIf field's <label> until its controlling field equals the given
+// value, and keeps it in sync as the controlling field changes. Reads/writes
+// the DOM only (not def.fields' `value`), so it runs after the fields it
+// targets are already in the drawer. The controlling element is rebuilt fresh
+// on every openDrawer call, so the listener never outlives its field.
+function wireConditionalFields(def) {
+  const container = $('drawer-fields');
+  for (const f of def.fields) {
+    if (!f.showIf) continue;
+    const target = container.querySelector(`[name="${f.col}"]`);
+    const controller = container.querySelector(`[name="${f.showIf.col}"]`);
+    const wrapper = target?.closest('label');
+    if (!wrapper || !controller) continue;
+    const sync = () => { wrapper.hidden = controller.value !== f.showIf.equals; };
+    controller.addEventListener('change', sync);
+    sync();
+  }
 }
 
 async function openDrawer(row) {
@@ -3047,6 +3085,7 @@ async function openDrawer(row) {
   }
 
   $('drawer-fields').replaceChildren(...fields);
+  wireConditionalFields(def);
   // full-page editor: hide the list while editing (the header menu stays,
   // so you can jump to another entity — it closes the drawer on the way out)
   $('list-panel').hidden = true;

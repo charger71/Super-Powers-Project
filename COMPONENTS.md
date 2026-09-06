@@ -171,6 +171,9 @@ Mono uppercase nav. `[aria-current]` dims the current crumb.
 ### Dossier head — `.dossier-head`
 `.dossier-head__tags` row of `.dossier-tag` (`--blue`/`--yellow`/`--red`), then
 `.dossier-title` (brand, huge, yellow offset shadow) and italic `.dossier-aliases`.
+A tag is a plain `<span>` unless it links somewhere (e.g. a character's team,
+to that team's own page) — then it's an `<a class="dossier-tag ...">` with the
+same look plus a small lift on hover/focus.
 
 ```html
 <div class="dossier-head__tags">
@@ -317,8 +320,51 @@ Prev/next yellow blocks (`.dossier-pager__next` right-aligns).
   logo (`__logo`, from `media_lines`) + name (`__name`, not the line name) on a
   white card, both linking to the line's `manufacturer_website` when set.
 - **`.release-variations` / `.variation-card`** — documented variants: per-card
-  `.variation-card__gallery`, `.variation-card__head` (`h3` + tags), `.variation-card__values`
-  and `.variation-card__notes`.
+  `.variation-card__gallery`, `.variation-card__head` (`h3` + tags), `.variation-card__meta`
+  (line/series/year/region/action feature/accessories/card type — whichever the
+  variation overrides from its parent release), `.variation-card__values`
+  and `.variation-card__notes`. Only variations with *neither* a line nor a
+  series tag get the full card here — a tagged one has its own page instead
+  (see Line / Series / Team pages below), so showing the full card here too
+  would just be duplicated content; instead it's an "Also released as"
+  `.figures-grid` of plain teaser tiles beneath the full cards, linking out.
+
+---
+
+## Line / Series / Team pages
+
+Hub pages at `/line/<slug>.html`, `/series/<slug>.html`, `/team/<slug>.html` —
+one per row, not a master listing. Built entirely from existing dossier
+components, no new CSS beyond the two hover rules noted below:
+
+- Head: `.dossier-head` with a `Line`/`Series`/`Team` tag, `.dossier-title`,
+  and a `.dossier-aliases` subtitle (manufacturer/years, or parent line/year).
+- Main column (`.dossier-lede`): the row's `overview_lede` + `description` in
+  the same enlarged-lede-then-`.dossier-lede__more` shape as the release page's
+  Overview. A line page adds a `.credits-list` of its series underneath.
+- Sidebar (`.dossier-sidebar--plain`): a `.dossier-spec` box; a line page also
+  shows `.release-manufacturer` (the same logo+name block as the release
+  page sidebar, via the shared `manufacturerBrandBlock` helper).
+- Below the grid: `.dossier-figures` / `.figures-grid` of everything tagged
+  with the row — a line's releases (grouped by series/wave, like the Toy
+  Database), a series' releases, or a team's member characters (plain
+  `.figure-card`s to their dossiers).
+- A line or series page can ALSO have its own `.release-variations` /
+  `.variation-list` section — a `release_variations` row tagged with that
+  line/series directly (not via its parent release), e.g. a foreign
+  licensee's rebrand documented as a variation on the original release
+  rather than a release of its own ("Superman (Estrela)" on the Kenner
+  Superman page, tagged `line_id` = Estrela). Reuses the exact `.variation-card`
+  the release page renders — same shared `variationCard()` helper — except
+  the heading links back to that parent release, anchored to the card
+  (`/release/<slug>.html#var-<slug>`; every variation card carries that id
+  now, `text-decoration: none` + underline-on-hover like `.release-manufacturer__name`)
+  and an "On `<release>`" line gives it context it wouldn't need on the
+  release's own page.
+- `.dossier-pager` closes out every one of these pages.
+
+Reached from the release page's Line/Series spec rows and a character's team
+tags/spec row, all now links instead of plain text.
 
 ---
 

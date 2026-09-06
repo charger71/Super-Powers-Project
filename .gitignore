@@ -21,9 +21,12 @@ supabase/.temp/
 /comics/
 /creators/
 /dossier/
+/line/
 /media/
 /merchandise/
 /news/
 /release/
 /search/
+/series/
+/team/
 /timeline/

@@ -111,6 +111,8 @@ const stripTags = (s) => String(s ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g
 
 const titleCase = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
 
+const money = (n) => n == null ? null : `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+
 // Creator links are stored as plain URLs; derive a friendly platform label from
 // the domain so the list reads "Twitter / X", "ArtStation", etc. Unknown hosts
 // fall back to the bare domain (minus www.). Bad URLs degrade to the raw string.
@@ -196,7 +198,7 @@ const releaseOrder = (a, b) =>
 
 async function fetchCharacters() {
   return rest(
-    'characters?select=*,character_teams(teams(name)),' +
+    'characters?select=*,character_teams(teams(name,slug)),' +
     `media_characters(role,is_primary,sort_order,${MEDIA_EMBED})&order=name`
   );
 }
@@ -262,7 +264,7 @@ async function fetchVariationsByRelease() {
   let rows;
   try {
     rows = await rest(
-      'release_variations?select=*,' +
+      'release_variations?select=*,lines(name,slug),series(name,slug),releases(slug,name),' +
       `media_variations(is_primary,sort_order,${MEDIA_EMBED})`
     );
   } catch (err) {
@@ -283,7 +285,7 @@ async function fetchVariationsByRelease() {
 
 async function fetchReleases() {
   const base =
-    'releases?select=*,series(name,year,sort_order),lines(name,slug,sort_order),' +
+    'releases?select=*,series(name,year,slug,sort_order),lines(name,slug,sort_order),' +
     'characters!releases_character_id_fkey(name,slug),' +
     'release_characters(character_id,characters(name,slug)),' +
     'release_creators(role,creators(name,slug)),';
@@ -323,6 +325,26 @@ async function fetchLineInfoById() {
     });
   }
   return map;
+}
+
+// Full line rows for /line/<slug>.html — the manufacturer hub page (lede +
+// content + every series and release tagged with it). Distinct from
+// fetchLineInfoById above, which only pulls the branding sliver the release
+// sidebar needs.
+async function fetchLines() {
+  return rest(`lines?select=*,media_lines(is_primary,sort_order,${MEDIA_EMBED})&order=sort_order`);
+}
+
+// Full series rows for /series/<slug>.html, with the parent line embedded for
+// the breadcrumb + "part of" spec row.
+async function fetchSeriesRows() {
+  return rest('series?select=*,lines(name,slug,sort_order)&order=sort_order');
+}
+
+// Full team rows for /team/<slug>.html. No sort_order column (teams is a
+// simple many-to-many, not an editorial list), so alphabetical like creators.
+async function fetchTeams() {
+  return rest('teams?select=*&order=name');
 }
 
 // One query for every publication + its character links, grouped in memory —
@@ -839,7 +861,7 @@ function relatedSidebar(items) {
 // ---- character page -----------------------------------------------------
 
 function renderCharacterPage(c, releases, publications, enemyList, creatorList, adj, related = '') {
-  const teams = (c.character_teams ?? []).map((t) => t.teams?.name).filter(Boolean);
+  const teams = (c.character_teams ?? []).map((t) => t.teams).filter(Boolean);
   const portraitMedia = pickMedia(c.media_characters, ['artwork'])[0];
   const portrait = mediaUrl(portraitMedia) ?? PLACEHOLDER;
   const portraitAlt = portraitMedia?.alt_text ?? `${c.name} character artwork — DC Comics`;
@@ -870,7 +892,12 @@ function renderCharacterPage(c, releases, publications, enemyList, creatorList, 
   const alignmentTag = c.alignment
     ? `<span class="dossier-tag dossier-tag--blue">${esc(titleCase(c.alignment))}</span>`
     : '';
-  const teamTags = teams.map((t) => `<span class="dossier-tag dossier-tag--yellow">${esc(t)}</span>`).join('\n        ');
+  const teamTags = teams.map((t) => t.slug
+    ? `<a class="dossier-tag dossier-tag--yellow" href="/team/${esc(t.slug)}.html">${esc(t.name)}</a>`
+    : `<span class="dossier-tag dossier-tag--yellow">${esc(t.name)}</span>`).join('\n        ');
+  const teamLinks = teams.map((t) => t.slug
+    ? `<a href="/team/${esc(t.slug)}.html">${esc(t.name)}</a>`
+    : esc(t.name)).join(' · ');
 
   // "Created by" — the real-world creators, as text links to their pages, in
   // editorial (billing) order. Separate from the curated "See Also" sidebar.
@@ -887,7 +914,9 @@ function renderCharacterPage(c, releases, publications, enemyList, creatorList, 
       ['Real Name', (c.aka ?? []).slice(0, 2).join(' · ')],
       ['Homeworld', c.homeworld],
       ['Alignment', titleCase(c.alignment)],
-      ['Team', teams.join(' · ')],
+    ]),
+    specRowHtml('Team', teamLinks),
+    specRows([
       ['Base of Operations', c.base_of_operations],
       ['Marital Status', c.marital_status],
       ['Known Relatives', c.known_relatives],
@@ -1021,6 +1050,144 @@ ${pager('dossier', adj?.prev, adj?.next)}`;
 
 // ---- release page -------------------------------------------------------
 
+// Manufacturer branding — LOGO + NAME (not the line name), linking to the
+// manufacturer's real-world website when set. Shared by the release page
+// sidebar and the line's own page. `lineInfo` is { manufacturer, website, logo }.
+// One documented variation, as a `<li class="variation-card">`. Shared by the
+// release page's own "Documented Variations" section and the cross-reference
+// lists on a variation's line/series page. `linkToRelease` turns the heading
+// into a link back to the parent release (anchored to this exact card) and
+// adds an "On <release>" line — needed away from the release page, where the
+// variation otherwise has no context for which release it belongs to.
+function variationCard(v, { linkToRelease = false } = {}) {
+  const vMedia = sortedMedia(v.media_variations);
+  const vGallery = `var-${v.slug}`;
+  const vType = v.variation_type
+    ? `<span class="dossier-tag dossier-tag--blue">${esc(titleCase(v.variation_type))}</span>` : '';
+  const vRarity = v.rarity
+    ? `<span class="dossier-tag dossier-tag--yellow">${esc(titleCase(v.rarity.replaceAll('_', ' ')))}</span>` : '';
+  const vValues = [
+    v.est_value_loose != null ? `Loose ${money(v.est_value_loose)}` : null,
+    v.est_value_carded != null ? `Carded ${money(v.est_value_carded)}` : null,
+  ].filter(Boolean).join(' · ');
+  // whichever of these the variation overrides from its parent release —
+  // null means "same as the release," so most variations show none of this
+  const vMeta = [
+    v.lines?.name,
+    v.series?.name,
+    v.release_year,
+    v.region,
+    v.action_feature,
+    (v.accessories ?? []).join(', ') || null,
+    v.card_type,
+  ].filter(Boolean).join(' · ');
+  // all images shown together above the description; each opens the
+  // lightbox grouped so prev/next stays within this one variation
+  const vGalleryRow = vMedia.length ? `<div class="variation-card__gallery">
+    ${vMedia.map((m) => `<figure>
+      ${lbTrigger(m, vGallery, v.name)}
+      ${m.credit ? `<figcaption>Photo: ${esc(m.credit)}</figcaption>` : ''}
+    </figure>`).join('\n            ')}
+  </div>` : '';
+
+  const anchor = `var-${esc(v.slug)}`;
+  const releaseHref = v.releases?.slug ? `/release/${esc(v.releases.slug)}.html#${anchor}` : null;
+  const vTitle = (linkToRelease && releaseHref)
+    ? `<a href="${releaseHref}">${esc(v.name)}</a>` : esc(v.name);
+  const vOnRelease = (linkToRelease && releaseHref && v.releases?.name)
+    ? `<p class="variation-card__meta">On <a href="${releaseHref}">${esc(v.releases.name)}</a></p>` : '';
+
+  return `<li class="variation-card" id="${anchor}">
+          ${vGalleryRow}
+          <div class="variation-card__body">
+            <div class="variation-card__head">
+              <h3>${vTitle}</h3>
+              ${vType}${vRarity}
+            </div>
+            ${vOnRelease}
+            ${vMeta ? `<p class="variation-card__meta">${esc(vMeta)}</p>` : ''}
+            ${v.description ? richText(v.description) : ''}
+            ${vValues ? `<p class="variation-card__values">${esc(vValues)}</p>` : ''}
+            ${v.notes ? `<div class="variation-card__notes"><p class="dek">Notes</p>${richText(v.notes)}</div>` : ''}
+          </div>
+        </li>`;
+}
+
+// The URL of a variation's own page, for a variation tagged with a line
+// and/or series (see renderVariationPage) — null if it has neither and so
+// has no page of its own, only its inline card on the release page. Line
+// preferred when a variation carries both.
+function variationHref(v) {
+  if (v.line_id && v.lines?.slug) return `/line/${v.lines.slug}/${v.slug}.html`;
+  if (v.series_id && v.series?.slug) return `/series/${v.series.slug}/${v.slug}.html`;
+  return null;
+}
+
+// A minimal teaser for a variation on its line/series page — just the primary
+// photo and name, like figureCard stripped down — linking to that variation's
+// own page (renderVariationPage) rather than the full variationCard detail.
+function variationTile(v, href) {
+  const media = sortedMedia(v.media_variations)[0];
+  const img = mediaUrl(media) ?? PLACEHOLDER;
+  return `<a class="figure-card" href="${esc(href)}">
+          <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
+            <img class="figure-card__photo" src="${esc(img)}" alt="${esc(media?.alt_text ?? v.name)}">
+          </div>
+          <h3>${esc(v.name)}</h3>
+        </a>`;
+}
+
+// A variation's own page — nested under whichever line/series tagged it
+// (/line/<line-slug>/<variation-slug>.html or /series/<series-slug>/...),
+// reached from that page's compact variationTile grid. Reuses the exact same
+// variationCard the release page renders inline, so the one card markup is
+// the single source of truth for a variation's full detail either way.
+function renderVariationPage(v, crumbs) {
+  const description = stripTags(v.description || v.notes
+    || `${v.name}${v.releases?.name ? ` — a documented variation of ${v.releases.name}` : ''}.`).slice(0, 158);
+  const heroMedia = sortedMedia(v.media_variations)[0];
+
+  const body = `
+  <section class="dossier-head">
+    <div class="wrap">
+${backAndCrumb([...crumbs, { label: v.name }])}
+    </div>
+  </section>
+
+  <section class="release-variations">
+    <div class="wrap">
+      <ul class="variation-list">
+        ${variationCard(v, { linkToRelease: true })}
+      </ul>
+    </div>
+  </section>`;
+
+  return pageShell({ title: v.name, description, ogImage: mediaUrl(heroMedia) ?? PLACEHOLDER, body });
+}
+
+function manufacturerBrandBlock(lineInfo) {
+  const manuName = lineInfo?.manufacturer;
+  const manuLogo = mediaUrl(lineInfo?.logo);
+  const manuSite = lineInfo?.website;
+  if (!manuName && !manuLogo) return '';
+  const manuNameEl = manuName
+    ? (manuSite
+        ? `<a class="release-manufacturer__name" href="${esc(manuSite)}" rel="nofollow noopener">${esc(manuName)}</a>`
+        : `<span class="release-manufacturer__name">${esc(manuName)}</span>`)
+    : '';
+  const manuLogoImg = manuLogo
+    ? `<img class="release-manufacturer__logo" src="${esc(manuLogo)}" alt="${esc(lineInfo.logo.alt_text ?? (manuName ? manuName + ' logo' : 'Manufacturer logo'))}">`
+    : '';
+  const manuLogoEl = (manuLogo && manuSite)
+    ? `<a href="${esc(manuSite)}" rel="nofollow noopener" aria-label="${esc(manuName ?? 'Manufacturer')}">${manuLogoImg}</a>`
+    : manuLogoImg;
+  return `
+        <aside class="release-manufacturer">
+          ${manuLogoEl}
+          ${manuNameEl}
+        </aside>`;
+}
+
 function renderReleasePage(r, variations, adj, related = '', siblings = [], lineInfo = null, character = null) {
   const media = sortedMedia(r.media_releases);
   const hero = mediaUrl(media[0]) ?? PLACEHOLDER;  // og:image only
@@ -1040,11 +1207,17 @@ function renderReleasePage(r, variations, adj, related = '', siblings = [], line
     ? `<span class="dossier-tag dossier-tag--yellow">${esc(titleCase(r.rarity.replaceAll('_', ' ')))}</span>`
     : '';
 
-  const money = (n) => n == null ? null : `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  // Line/Series link to their own hub page when a slug is there to link to
+  // (both should always have one once fetched — the ?. just guards a
+  // not-yet-applied migration); plain text otherwise.
+  const lineRow = r.lines?.slug
+    ? specRowHtml('Line', `<a href="/line/${esc(r.lines.slug)}.html">${esc(r.lines.name)}</a>`)
+    : specRows([['Line', r.lines?.name]]);
+  const seriesRow = r.series?.slug
+    ? specRowHtml('Series', `<a href="/series/${esc(r.series.slug)}.html">${esc(r.series.name)}</a>`)
+    : specRows([['Series', r.series?.name]]);
 
-  const spec = specRows([
-    ['Line', r.lines?.name],
-    ['Series', r.series?.name],
+  const spec = lineRow + seriesRow + specRows([
     ['Year', r.release_year],
     ['Region', r.region && r.region !== 'US' ? r.region : (r.region === 'US' ? 'US' : null)],
     ['Type', titleCase(r.type.replaceAll('_', ' '))],
@@ -1085,47 +1258,28 @@ function renderReleasePage(r, variations, adj, related = '', siblings = [], line
           </ul>
         </section>` : '';
 
-  const variationsSection = (variations ?? []).length ? `
+  // A variation tagged with a line/series has its own page now (see
+  // renderVariationPage) — that page is the one true source for its detail,
+  // so here it's just a teaser tile linking out. An untagged variation (most
+  // of them — a card-back or paint difference, nothing more) has no page of
+  // its own, so it still gets the full card, same as always.
+  const untaggedVariations = (variations ?? []).filter((v) => !variationHref(v));
+  const taggedVariations = (variations ?? []).filter((v) => variationHref(v));
+  const variationsSection = (untaggedVariations.length || taggedVariations.length) ? `
   <section class="release-variations">
     <div class="wrap">
       <div class="dossier-section-head">
         <p class="dek">Documented Variations</p>
         <h2>Variations</h2>
       </div>
-      <ul class="variation-list">
-        ${variations.map((v) => {
-          const vMedia = sortedMedia(v.media_variations);
-          const vGallery = `var-${v.slug}`;
-          const vType = v.variation_type
-            ? `<span class="dossier-tag dossier-tag--blue">${esc(titleCase(v.variation_type))}</span>` : '';
-          const vRarity = v.rarity
-            ? `<span class="dossier-tag dossier-tag--yellow">${esc(titleCase(v.rarity.replaceAll('_', ' ')))}</span>` : '';
-          const vValues = [
-            v.est_value_loose != null ? `Loose ${money(v.est_value_loose)}` : null,
-            v.est_value_carded != null ? `Carded ${money(v.est_value_carded)}` : null,
-          ].filter(Boolean).join(' · ');
-          // all images shown together above the description; each opens the
-          // lightbox grouped so prev/next stays within this one variation
-          const vGalleryRow = vMedia.length ? `<div class="variation-card__gallery">
-            ${vMedia.map((m) => `<figure>
-              ${lbTrigger(m, vGallery, v.name)}
-              ${m.credit ? `<figcaption>Photo: ${esc(m.credit)}</figcaption>` : ''}
-            </figure>`).join('\n            ')}
-          </div>` : '';
-          return `<li class="variation-card">
-          ${vGalleryRow}
-          <div class="variation-card__body">
-            <div class="variation-card__head">
-              <h3>${esc(v.name)}</h3>
-              ${vType}${vRarity}
-            </div>
-            ${v.description ? richText(v.description) : ''}
-            ${vValues ? `<p class="variation-card__values">${esc(vValues)}</p>` : ''}
-            ${v.notes ? `<div class="variation-card__notes"><p class="dek">Notes</p>${richText(v.notes)}</div>` : ''}
-          </div>
-        </li>`;
-        }).join('\n        ')}
-      </ul>
+      ${untaggedVariations.length ? `<ul class="variation-list">
+        ${untaggedVariations.map((v) => variationCard(v)).join('\n        ')}
+      </ul>` : ''}
+      ${taggedVariations.length ? `
+      <p class="dek">Also released as</p>
+      <div class="figures-grid">
+        ${taggedVariations.map((v) => variationTile(v, variationHref(v))).join('\n        ')}
+      </div>` : ''}
     </div>
   </section>` : '';
 
@@ -1199,27 +1353,8 @@ function renderReleasePage(r, variations, adj, related = '', siblings = [], line
   // character-level artifact, so every release of a figure carries the same one.
   const powersCard = powersCardBlock(character);
 
-  // Manufacturer branding in the sidebar — the line's manufacturer
-  // LOGO + NAME (not the line name), linking to the manufacturer website if set.
-  const manuName = lineInfo?.manufacturer;
-  const manuLogo = mediaUrl(lineInfo?.logo);
-  const manuSite = lineInfo?.website;
-  const manuNameEl = manuName
-    ? (manuSite
-        ? `<a class="release-manufacturer__name" href="${esc(manuSite)}" rel="nofollow noopener">${esc(manuName)}</a>`
-        : `<span class="release-manufacturer__name">${esc(manuName)}</span>`)
-    : '';
-  const manuLogoImg = manuLogo
-    ? `<img class="release-manufacturer__logo" src="${esc(manuLogo)}" alt="${esc(lineInfo.logo.alt_text ?? (manuName ? manuName + ' logo' : 'Manufacturer logo'))}">`
-    : '';
-  const manuLogoEl = (manuLogo && manuSite)
-    ? `<a href="${esc(manuSite)}" rel="nofollow noopener" aria-label="${esc(manuName ?? 'Manufacturer')}">${manuLogoImg}</a>`
-    : manuLogoImg;
-  const manufacturerBlock = (manuName || manuLogo) ? `
-        <aside class="release-manufacturer">
-          ${manuLogoEl}
-          ${manuNameEl}
-        </aside>` : '';
+  // Manufacturer branding in the sidebar — see manufacturerBrandBlock above.
+  const manufacturerBlock = manufacturerBrandBlock(lineInfo);
 
   const subtitle = [r.lines?.name, r.series?.name, r.release_year].filter(Boolean).join(' · ');
 
@@ -1959,6 +2094,310 @@ function renderCreatorIndex(creators) {
   });
 }
 
+// ---- line / series / team pages ------------------------------------------
+// One hub page per row: a lede, a content body, and everything tagged with
+// it. Mirrors the creator page's overview+bio+credited-work shape.
+
+function renderLinePage(line, seriesList, releaseList, variationList, adj) {
+  const logo = sortedMedia(line.media_lines)[0] ?? null;
+
+  const description = stripTags(line.overview_lede || line.description
+    || `${line.name}${line.manufacturer ? ` — ${line.manufacturer}` : ''}.`).slice(0, 158);
+
+  const yearRange = line.year_start ? `${line.year_start}–${line.year_end ?? 'present'}` : null;
+
+  const overviewSection = (line.overview_lede || line.description) ? `
+        <p class="dek">Overview</p>
+        ${richText(line.overview_lede)}
+        ${line.description ? `<div class="dossier-lede__more">${richText(line.description)}</div>` : ''}` : '';
+
+  const seriesSection = seriesList.length ? `
+        <section class="dossier-about">
+          <h3>Series</h3>
+          <ul class="credits-list">
+            ${seriesList.map((s) => `<li><a href="/series/${esc(s.slug)}.html">${esc(s.name)}</a>${s.year ? ` <span class="credit-meta">${esc(s.year)}</span>` : ''}</li>`).join('\n            ')}
+          </ul>
+        </section>` : '';
+
+  const spec = specRows([
+    ['Manufacturer', line.manufacturer],
+    ['Active', yearRange],
+    ['Series', seriesList.length || null],
+    ['Releases', releaseList.length || null],
+    ['Variations', variationList.length || null],
+  ]);
+
+  const manufacturerBlock = manufacturerBrandBlock({
+    manufacturer: line.manufacturer, website: line.manufacturer_website, logo,
+  });
+
+  // Releases grouped by series/wave, like the Toy Database — but scoped to
+  // this one line. No-series releases (vehicles, playsets, prototypes) land
+  // in "Other".
+  const byWave = new Map();
+  for (const r of releaseList) {
+    const key = r.series?.name ?? 'Other';
+    if (!byWave.has(key)) byWave.set(key, []);
+    byWave.get(key).push(r);
+  }
+  const releaseSections = [...byWave.entries()].map(([wave, rs]) => `
+  <section class="dossier-figures">
+    <div class="wrap">
+      <div class="dossier-section-head">
+        <p class="dek">Releases</p>
+        <h2>${esc(wave)}</h2>
+      </div>
+      <div class="figures-grid">
+        ${rs.map((r) => figureCard(r, ['artwork'])).join('\n        ')}
+      </div>
+    </div>
+  </section>`).join('\n');
+
+  // Variations tagged with this line directly — e.g. a foreign licensee's
+  // rebrand of a Kenner figure, documented as a variation on the original
+  // release rather than a release of its own. Compact tiles (photo + name),
+  // each opening that variation's own page (renderVariationPage) nested
+  // under this line.
+  const variationsSection = variationList.length ? `
+  <section class="dossier-figures">
+    <div class="wrap">
+      <div class="dossier-section-head">
+        <p class="dek">Documented Variations</p>
+        <h2>Variations</h2>
+      </div>
+      <div class="figures-grid">
+        ${variationList.map((v) => variationTile(v, `/line/${esc(line.slug)}/${esc(v.slug)}.html`)).join('\n        ')}
+      </div>
+    </div>
+  </section>` : '';
+
+  const body = `
+  <section class="dossier-head">
+    <div class="wrap">
+${backAndCrumb([
+  { label: 'Home', href: '/index.html' },
+  { label: 'Toy Database', href: '/toys/index.html' },
+  { label: line.name },
+])}
+
+      <div class="dossier-head__tags">
+        <span class="dossier-tag dossier-tag--blue">Line</span>
+      </div>
+
+      <h1 class="dossier-title">${esc(line.name)}</h1>
+      ${(line.manufacturer || yearRange) ? `<p class="dossier-aliases">${esc([line.manufacturer, yearRange].filter(Boolean).join(' · '))}</p>` : ''}
+    </div>
+  </section>
+
+  <section class="dossier-body">
+    <div class="wrap dossier-body__grid">
+
+      <article class="dossier-lede">
+${overviewSection}
+${seriesSection}
+      </article>
+
+      <div class="dossier-sidebar dossier-sidebar--plain">
+${manufacturerBlock}
+        <aside class="dossier-spec">
+          <p class="dek">Details</p>
+          <dl>
+            ${spec}
+          </dl>
+        </aside>
+      </div>
+
+    </div>
+  </section>
+${releaseSections}
+${variationsSection}
+${pager('line', adj?.prev, adj?.next)}`;
+
+  return pageShell({ title: line.name, description, ogImage: mediaUrl(logo) ?? PLACEHOLDER, body });
+}
+
+function renderSeriesPage(series, releaseList, variationList, adj) {
+  const line = series.lines;
+
+  const description = stripTags(series.overview_lede || series.description
+    || `${series.name}${line?.name ? ` — ${line.name}` : ''}.`).slice(0, 158);
+
+  const overviewSection = (series.overview_lede || series.description) ? `
+        <p class="dek">Overview</p>
+        ${richText(series.overview_lede)}
+        ${series.description ? `<div class="dossier-lede__more">${richText(series.description)}</div>` : ''}` : '';
+
+  // Line links to its own page when there's a slug to link to.
+  const spec = (line?.slug
+    ? specRowHtml('Line', `<a href="/line/${esc(line.slug)}.html">${esc(line.name)}</a>`)
+    : specRows([['Line', line?.name]])
+  ) + specRows([
+    ['Year', series.year],
+    ['Releases', releaseList.length || null],
+    ['Variations', variationList.length || null],
+  ]);
+
+  const releasesSection = releaseList.length ? `
+  <section class="dossier-figures">
+    <div class="wrap">
+      <div class="dossier-section-head">
+        <p class="dek">Releases</p>
+        <h2>${esc(series.name)}</h2>
+      </div>
+      <div class="figures-grid">
+        ${releaseList.map((r) => figureCard(r, ['artwork'])).join('\n        ')}
+      </div>
+    </div>
+  </section>` : '';
+
+  // Variations tagged with this series directly, same reasoning as the line
+  // page — compact tiles opening that variation's own page, nested under
+  // this series.
+  const variationsSection = variationList.length ? `
+  <section class="dossier-figures">
+    <div class="wrap">
+      <div class="dossier-section-head">
+        <p class="dek">Documented Variations</p>
+        <h2>Variations</h2>
+      </div>
+      <div class="figures-grid">
+        ${variationList.map((v) => variationTile(v, `/series/${esc(series.slug)}/${esc(v.slug)}.html`)).join('\n        ')}
+      </div>
+    </div>
+  </section>` : '';
+
+  const body = `
+  <section class="dossier-head">
+    <div class="wrap">
+${backAndCrumb([
+  { label: 'Home', href: '/index.html' },
+  { label: 'Toy Database', href: '/toys/index.html' },
+  ...(line?.slug ? [{ label: line.name, href: `/line/${esc(line.slug)}.html` }] : []),
+  { label: series.name },
+])}
+
+      <div class="dossier-head__tags">
+        <span class="dossier-tag dossier-tag--blue">Series</span>
+      </div>
+
+      <h1 class="dossier-title">${esc(series.name)}</h1>
+      ${(line?.name || series.year) ? `<p class="dossier-aliases">${esc([line?.name, series.year].filter(Boolean).join(' · '))}</p>` : ''}
+    </div>
+  </section>
+
+  <section class="dossier-body">
+    <div class="wrap dossier-body__grid">
+
+      <article class="dossier-lede">
+${overviewSection}
+      </article>
+
+      <div class="dossier-sidebar dossier-sidebar--plain">
+        <aside class="dossier-spec">
+          <p class="dek">Details</p>
+          <dl>
+            ${spec}
+          </dl>
+        </aside>
+      </div>
+
+    </div>
+  </section>
+${releasesSection}
+${variationsSection}
+${pager('series', adj?.prev, adj?.next)}`;
+
+  return pageShell({
+    title: series.name,
+    description,
+    ogImage: mediaUrl(sortedMedia(releaseList[0]?.media_releases)[0]) ?? PLACEHOLDER,
+    body,
+  });
+}
+
+function renderTeamPage(team, members, adj) {
+  const description = stripTags(team.overview_lede || team.description
+    || `${team.name} — a team in the DC Super Powers universe.`).slice(0, 158);
+
+  const overviewSection = (team.overview_lede || team.description) ? `
+        <p class="dek">Overview</p>
+        ${richText(team.overview_lede)}
+        ${team.description ? `<div class="dossier-lede__more">${richText(team.description)}</div>` : ''}` : '';
+
+  const spec = specRows([['Members', members.length || null]]);
+
+  const memberCard = (ch) => {
+    const portrait = mediaUrl(pickMedia(ch.media_characters, ['artwork'])[0]
+      ?? pickMedia(ch.media_characters, ['headshot'])[0]) ?? PLACEHOLDER;
+    const meta = titleCase(ch.alignment ?? '');
+    return `<a class="figure-card" href="/dossier/${esc(ch.slug)}.html">
+          <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
+            <img class="figure-card__photo" src="${esc(portrait)}" alt="${esc(ch.name)} — DC Comics">
+          </div>
+          <h3>${esc(ch.name)}</h3>
+          ${meta ? `<p class="figure-card__meta">${esc(meta)}</p>` : ''}
+        </a>`;
+  };
+
+  const membersSection = members.length ? `
+  <section class="dossier-figures">
+    <div class="wrap">
+      <div class="dossier-section-head">
+        <p class="dek">Roster</p>
+        <h2>Members</h2>
+      </div>
+      <div class="figures-grid">
+        ${members.map(memberCard).join('\n        ')}
+      </div>
+    </div>
+  </section>` : '';
+
+  const body = `
+  <section class="dossier-head">
+    <div class="wrap">
+${backAndCrumb([
+  { label: 'Home', href: '/index.html' },
+  { label: 'Characters', href: '/characters/index.html' },
+  { label: team.name },
+])}
+
+      <div class="dossier-head__tags">
+        <span class="dossier-tag dossier-tag--yellow">Team</span>
+      </div>
+
+      <h1 class="dossier-title">${esc(team.name)}</h1>
+    </div>
+  </section>
+
+  <section class="dossier-body">
+    <div class="wrap dossier-body__grid">
+
+      <article class="dossier-lede">
+${overviewSection}
+      </article>
+
+      <div class="dossier-sidebar dossier-sidebar--plain">
+        <aside class="dossier-spec">
+          <p class="dek">Details</p>
+          <dl>
+            ${spec}
+          </dl>
+        </aside>
+      </div>
+
+    </div>
+  </section>
+${membersSection}
+${pager('team', adj?.prev, adj?.next)}`;
+
+  return pageShell({
+    title: team.name,
+    description,
+    ogImage: mediaUrl(pickMedia(members[0]?.media_characters, ['artwork'])[0]) ?? PLACEHOLDER,
+    body,
+  });
+}
+
 // ---- section index pages ------------------------------------------------
 // Listing pages that make the homepage tiles land somewhere real. Each reuses
 // the card renderers so it reads as a sibling of the record pages.
@@ -2672,7 +3111,7 @@ function renderTimeline(releases, publications, screenMedia) {
 // relative to /search/index.html (one level deep) so they resolve correctly
 // wherever the site is mounted — matching the relativize() philosophy, which
 // can't reach a JSON file or a fetch() inside a static script.
-function buildSearchIndex(characters, releases, publications, screenMedia, merchandise, creators, articles = []) {
+function buildSearchIndex(characters, releases, publications, screenMedia, merchandise, creators, articles = [], lines = [], seriesRows = [], teams = [], variations = []) {
   const kw = (...parts) => parts.flat().filter(Boolean).join(' ').toLowerCase();
   const idx = [];
 
@@ -2725,6 +3164,39 @@ function buildSearchIndex(characters, releases, publications, screenMedia, merch
       k: ARTICLE_KIND_LABELS[a.kind] ?? titleCase((a.kind ?? 'article').replaceAll('_', ' ')),
       y: new Date(a.published_at ?? Date.now()).getFullYear(),
       m: kw(a.kind, a.dek, a.editors?.display_name),
+    });
+  }
+  for (const l of lines) {
+    idx.push({
+      t: l.name, u: `../line/${l.slug}.html`, g: 'line',
+      k: 'Line', y: l.year_start ?? '', m: kw(l.manufacturer),
+    });
+  }
+  for (const s of seriesRows) {
+    idx.push({
+      t: s.name, u: `../series/${s.slug}.html`, g: 'series',
+      k: s.lines?.name ?? 'Series', y: s.year ?? '', m: kw(s.lines?.name),
+    });
+  }
+  for (const tm of teams) {
+    idx.push({
+      t: tm.name, u: `../team/${tm.slug}.html`, g: 'team',
+      k: 'Team', y: '', m: '',
+    });
+  }
+  // Only variations tagged with a line or series get a real page (renderVariationPage,
+  // nested under that line/series) — one search entry per such page. A variation
+  // tagged with neither has no standalone page and stays release-page-only.
+  for (const v of variations) {
+    if (v.line_id) idx.push({
+      t: v.name, u: `../line/${v.lines?.slug}/${v.slug}.html`, g: 'variation',
+      k: v.lines?.name ?? 'Variation', y: v.release_year ?? '',
+      m: kw(v.variation_type, v.region, v.card_type, v.releases?.name),
+    });
+    if (v.series_id) idx.push({
+      t: v.name, u: `../series/${v.series?.slug}/${v.slug}.html`, g: 'variation',
+      k: v.series?.name ?? 'Variation', y: v.release_year ?? '',
+      m: kw(v.variation_type, v.region, v.card_type, v.releases?.name),
     });
   }
   return idx;
@@ -2933,7 +3405,7 @@ ${pager('news', adj?.prev, adj?.next)}`;
 
 // ---- main ---------------------------------------------------------------
 
-const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems, lineInfoById, articles, captionRows] = await Promise.all([
+const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems, lineInfoById, articles, captionRows, lines, seriesRows, teams] = await Promise.all([
   fetchCharacters(), fetchReleases(), fetchPublicationsByCharacter(), fetchEnemiesByCharacter(),
   fetchCreatorsByCharacter(), fetchVariationsByRelease(), fetchScreenMedia(), fetchMerchandise(),
   rest(`publications?select=*,media_publications(is_primary,sort_order,${MEDIA_EMBED}),publication_creators(role,creators(name,slug)),publication_characters(characters(name,slug))&order=kind.asc,year.asc`).catch(() => []),
@@ -2941,6 +3413,7 @@ const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variatio
   // Translation pins for comic pages — keyed by media_id (a page image), not
   // publication_id, since it's not a PostgREST child of publications.
   rest(`publication_page_captions?select=*&order=sort_order`).catch(() => []),
+  fetchLines(), fetchSeriesRows(), fetchTeams(),
 ]);
 
 // Resolve curated related_items against the rows we just fetched. `relatedFor`
@@ -2970,6 +3443,9 @@ await mkdir(join(root, 'creators'), { recursive: true });
 await mkdir(join(root, 'timeline'), { recursive: true });
 await mkdir(join(root, 'search'), { recursive: true });
 await mkdir(join(root, 'news'), { recursive: true });
+await mkdir(join(root, 'line'), { recursive: true });
+await mkdir(join(root, 'series'), { recursive: true });
+await mkdir(join(root, 'team'), { recursive: true });
 
 const adjacent = (arr, i) => arr.length > 1
   ? { prev: arr[(i - 1 + arr.length) % arr.length], next: arr[(i + 1) % arr.length] }
@@ -3083,6 +3559,83 @@ for (const [i, cr] of creators.entries()) {
   } else skipped++;
 }
 
+// Line / Series / Team hub pages — a lede, content, and everything tagged
+// with that row (see renderLinePage/renderSeriesPage/renderTeamPage above).
+const seriesOrdered = [...seriesRows].sort((a, b) =>
+  (a.lines?.sort_order ?? 99) - (b.lines?.sort_order ?? 99) || (a.sort_order ?? 999) - (b.sort_order ?? 999));
+
+// Flattened out of the per-release grouping fetchVariationsByRelease() builds
+// for the release page, so a variation tagged with a line/series directly
+// (e.g. a foreign licensee's rebrand, documented on the original release
+// rather than as a release of its own) can be found by that tag too.
+const allVariations = [...variationsByRelease.values()].flat();
+
+for (const [i, line] of lines.entries()) {
+  const ownSeries = seriesRows.filter((s) => s.line_id === line.id)
+    .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999) || (a.year ?? 9999) - (b.year ?? 9999));
+  const ownReleases = releases.filter((r) => r.line_id === line.id);
+  const ownVariations = allVariations.filter((v) => v.line_id === line.id);
+  const html = renderLinePage(line, ownSeries, ownReleases, ownVariations, adjacent(lines, i));
+  if (await writeIfChanged(join(root, 'line', `${line.slug}.html`), html)) {
+    written++;
+    console.log(`built line/${line.slug}.html`);
+  } else skipped++;
+
+  // Each variation tagged with this line gets its own page, nested here —
+  // reached from the compact tiles renderLinePage just built above.
+  if (ownVariations.length) {
+    await mkdir(join(root, 'line', line.slug), { recursive: true });
+    const crumbs = [
+      { label: 'Home', href: '/index.html' },
+      { label: 'Toy Database', href: '/toys/index.html' },
+      { label: line.name, href: `/line/${line.slug}.html` },
+    ];
+    for (const v of ownVariations) {
+      const vHtml = renderVariationPage(v, crumbs);
+      if (await writeIfChanged(join(root, 'line', line.slug, `${v.slug}.html`), vHtml)) {
+        written++;
+        console.log(`built line/${line.slug}/${v.slug}.html`);
+      } else skipped++;
+    }
+  }
+}
+
+for (const [i, s] of seriesOrdered.entries()) {
+  const ownReleases = releases.filter((r) => r.series_id === s.id);
+  const ownVariations = allVariations.filter((v) => v.series_id === s.id);
+  const html = renderSeriesPage(s, ownReleases, ownVariations, adjacent(seriesOrdered, i));
+  if (await writeIfChanged(join(root, 'series', `${s.slug}.html`), html)) {
+    written++;
+    console.log(`built series/${s.slug}.html`);
+  } else skipped++;
+
+  if (ownVariations.length) {
+    await mkdir(join(root, 'series', s.slug), { recursive: true });
+    const crumbs = [
+      { label: 'Home', href: '/index.html' },
+      { label: 'Toy Database', href: '/toys/index.html' },
+      ...(s.lines?.slug ? [{ label: s.lines.name, href: `/line/${s.lines.slug}.html` }] : []),
+      { label: s.name, href: `/series/${s.slug}.html` },
+    ];
+    for (const v of ownVariations) {
+      const vHtml = renderVariationPage(v, crumbs);
+      if (await writeIfChanged(join(root, 'series', s.slug, `${v.slug}.html`), vHtml)) {
+        written++;
+        console.log(`built series/${s.slug}/${v.slug}.html`);
+      } else skipped++;
+    }
+  }
+}
+
+for (const [i, team] of teams.entries()) {
+  const members = characters.filter((c) => (c.character_teams ?? []).some((t) => t.teams?.slug === team.slug));
+  const html = renderTeamPage(team, members, adjacent(teams, i));
+  if (await writeIfChanged(join(root, 'team', `${team.slug}.html`), html)) {
+    written++;
+    console.log(`built team/${team.slug}.html`);
+  } else skipped++;
+}
+
 // Section index pages — listings the homepage tiles link to
 for (const [dir, html] of [
   ['characters', renderCharacterIndex(characters, releases)],
@@ -3107,7 +3660,7 @@ for (const [dir, html] of [
 
 // Search — client-side index (JSON) + the search page that queries it
 {
-  const index = buildSearchIndex(characters, releases, allPublications, screenMedia, merchandise, creators, articles);
+  const index = buildSearchIndex(characters, releases, allPublications, screenMedia, merchandise, creators, articles, lines, seriesRows, teams, allVariations);
   if (await writeIfChanged(join(root, 'search-index.json'), JSON.stringify(index))) {
     written++;
     console.log(`built search-index.json (${index.length} records)`);
