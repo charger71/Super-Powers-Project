@@ -2391,8 +2391,8 @@ img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; bor
   cursor: pointer;
   display: grid;
   place-items: center;
-  background: var(--color-blue);
-  color: var(--color-yellow);
+  background: var(--color-yellow);
+  color: var(--color-blue);
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: var(--step--2);
@@ -2402,8 +2402,7 @@ img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; bor
 .reader__pin:hover,
 .reader__pin:focus-visible,
 .reader__pin[aria-expanded="true"] {
-  background: var(--color-red);
-  color: var(--color-white);
+  background: var(--color-yellow-dk);
   transform: translate(-50%, -50%) scale(1.15);
 }
 /* Anchored to the same x/y percent as its pin (set inline by reader.js),
@@ -2414,9 +2413,10 @@ img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; bor
   position: absolute;
   transform: translate(-50%, calc(-100% - 14px));
   z-index: 3;
+  min-width: 160px;
   max-width: min(240px, 68vw);
-  background: var(--color-blue);
-  color: var(--color-yellow);
+  background: var(--color-white);
+  color: var(--color-blue);
   border-radius: var(--radius);
   padding: 0.6rem 0.75rem;
   display: flex;
@@ -2431,6 +2431,7 @@ img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; bor
   font-family: var(--font-body);
   font-size: var(--step--1);
   line-height: 1.4;
+  white-space: pre-wrap; /* respect line breaks typed in the admin's textarea */
 }
 .reader__callout-original {
   margin: 0;
@@ -2439,6 +2440,7 @@ img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; bor
   font-size: var(--step--2);
   opacity: 0.8;
   line-height: 1.35;
+  white-space: pre-wrap;
 }
 .reader__caption {
   align-self: stretch;
@@ -2498,6 +2500,31 @@ img.lb-trigger { width: auto; max-width: 100%; height: auto; margin: 1rem 0; bor
 .reader__next:hover { transform: translateY(-50%) scale(1.08); }
 .reader__prev[hidden],
 .reader__next[hidden] { display: none; }
+
+/* Global pin visibility toggle — only shown when the current page actually
+   has pins, so a page with nothing to translate never carries a dead
+   control. Top-left mirrors .reader__close's top-right, out of the way of
+   the art itself. */
+.reader__toggle-pins {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  background: var(--color-blue);
+  color: var(--color-yellow);
+  border: 0;
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: background var(--dur) ease, color var(--dur) ease;
+}
+.reader__toggle-pins:hover { background: var(--color-red); color: var(--color-white); }
+.reader__toggle-pins[hidden] { display: none; }
 
 /* ---------- UNIFORM MONO WEIGHT ----------
    Every mono kicker / label / eyebrow / tag rendered at the same bold weight

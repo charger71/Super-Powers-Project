@@ -617,6 +617,7 @@ ${body}
       <button class="reader__close" type="button" data-action="close" aria-label="Close">&times;</button>
       <button class="reader__prev"  type="button" data-action="prev"  aria-label="Previous page">&#8249;</button>
       <button class="reader__next"  type="button" data-action="next"  aria-label="Next page">&#8250;</button>
+      <button class="reader__toggle-pins" id="reader-toggle-pins" type="button" data-action="toggle-pins" hidden>Hide translations</button>
       <div class="reader__stage">
         <img class="reader__img" id="reader-img" src="" alt="">
         <div class="reader__pins" id="reader-pins"></div>

@@ -25,6 +25,7 @@
   const titleEl     = document.getElementById('reader-title');
   const creditEl    = document.getElementById('reader-credit');
   const statusEl    = document.getElementById('reader-status');
+  const toggleBtn   = document.getElementById('reader-toggle-pins');
 
   const groupKey = (el) => el.dataset.gallery || '__solo__';
   const groups = new Map();
@@ -36,7 +37,12 @@
 
   let current = [];   // the active group's triggers (one comic's pages)
   let idx = 0;
-  let openPin = null;  // the pin <button> whose callout is pinned open, if any
+  let openPin = null;    // the pin <button> whose callout is pinned open, if any
+  let pinsHidden = false; // global "let me see the clean art" toggle for this viewing session
+
+  function updateToggleLabel() {
+    toggleBtn.textContent = pinsHidden ? 'Show translations' : 'Hide translations';
+  }
 
   function parseCaptions(el) {
     try { return JSON.parse(el.dataset.captions || '[]'); } catch { return []; }
@@ -74,8 +80,12 @@
   function renderPins(el) {
     pinsEl.replaceChildren();
     closeCallout();
+    const caps = parseCaptions(el);
+    toggleBtn.hidden = caps.length === 0;
+    pinsEl.hidden = pinsHidden;
+    updateToggleLabel();
     const sourceLang = el.dataset.sourceLang || '';
-    for (const cap of parseCaptions(el)) {
+    for (const cap of caps) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'reader__pin';
@@ -121,6 +131,7 @@
 
   function open(el) {
     current = groups.get(groupKey(el)) || [el];
+    pinsHidden = false;   // each fresh open starts with pins visible
     render(current.indexOf(el));
     reader.showModal();
   }
@@ -135,6 +146,12 @@
     if (action === 'close') reader.close();
     else if (action === 'next') render(idx + 1);
     else if (action === 'prev') render(idx - 1);
+    else if (action === 'toggle-pins') {
+      pinsHidden = !pinsHidden;
+      pinsEl.hidden = pinsHidden;
+      if (pinsHidden) closeCallout();
+      updateToggleLabel();
+    }
     else if (e.target === reader) reader.close();  // backdrop
     else if (!e.target.closest('.reader__pin, .reader__callout')) closeCallout();
   });
