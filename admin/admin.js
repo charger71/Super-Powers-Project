@@ -2003,8 +2003,11 @@ function enableMediaReorder(grid, def, row, join, originalOrder) {
     if (e.button > 0) return;                        // primary press / touch only
     const card = e.target.closest('.media-card');
     if (!card) return;
-    // let the action buttons and role <select> receive their own clicks
-    if (e.target.closest('.media-card__actions, .media-card__role')) return;
+    // let any button or <select> in the card receive its own clicks — not
+    // just the ones in .media-card__actions/.media-card__role, so a future
+    // action added anywhere else in the card (e.g. .media-card__caption-btn)
+    // doesn't silently lose this the way that one did.
+    if (e.target.closest('button, select')) return;
     // on touch, only the grip handle drags — everywhere else stays a scroll
     if (e.pointerType === 'touch' && !e.target.closest('.media-card__handle')) return;
     e.preventDefault();
@@ -2469,6 +2472,17 @@ async function openCaptionsDialog(m) {
     const { data: caps, error } = await db.from('publication_page_captions')
       .select('*').eq('media_id', m.id).order('sort_order');
     if (error) { alert(error.message); return; }
+
+    // sort_order also IS the pin's displayed number, so it should always be a
+    // clean 1..N run — close whatever gap a deleted pin left behind (and,
+    // incidentally, self-heal any comic left with a gap before this existed).
+    for (let i = 0; i < caps.length; i++) {
+      const want = i + 1;
+      if (caps[i].sort_order !== want) {
+        await db.from('publication_page_captions').update({ sort_order: want }).eq('id', caps[i].id);
+        caps[i].sort_order = want;
+      }
+    }
 
     pinsEl.replaceChildren();
     list.replaceChildren();
