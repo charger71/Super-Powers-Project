@@ -480,7 +480,24 @@ for (const [table, label] of Object.entries(VOCAB_TABLES)) {
 // `view` is 'entity' (a table's list/editor) or 'users' (the account panel,
 // which is not backed by an ENTITIES definition). `role` is this signed-in
 // account's level — 'admin' or 'editor'; see the user_roles migration.
-const state = { entity: 'characters', rows: [], editing: null, sort: null, view: 'entity', role: 'editor' };
+const state = { entity: 'characters', rows: [], editing: null, sort: null, view: 'entity', role: 'editor', attachedMediaIds: null };
+
+// Every join table that attaches a media_assets row to something. Used only
+// by the Media tab, to hide (by default) anything already attached — that's
+// managed from its own record's "Attached media" section now, not here.
+const MEDIA_JOIN_TABLES = [
+  'media_characters', 'media_releases', 'media_creators', 'media_variations',
+  'media_lines', 'media_publications', 'media_merchandise', 'media_articles',
+];
+
+async function fetchAttachedMediaIds() {
+  const results = await Promise.all(MEDIA_JOIN_TABLES.map((t) => db.from(t).select('media_id')));
+  const ids = new Set();
+  for (const { data } of results) {
+    for (const row of data ?? []) ids.add(row.media_id);
+  }
+  return ids;
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -1002,6 +1019,7 @@ async function loadList() {
   if (error) { alert(error.message); return; }
   state.rows = data;
   state.sort = null;               // clear any per-column sort when switching entities
+  state.attachedMediaIds = state.entity === 'media' ? await fetchAttachedMediaIds() : null;
   renderList();
 }
 
@@ -1054,9 +1072,20 @@ function renderList() {
   const filter = $('list-filter').value.trim().toLowerCase();
   const displayCols = [...def.listCols, EDITED_COL];
   const cols = displayCols.filter((c) => c !== '_thumb');
-  const rows = filter
+  let rows = filter
     ? state.rows.filter((r) => cols.some((c) => String(r[c] ?? '').toLowerCase().includes(filter)))
     : state.rows.slice();
+
+  // Media tab only: anything already attached to a character/release/comic/etc.
+  // is managed from that record's own "Attached media" section now, so it's
+  // hidden here by default — otherwise every comic page and product shot
+  // drowns out the general library. The checkbox reveals everything again for
+  // audits/cleanup.
+  const showAttachedWrap = $('show-attached-wrap');
+  showAttachedWrap.hidden = state.entity !== 'media';
+  if (state.entity === 'media' && !$('show-attached').checked && state.attachedMediaIds) {
+    rows = rows.filter((r) => !state.attachedMediaIds.has(r.id));
+  }
 
   // Active sort: an explicit header click, otherwise the entity's default.
   const sort = state.sort ?? def.orderBy ?? { col: 'name', ascending: true };
@@ -1104,6 +1133,7 @@ function renderList() {
 }
 
 $('list-filter').addEventListener('input', renderList);
+$('show-attached').addEventListener('change', renderList);
 $('new-record').addEventListener('click', () => openDrawer(null));
 
 // Pick a slug not already used by a loaded row, so a duplicate never collides
@@ -2111,7 +2141,15 @@ async function renderMediaSection(def, row) {
       renderMediaSection(def, row);
     });
 
-    actions.append(primaryBtn, detachBtn);
+    // edit this asset's own attribution (credit/rights/alt/caption/etc.) right
+    // here — the general Media tab shouldn't be the only place to fix a typo
+    // in a caption for something you're already looking at.
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => openMediaEditDialog(m, () => renderMediaSection(def, row)));
+
+    actions.append(primaryBtn, editBtn, detachBtn);
     card.append(actions);
 
     // translation pins — publications only (join.captionable), and only for a
@@ -2510,6 +2548,81 @@ async function openCaptionsDialog(m) {
   dialog.showModal();
   await new Promise((resolve) => dialog.addEventListener('close', resolve, { once: true }));
   dialog.remove();
+}
+
+// Edit one media asset's own attribution — credit/rights/alt/caption/etc. —
+// from wherever it's attached, so fixing a typo never requires hunting it
+// down in the general Media tab. Reuses ENTITIES.media.fields as the single
+// source of truth for which fields exist and which are required; embed_url is
+// dropped since this dialog only ever opens for a stored file (see the
+// m.storage_path check at the call site).
+async function openMediaEditDialog(m, onSaved) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'media-edit';
+
+  const h = document.createElement('h3');
+  h.textContent = 'Edit media';
+
+  const fields = ENTITIES.media.fields.filter((f) => f.col !== 'embed_url');
+  const inputs = {};
+
+  const form = document.createElement('div');
+  form.className = 'media-edit__fields';
+  for (const f of fields) {
+    const label = document.createElement('label');
+    label.textContent = f.label;
+    let input;
+    if (f.kind === 'lookup') {
+      input = document.createElement('select');
+      await fillLookupSelect(input, f.table, m[f.col]);
+    } else if (f.kind === 'textarea') {
+      input = document.createElement('textarea');
+      input.value = m[f.col] ?? '';
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+      input.value = m[f.col] ?? '';
+    }
+    label.append(input);
+    form.append(label);
+    inputs[f.col] = input;
+  }
+
+  const status = document.createElement('p');
+  status.className = 'media-edit__status';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', () => dialog.close());
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = 'Save';
+  saveBtn.addEventListener('click', async () => {
+    const payload = {};
+    for (const f of fields) {
+      const val = inputs[f.col].value.trim();
+      if (f.required && !val) {
+        status.textContent = `${f.label.replace(' *', '')} is required.`;
+        return;
+      }
+      payload[f.col] = val || null;
+    }
+    const { error } = await db.from('media_assets').update(payload).eq('id', m.id);
+    if (error) { status.textContent = error.message; return; }
+    dialog.close();
+    onSaved?.();
+  });
+
+  const actions = document.createElement('div');
+  actions.className = 'media-edit__actions';
+  actions.append(cancelBtn, saveBtn);
+
+  dialog.append(h, form, status, actions);
+  document.body.append(dialog);
+  dialog.showModal();
+  dialog.addEventListener('close', () => dialog.remove(), { once: true });
 }
 
 // Shared credit/rights/type/source carried between consecutive inline uploads,
