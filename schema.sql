@@ -179,9 +179,14 @@ create table characters (
   weaknesses        text,                      -- prose, card-back style
   enemies           text,                      -- free-text card-back list (the linked
                                                -- Known Enemies section uses character_enemies)
+  is_homepage_feature boolean not null default false, -- the homepage hero slot; at most
+                                               -- one row true, enforced below
   created_at        timestamptz default now(),
   updated_at        timestamptz default now()
 );
+-- Only one character may be the homepage's featured dossier at a time.
+create unique index characters_homepage_feature_key
+  on characters (is_homepage_feature) where is_homepage_feature;
 
 -- Teams as a proper many-to-many (Justice League, Super Friends, New Gods...)
 create table teams (
@@ -333,6 +338,7 @@ create table media_assets (
   width          int,
   height         int,
   caption        text,
+  description    text,                         -- internal notes about the asset; never rendered on the public site (see caption)
   alt_text       text,                         -- capture at upload; a11y + SEO
   credit         text not null,                -- '© J. Collector'
   source_url     text,

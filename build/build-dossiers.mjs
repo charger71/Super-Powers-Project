@@ -263,7 +263,7 @@ async function fetchVariationsByRelease() {
   try {
     rows = await rest(
       'release_variations?select=*,' +
-      `media_variations(is_primary,sort_order,${MEDIA_EMBED})&order=sort_order`
+      `media_variations(is_primary,sort_order,${MEDIA_EMBED})`
     );
   } catch (err) {
     console.warn('Variations unavailable (is the release_variations migration applied?) — building without them.');
@@ -274,6 +274,10 @@ async function fetchVariationsByRelease() {
     list.push(v);
     map.set(v.release_id, list);
   }
+  // Sorted in JS (like sortedMedia above) rather than trusting a bare DB
+  // `order=` alone — most variations still sit at the sort_order default, and
+  // Postgres doesn't guarantee a stable order among ties.
+  for (const list of map.values()) list.sort((a, b) => a.sort_order - b.sort_order);
   return map;
 }
 
@@ -503,7 +507,7 @@ function siteMenu() {
     .join('\n          ');
   return `<nav class="site-nav" aria-label="Sections">
         <button class="site-nav__toggle" type="button" aria-expanded="false" aria-controls="site-menu">
-          <span class="site-nav__bars" aria-hidden="true"></span>Menu
+          <span class="star" aria-hidden="true"></span>Menu
         </button>
         <ul class="site-nav__menu" id="site-menu">
           ${items}
@@ -532,6 +536,10 @@ function pageShell({ title, description, ogImage, body }) {
   <div class="strip">
     <div class="wrap strip__inner">
       <a class="strip__brand" href="/index.html"><span class="star" aria-hidden="true"></span> Archive84</a>
+      <form class="strip__search" action="/search/index.html" role="search">
+        <input type="search" name="q" placeholder="Search the archive…" aria-label="Search the archive">
+        <button type="submit">Search</button>
+      </form>
     </div>
   </div>
 
@@ -678,7 +686,7 @@ function pager(kind, prev, next) {
 // dossier page, 'loose' in the Toy Database. Falls back to all release media so
 // a release without a role-specific photo still shows its best available image
 // rather than a placeholder.
-function figureCard(r, roles) {
+function figureCard(r, roles, { showCredit = true } = {}) {
   const roleMedia = roles ? pickMedia(r.media_releases, roles) : [];
   const media = roleMedia.length ? roleMedia : sortedMedia(r.media_releases);
   const front = mediaUrl(media[0]) ?? PLACEHOLDER;
@@ -698,7 +706,7 @@ function figureCard(r, roles) {
     r.status !== 'released' ? r.status.replaceAll('_', ' ') : null,
     r.type !== 'figure' ? r.type.replaceAll('_', ' ') : null,
   ].filter(Boolean).join(' · ');
-  const credit = media[0]?.credit ? `<p class="figure-card__meta">Photo: ${esc(media[0].credit)}</p>` : '';
+  const credit = showCredit && media[0]?.credit ? `<p class="figure-card__meta">Photo: ${esc(media[0].credit)}</p>` : '';
   return `<a class="figure-card" href="/release/${esc(r.slug)}.html">
           ${flip}
           <h3>${esc(r.name)}</h3>
@@ -994,7 +1002,6 @@ ${aboutSection}
       <div class="dossier-sidebar">
       ${powerBubble}
       <div class="dossier-portrait-frame"><img class="dossier-portrait" src="${esc(portrait)}" alt="${esc(portraitAlt)}"></div>
-      ${portraitMedia?.credit ? `<p class="dek dek--sm">Photo: ${esc(portraitMedia.credit)}</p>` : ''}
 ${headshots}
 ${powersCard}
 ${related}
@@ -1113,7 +1120,7 @@ function renderReleasePage(r, variations, adj, related = '', siblings = [], line
             </div>
             ${v.description ? richText(v.description) : ''}
             ${vValues ? `<p class="variation-card__values">${esc(vValues)}</p>` : ''}
-            ${v.notes ? `<div class="variation-card__notes">${richText(v.notes)}</div>` : ''}
+            ${v.notes ? `<div class="variation-card__notes"><p class="dek">Notes</p>${richText(v.notes)}</div>` : ''}
           </div>
         </li>`;
         }).join('\n        ')}
@@ -2111,7 +2118,7 @@ function renderToyIndex(releases) {
       <div class="toy-wave">
         <h3 class="toy-wave__head">${esc(wn)}${w.year < 9999 ? ` · ${esc(w.year)}` : ''}</h3>
         <div class="figures-grid">
-          ${w.releases.map((r) => figureCard(r, ['loose'])).join('\n          ')}
+          ${w.releases.map((r) => figureCard(r, ['loose'], { showCredit: false })).join('\n          ')}
         </div>
       </div>`).join('\n');
     return `
@@ -2226,12 +2233,13 @@ ${sections}`;
 // "Longer reads" all come from Supabase. Static chrome (masthead, section
 // tiles, pullquotes, footer) is reproduced verbatim.
 
-const initials = (s) => ((String(s).match(/\b[A-Za-z0-9]/g) ?? []).slice(0, 2).join('') || '★').toUpperCase();
-
 function renderHome(characters, releases, screenMedia, merchandise, publicationCount, articles = []) {
-  // Featured character: Superman (the golden record) if present, else the
-  // first character that has something to show, else whatever's first.
-  const hero = characters.find((c) => c.slug === 'superman')
+  // Featured character: whoever an editor has flagged is_homepage_feature
+  // (Admin ▸ Characters ▸ "Feature on homepage"), else Superman (the golden
+  // record) if present, else the first character that has something to
+  // show, else whatever's first.
+  const hero = characters.find((c) => c.is_homepage_feature)
+    ?? characters.find((c) => c.slug === 'superman')
     ?? characters.find((c) => pickMedia(c.media_characters, ['feature', 'artwork']).length)
     ?? characters[0];
 
@@ -2281,17 +2289,29 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
   }
 
   // "New in the Archive" — most recently updated records across sections.
+  // Each item carries a real photo (the character's headshot, the toy's own
+  // shot, the video's poster, the merch photo) — same idea as the related-
+  // items resolver's per-type `thumb` — rather than a colored initials block.
   const recent = [
-    ...characters.map((c) => ({ when: c.updated_at, href: `/dossier/${c.slug}.html`, title: c.name, label: 'Character Dossier', accent: 'thumb--blue' })),
-    ...releases.map((r) => ({ when: r.updated_at, href: `/release/${r.slug}.html`, title: r.name, label: 'Toy Database', accent: 'thumb--red' })),
-    ...screenMedia.map((s) => ({ when: s.updated_at, href: `/media/${s.slug}.html`, title: s.title, label: 'In the Media', accent: 'thumb--yellow' })),
-    ...merchandise.map((m) => ({ when: m.updated_at, href: `/merchandise/${m.slug}.html`, title: m.name, label: 'Merchandise', accent: '' })),
+    ...characters.map((c) => {
+      const m = pickMedia(c.media_characters, ['headshot', 'artwork'])[0];
+      return { when: c.updated_at, href: `/dossier/${c.slug}.html`, title: c.name, label: 'Character Dossier', photo: mediaUrl(m), alt: m?.alt_text };
+    }),
+    ...releases.map((r) => {
+      const m = sortedMedia(r.media_releases)[0];
+      return { when: r.updated_at, href: `/release/${r.slug}.html`, title: r.name, label: 'Toy Database', photo: mediaUrl(m), alt: m?.alt_text };
+    }),
+    ...screenMedia.map((s) => ({ when: s.updated_at, href: `/media/${s.slug}.html`, title: s.title, label: 'In the Media', photo: screenPoster(s), alt: s.media_assets?.alt_text })),
+    ...merchandise.map((m) => {
+      const media = sortedMedia(m.media_merchandise)[0];
+      return { when: m.updated_at, href: `/merchandise/${m.slug}.html`, title: m.name, label: 'Merchandise', photo: mediaUrl(media), alt: media?.alt_text };
+    }),
   ].filter((i) => i.when)
     .sort((a, b) => new Date(b.when) - new Date(a.when))
     .slice(0, 5);
 
   const auxList = recent.map((it) => `<li>
-          <div class="thumb ${it.accent}">${esc(initials(it.title))}</div>
+          <img class="aux__photo" src="${esc(it.photo ?? PLACEHOLDER)}" alt="${esc(it.alt || it.title)}" loading="lazy">
           <a class="aux__item" href="${esc(it.href)}">
             <strong>${esc(it.title)}</strong>
             <small>${esc(it.label)}</small>
@@ -2358,6 +2378,10 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
   <div class="strip">
     <div class="wrap strip__inner">
       <span class="strip__brand"><span class="star" aria-hidden="true"></span> ARCHIVE84</span>
+      <form class="strip__search" action="/search/index.html" role="search">
+        <input type="search" name="q" placeholder="Search the archive…" aria-label="Search the archive">
+        <button type="submit">Search</button>
+      </form>
     </div>
   </div>
 

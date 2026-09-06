@@ -45,10 +45,17 @@ input, select, textarea {
 }
 textarea { min-height: 7rem; resize: vertical; }
 input.invalid { border-color: var(--danger); }
+input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+}
 
 /* top bar */
 .bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 1rem;
   padding: 0.6rem 1.25rem;
@@ -56,8 +63,48 @@ input.invalid { border-color: var(--danger); }
   color: #fff;
 }
 .bar__brand { font-weight: 700; }
-.bar__user { margin-left: auto; opacity: 0.8; font-size: 0.85rem; }
+/* min-width: 0 lets this actually shrink instead of just being told to —
+   a long sign-in email truncates instead of forcing the bar to overflow */
+.bar__user {
+  margin-left: auto;
+  opacity: 0.8;
+  font-size: 0.85rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .bar button { background: transparent; border-color: rgba(255, 255, 255, 0.4); }
+
+/* everything but the brand — nav + account controls — so it can be collapsed
+   as one block behind the hamburger toggle below the breakpoint (see below) */
+.bar__collapse {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* hamburger toggle — hidden by default; shown only under the breakpoint
+   (see media query below), and only once signed in (JS sets [hidden] to
+   match the other bar controls) */
+.bar .bar__toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-left: auto;
+  padding: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  color: #fff;
+}
+.bar .bar__toggle:hover { background: rgba(255, 255, 255, 0.22); opacity: 1; }
 
 /* Rebuild-all toggle switch (header) */
 .switch {
@@ -164,6 +211,38 @@ input.invalid { border-color: var(--danger); }
 .menu__panel .menu__item:hover { background: #f0f0fa; opacity: 1; }
 .menu__panel .menu__item.active { background: var(--accent); color: #fff; }
 
+/* Six menu groups plus the account controls don't reliably fit in one row
+   below ~1280px (verified empirically — narrower breakpoints left a broken
+   band where the row neither fit nor had collapsed yet), so the menu and the
+   rest of the bar's controls collapse behind a hamburger toggle instead.
+   Covers phones and tablets (portrait and landscape) and narrower desktop
+   windows alike. */
+@media (max-width: 1280px) {
+  .bar .bar__toggle { display: inline-flex; }
+  .bar__collapse { display: none; flex-basis: 100%; }
+  .bar__collapse.is-open {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+  .menubar { flex-direction: column; width: 100%; gap: 0.35rem; }
+  .menu { width: 100%; }
+  .bar .menu__button { width: 100%; justify-content: space-between; padding: 0.55rem 0.9rem; }
+  /* the dropdown becomes an inline accordion section instead of a floating
+     overlay — simpler than keeping it positioned within a narrow viewport */
+  .menu__panel {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    margin-top: 0.3rem;
+    box-shadow: none;
+  }
+  .menu__panel .menu__item { padding: 0.55rem 0.6rem; }
+  .bar__user { margin-left: 0; }
+}
+
 .panel__title { margin: 0 0 0.75rem; font-size: 1.15rem; }
 
 .panel__head {
@@ -194,6 +273,9 @@ input.invalid { border-color: var(--danger); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* variation names run longer than most — give that column more room before
+   it ellipsizes */
+.list[data-entity="variations"] td.col-name { max-width: 28rem; }
 .list th {
   font-size: 0.75rem;
   text-transform: uppercase;

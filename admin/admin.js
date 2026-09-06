@@ -86,6 +86,10 @@ const ENTITIES = {
       { col: 'powers',             label: 'Powers',              kind: 'textarea' },
       { col: 'weaknesses',         label: 'Weaknesses',          kind: 'textarea' },
       { col: 'enemies',            label: 'Enemies (card text)', kind: 'textarea' },
+      // exclusive: only one character across the table may have this true —
+      // checking it here stands down whoever currently holds it (see the
+      // submit handler) and the DB's partial unique index backs that up.
+      { col: 'is_homepage_feature', label: 'Feature on homepage (the hero dossier — only one at a time)', kind: 'checkbox', exclusive: true },
     ],
   },
   releases: {
@@ -178,7 +182,7 @@ const ENTITIES = {
   variations: {
     label: 'Variations',
     table: 'release_variations',
-    listCols: ['name', 'slug', 'variation_type', 'rarity'],
+    listCols: ['name', 'slug', 'variation_type', 'sort_order'],
     // variations carry their own photos, attached like any other media
     mediaJoin: { table: 'media_variations', fk: 'variation_id' },
     fields: [
@@ -407,13 +411,14 @@ const ENTITIES = {
     // Attribution is captured AT upload — credit/rights/alt are required
     // here on purpose (see CLAUDE.md non-negotiable #1).
     fields: [
-      { col: 'type',       label: 'Type',       kind: 'lookup', table: 'media_types', required: true, initial: 'photo' },
-      { col: 'credit',     label: 'Credit *',   kind: 'text', required: true },
-      { col: 'rights',     label: 'Rights *',   kind: 'lookup', table: 'rights_statuses', required: true },
-      { col: 'alt_text',   label: 'Alt text *', kind: 'text', required: true },
-      { col: 'caption',    label: 'Caption',    kind: 'text' },
-      { col: 'source_url', label: 'Source URL', kind: 'text' },
-      { col: 'embed_url',  label: 'Embed URL (video — instead of a file)', kind: 'text' },
+      { col: 'type',        label: 'Type',       kind: 'lookup', table: 'media_types', required: true, initial: 'photo' },
+      { col: 'credit',      label: 'Credit *',   kind: 'text', required: true },
+      { col: 'rights',      label: 'Rights *',   kind: 'lookup', table: 'rights_statuses', required: true },
+      { col: 'alt_text',    label: 'Alt text *', kind: 'text', required: true },
+      { col: 'caption',     label: 'Caption',    kind: 'text' },
+      { col: 'description', label: 'Description (internal notes — not shown on the public site)', kind: 'textarea' },
+      { col: 'source_url',  label: 'Source URL', kind: 'text' },
+      { col: 'embed_url',   label: 'Embed URL (video — instead of a file)', kind: 'text' },
     ],
   },
 };
@@ -533,7 +538,9 @@ async function refreshAuth() {
   $('rebuild').hidden = !session;
   $('rebuild-all-wrap').hidden = !session;
   $('menu').hidden = !session;
+  $('menu-toggle').hidden = !session;
   $('user-email').textContent = session?.user?.email ?? '';
+  if (!session) closeMobileMenu();
   // First authed load restores the hash (entity + open record). Later auth
   // events (token refresh) must NOT reopen/reset an editor you're using, so
   // they just refresh the list data underneath.
@@ -665,6 +672,7 @@ function renderMenu() {
       item.textContent = label;
       item.addEventListener('click', () => {
         closeMenus();
+        closeMobileMenu();
         if (key === current) return;
         if (MENU_VIEWS[key]) {         // panel view (Users) — no entity list
           closeDrawer();
@@ -700,9 +708,28 @@ function closeMenus() {
   for (const b of $('menu').querySelectorAll('.menu__button')) b.setAttribute('aria-expanded', 'false');
 }
 
-// click-away and Escape close whichever dropdown is open
-document.addEventListener('click', (e) => { if (!$('menu').contains(e.target)) closeMenus(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+// mobile: nav + account controls collapse behind a hamburger toggle below the
+// bar's breakpoint (see .bar__collapse in admin.css) — this folds it back up
+const barEl = document.querySelector('.bar');
+function closeMobileMenu() {
+  $('bar-collapse').classList.remove('is-open');
+  $('menu-toggle').setAttribute('aria-expanded', 'false');
+}
+$('menu-toggle').addEventListener('click', () => {
+  const willOpen = !$('bar-collapse').classList.contains('is-open');
+  $('bar-collapse').classList.toggle('is-open', willOpen);
+  $('menu-toggle').setAttribute('aria-expanded', String(willOpen));
+  if (!willOpen) closeMenus();  // folding the whole nav also folds any open dropdown
+});
+
+// click-away and Escape close whichever dropdown (and, on mobile, the nav) is open
+document.addEventListener('click', (e) => {
+  if (!$('menu').contains(e.target)) closeMenus();
+  if (!barEl.contains(e.target)) closeMobileMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { closeMenus(); closeMobileMenu(); }
+});
 
 // ---- users (Account ▸ Users) --------------------------------------------
 // Two levels, per the user_roles migration:
@@ -998,6 +1025,7 @@ function compareRows(a, b, col, dir) {
 
 function listCell(row, col) {
   const td = document.createElement('td');
+  td.className = 'col-' + col;   // lets a specific column's width be overridden per entity
   if (col === '_thumb') {
     if (row.storage_path) {
       const img = document.createElement('img');
@@ -1020,6 +1048,7 @@ function listCell(row, col) {
 
 function renderList() {
   const def = ENTITIES[state.entity];
+  $('list').dataset.entity = state.entity;
   $('list-title').textContent = def.label;
   $('bulk-upload').hidden = !def.upload;
   const filter = $('list-filter').value.trim().toLowerCase();
@@ -2522,19 +2551,20 @@ function renderInlineUpload(def, row, join, isFirst) {
     return i;
   };
 
-  const typeSel   = document.createElement('select');
-  const rightsSel = document.createElement('select');
+  const typeSel       = document.createElement('select');
+  const rightsSel     = document.createElement('select');
   fillLookupSelect(typeSel, 'media_types', stickyMedia.type ?? 'photo');
   fillLookupSelect(rightsSel, 'rights_statuses', stickyMedia.rights);
-  const creditIn  = textInput('e.g. Photo © Jane Collector, used with permission');
-  const altIn     = textInput('Describe the image for a11y + SEO');
-  const captionIn = textInput('Optional');
-  const sourceIn  = textInput('Optional');
+  const creditIn      = textInput('e.g. Photo © Jane Collector, used with permission');
+  const altIn         = textInput('Describe the image for a11y + SEO');
+  const captionIn     = textInput('Optional');
+  const descriptionIn = textInput('Optional — internal notes, not shown on the public site');
+  const sourceIn      = textInput('Optional');
   // carry the last-used shared attribution into this upload
   creditIn.value = stickyMedia.credit ?? '';
   sourceIn.value = stickyMedia.source_url ?? '';
-  const embedIn   = textInput('For video instead of a file');
-  const fileIn    = document.createElement('input');
+  const embedIn       = textInput('For video instead of a file');
+  const fileIn        = document.createElement('input');
   fileIn.type = 'file';
   fileIn.accept = 'image/*,.pdf';
 
@@ -2547,6 +2577,7 @@ function renderInlineUpload(def, row, join, isFirst) {
     field('Credit *', creditIn, true),
     field('Alt text *', altIn, true),
     field('Caption', captionIn),
+    field('Description', descriptionIn, true),
     field('Source URL', sourceIn),
     field('Embed URL', embedIn, true),
     field('File', fileIn, true),
@@ -2582,6 +2613,7 @@ function renderInlineUpload(def, row, join, isFirst) {
         credit,
         alt_text: alt,
         caption: captionIn.value.trim() || null,
+        description: descriptionIn.value.trim() || null,
         source_url: sourceIn.value.trim() || null,
         embed_url: embed || null,
       };
@@ -2821,6 +2853,11 @@ async function openDrawer(row) {
       input = document.createElement('textarea');
       input.name = f.col;
       input.value = value ?? '';
+    } else if (f.kind === 'checkbox') {
+      input = document.createElement('input');
+      input.type = 'checkbox';
+      input.name = f.col;
+      input.checked = Boolean(value);
     } else {
       input = document.createElement('input');
       input.name = f.col;
@@ -2926,6 +2963,10 @@ function collectPayload() {
       continue;
     }
     const el = form.querySelector(`[name="${f.col}"]`);
+    if (f.kind === 'checkbox') {
+      payload[f.col] = el.checked;
+      continue;
+    }
     const raw = el.value.trim();
     if (f.kind === 'array') {
       payload[f.col] = raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
@@ -2981,6 +3022,16 @@ $('record-form').addEventListener('submit', async (e) => {
         }
       } else if (!state.editing && !payload.embed_url) {
         throw new Error('Pick a file or provide an embed URL.');
+      }
+    }
+
+    // Exclusive checkbox fields (e.g. "Feature on homepage") — at most one
+    // row across the table may have it true, so standing this one up stands
+    // the previous holder down first. clear then set, same as is_primary.
+    for (const f of def.fields) {
+      if (f.kind === 'checkbox' && f.exclusive && payload[f.col]) {
+        const { error } = await db.from(def.table).update({ [f.col]: false }).eq(f.col, true);
+        if (error) throw new Error(error.message);
       }
     }
 
@@ -3122,7 +3173,12 @@ function renderBulkGrid() {
     cap.placeholder = 'Caption (optional)';
     cap.className = 'bulk-caption';
 
-    card.append(img, name, alt, cap);
+    const desc = document.createElement('input');
+    desc.type = 'text';
+    desc.placeholder = 'Description (optional, internal notes)';
+    desc.className = 'bulk-description';
+
+    card.append(img, name, alt, cap, desc);
     return card;
   }));
 }
@@ -3178,6 +3234,7 @@ $('bulk-submit').addEventListener('click', async () => {
         ...shared,
         alt_text: card.querySelector('.bulk-alt').value.trim(),
         caption: card.querySelector('.bulk-caption').value.trim() || null,
+        description: card.querySelector('.bulk-description').value.trim() || null,
         storage_path: path,
         width,
         height,
