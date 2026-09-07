@@ -700,6 +700,22 @@ input[type="checkbox"] {
   border-radius: 3px;
 }
 .rte-btn:hover { background: #f0f0fa; opacity: 1; }
+.rte-btn.is-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.rte-btn:disabled { opacity: 0.4; pointer-events: none; }
+.rte-source {
+  display: block;
+  width: 100%;
+  min-height: 9rem;
+  max-height: 28rem;
+  padding: 0.6rem 0.75rem;
+  border: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink);
+  resize: vertical;
+  outline: none;
+}
 .rte {
   min-height: 9rem;
   max-height: 28rem;

@@ -1194,7 +1194,10 @@ async function duplicateRow(row) {
 const RTE_ALLOWED = {
   P: [], BR: [], HR: [], STRONG: [], B: [], EM: [], I: [], U: [], SMALL: [],
   H2: [], H3: [], H4: [], UL: [], OL: [], LI: [], BLOCKQUOTE: [], A: ['href'],
-  TABLE: [], THEAD: [], TBODY: [], TR: [], TH: [], TD: [],
+  TABLE: [], THEAD: [], TBODY: [], TR: [],
+  // merged cells (a pasted Word/Docs/spreadsheet table) — values are
+  // validated below, not just the attribute names
+  TH: ['colspan', 'rowspan'], TD: ['colspan', 'rowspan'],
   // images are picked from the media library and inserted as lightbox triggers;
   // credit/caption ride along as data-* so the front-end lightbox shows them
   IMG: ['src', 'alt', 'class', 'data-gallery', 'data-credit', 'data-caption'],
@@ -1273,6 +1276,15 @@ function sanitizeHtml(html) {
         // 'lb-trigger' is the only class we emit — normalize whatever's here to it
         if (child.hasAttribute('class')) child.setAttribute('class', 'lb-trigger');
       }
+      if (tag === 'TD' || tag === 'TH') {
+        // a pasted Word/Docs/spreadsheet table's merged cells — keep only a
+        // sane positive span, dropping anything non-numeric (or "1", a no-op)
+        for (const name of ['colspan', 'rowspan']) {
+          const n = parseInt(child.getAttribute(name), 10);
+          if (Number.isInteger(n) && n > 1) child.setAttribute(name, String(Math.min(n, 20)));
+          else child.removeAttribute(name);
+        }
+      }
       clean(child);
     }
   };
@@ -1312,6 +1324,7 @@ const RTE_TOOLS = [
   { cmd: 'small',               label: 'Sm',      title: 'Small text — citations, footers' },
   { cmd: 'createLink',          label: 'Link',    title: 'Add link' },
   { cmd: 'removeFormat',        label: 'Clear',   title: 'Clear formatting' },
+  { cmd: 'toggleSource',        label: '</>',     title: 'Edit raw HTML' },
 ];
 
 // Insert a table skeleton (header row + body rows) at the caret. execCommand
@@ -1475,6 +1488,37 @@ function wrapSelection(tagName, editor) {
   sel.addRange(r);
 }
 
+// Swaps the WYSIWYG editor for a plain <textarea> of its HTML, for the rare
+// edit execCommand can't do — a colspan/rowspan, an attribute the toolbar has
+// no button for. The rest of the toolbar is disabled while it's open (their
+// execCommands target document selection, meaningless against a hidden
+// contenteditable). Coming back sanitizes the typed HTML through the same
+// whitelist paste and save use, so raw mode can't smuggle in anything they
+// wouldn't — collectPayload also sanitizes on submit, so leaving the editor
+// in source mode and saving straight away still comes out clean.
+function toggleRawHtml(wrap, toolbar, editor, btn) {
+  const open = wrap.querySelector('textarea.rte-source');
+  const otherBtns = [...toolbar.querySelectorAll('.rte-btn')].filter((b) => b !== btn);
+  if (open) {
+    editor.innerHTML = sanitizeHtml(open.value);
+    open.remove();
+    editor.hidden = false;
+    btn.classList.remove('is-active');
+    otherBtns.forEach((b) => { b.disabled = false; });
+    editor.focus();
+  } else {
+    const ta = document.createElement('textarea');
+    ta.className = 'rte-source';
+    ta.spellcheck = false;
+    ta.value = editor.innerHTML;
+    editor.hidden = true;
+    editor.after(ta);
+    btn.classList.add('is-active');
+    otherBtns.forEach((b) => { b.disabled = true; });
+    ta.focus();
+  }
+}
+
 function buildRichField(field, value) {
   const wrap = document.createElement('div');
   wrap.className = 'rte-wrap';
@@ -1537,6 +1581,8 @@ function buildRichField(field, value) {
         insertTable(editor);
       } else if (t.cmd === 'insertImage') {
         insertImage(editor);
+      } else if (t.cmd === 'toggleSource') {
+        toggleRawHtml(wrap, toolbar, editor, b);
       } else if (t.cmd === 'formatBlock') {
         document.execCommand('formatBlock', false, t.arg);
       } else {
@@ -3124,7 +3170,10 @@ function collectPayload() {
     if (f.kind === 'hero') continue;
     if (f.kind === 'rich') {
       const ed = form.querySelector(`.rte[data-col="${f.col}"]`);
-      const html = ed ? sanitizeHtml(ed.innerHTML) : '';
+      // saving straight out of raw-HTML mode (never toggled back to WYSIWYG)
+      // reads the open textarea instead of the editor's now-stale innerHTML
+      const source = ed?.closest('.rte-wrap')?.querySelector('textarea.rte-source');
+      const html = sanitizeHtml(source ? source.value : (ed?.innerHTML ?? ''));
       payload[f.col] = html || null;
       continue;
     }
