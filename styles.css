@@ -1544,7 +1544,21 @@ a.dossier-tag:hover, a.dossier-tag:focus-visible {
   color: var(--color-ink-mid);
   font-weight: 700;
 }
-.variation-card__notes { margin-top: 1rem; color: var(--color-ink-mid); font-size: var(--step--1); }
+/* Standard paragraph styling — same size/color as the description above it,
+   not the smaller muted treatment other card metadata gets. */
+.variation-card__notes { margin-top: 1rem; }
+/* The release page shows this variation as a teaser; "More Info" sends the
+   reader to its own page (renderVariationPage) for the full detail, notes
+   included. Same treatment as .release-charlink. */
+.variation-card__more {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-family: var(--font-brand);
+  font-weight: 700;
+  color: var(--color-red-dk);
+  text-decoration: none;
+}
+.variation-card__more:hover { text-decoration: underline; }
 
 .release-gallery-block { margin: 0 0 2rem; }
 .release-gallery-block .dek { margin: 0 0 0.75rem; }

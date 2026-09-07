@@ -1059,7 +1059,7 @@ ${pager('dossier', adj?.prev, adj?.next)}`;
 // into a link back to the parent release (anchored to this exact card) and
 // adds an "On <release>" line — needed away from the release page, where the
 // variation otherwise has no context for which release it belongs to.
-function variationCard(v, { linkToRelease = false } = {}) {
+function variationCard(v, { linkToRelease = false, ownHref = null } = {}) {
   const vMedia = sortedMedia(v.media_variations);
   const vGallery = `var-${v.slug}`;
   const vType = v.variation_type
@@ -1092,10 +1092,18 @@ function variationCard(v, { linkToRelease = false } = {}) {
 
   const anchor = `var-${esc(v.slug)}`;
   const releaseHref = v.releases?.slug ? `/release/${esc(v.releases.slug)}.html#${anchor}` : null;
-  const vTitle = (linkToRelease && releaseHref)
-    ? `<a href="${releaseHref}">${esc(v.name)}</a>` : esc(v.name);
-  const vOnRelease = (linkToRelease && releaseHref && v.releases?.name)
+  // ownHref (release page) and linkToRelease (the variation's own page, or a
+  // line/series page) point opposite directions and are never both set —
+  // forward to the variation's own page, or back to its parent release.
+  const vTitle = ownHref
+    ? `<a href="${esc(ownHref)}">${esc(v.name)}</a>`
+    : (linkToRelease && releaseHref ? `<a href="${releaseHref}">${esc(v.name)}</a>` : esc(v.name));
+  const vOnRelease = (!ownHref && linkToRelease && releaseHref && v.releases?.name)
     ? `<p class="variation-card__meta">On <a href="${releaseHref}">${esc(v.releases.name)}</a></p>` : '';
+  // On the release page, this card is a teaser for the variation's own page —
+  // notes stay there rather than duplicating in full here, and a "More Info"
+  // link sends the reader on.
+  const moreInfo = ownHref ? `<a class="variation-card__more" href="${esc(ownHref)}">More Info</a>` : '';
 
   return `<li class="variation-card" id="${anchor}">
           ${vGalleryRow}
@@ -1107,19 +1115,22 @@ function variationCard(v, { linkToRelease = false } = {}) {
             ${vOnRelease}
             ${vMeta ? `<p class="variation-card__meta">${esc(vMeta)}</p>` : ''}
             ${v.description ? richText(v.description) : ''}
+            ${moreInfo}
             ${vValues ? `<p class="variation-card__values">${esc(vValues)}</p>` : ''}
-            ${v.notes ? `<div class="variation-card__notes"><p class="dek">Notes</p>${richText(v.notes)}</div>` : ''}
+            ${!ownHref && v.notes ? `<div class="variation-card__notes"><p class="dek">Notes</p>${richText(v.notes)}</div>` : ''}
           </div>
         </li>`;
 }
 
-// The URL of a variation's own page, for a variation tagged with a line
-// and/or series (see renderVariationPage) — null if it has neither and so
-// has no page of its own, only its inline card on the release page. Line
-// preferred when a variation carries both.
+// The URL of a variation's own page (see renderVariationPage). Nested under
+// whichever line/series it's tagged with; a variation with neither still
+// gets one, nested under its parent release instead — every variation has
+// a page now, just not always in the same place. Line preferred over series
+// when a variation carries both.
 function variationHref(v) {
   if (v.line_id && v.lines?.slug) return `/line/${v.lines.slug}/${v.slug}.html`;
   if (v.series_id && v.series?.slug) return `/series/${v.series.slug}/${v.slug}.html`;
+  if (v.releases?.slug) return `/release/${v.releases.slug}/${v.slug}.html`;
   return null;
 }
 
@@ -1258,28 +1269,20 @@ function renderReleasePage(r, variations, adj, related = '', siblings = [], line
           </ul>
         </section>` : '';
 
-  // A variation tagged with a line/series has its own page now (see
-  // renderVariationPage) — that page is the one true source for its detail,
-  // so here it's just a teaser tile linking out. An untagged variation (most
-  // of them — a card-back or paint difference, nothing more) has no page of
-  // its own, so it still gets the full card, same as always.
-  const untaggedVariations = (variations ?? []).filter((v) => !variationHref(v));
-  const taggedVariations = (variations ?? []).filter((v) => variationHref(v));
-  const variationsSection = (untaggedVariations.length || taggedVariations.length) ? `
+  // Every variation has its own page now (see renderVariationPage) — that
+  // page is the one true source for its full detail (notes included), so
+  // here it's a teaser: heading links out, description ends with a "More
+  // Info" link, notes stay off this page (see variationCard).
+  const variationsSection = (variations ?? []).length ? `
   <section class="release-variations">
     <div class="wrap">
       <div class="dossier-section-head">
         <p class="dek">Documented Variations</p>
         <h2>Variations</h2>
       </div>
-      ${untaggedVariations.length ? `<ul class="variation-list">
-        ${untaggedVariations.map((v) => variationCard(v)).join('\n        ')}
-      </ul>` : ''}
-      ${taggedVariations.length ? `
-      <p class="dek">Also released as</p>
-      <div class="figures-grid">
-        ${taggedVariations.map((v) => variationTile(v, variationHref(v))).join('\n        ')}
-      </div>` : ''}
+      <ul class="variation-list">
+        ${variations.map((v) => variationCard(v, { ownHref: variationHref(v) })).join('\n        ')}
+      </ul>
     </div>
   </section>` : '';
 
@@ -3184,18 +3187,14 @@ function buildSearchIndex(characters, releases, publications, screenMedia, merch
       k: 'Team', y: '', m: '',
     });
   }
-  // Only variations tagged with a line or series get a real page (renderVariationPage,
-  // nested under that line/series) — one search entry per such page. A variation
-  // tagged with neither has no standalone page and stays release-page-only.
+  // Every variation has its own page now (variationHref) — one search entry
+  // each, at whichever of those pages is its canonical one.
   for (const v of variations) {
-    if (v.line_id) idx.push({
-      t: v.name, u: `../line/${v.lines?.slug}/${v.slug}.html`, g: 'variation',
-      k: v.lines?.name ?? 'Variation', y: v.release_year ?? '',
-      m: kw(v.variation_type, v.region, v.card_type, v.releases?.name),
-    });
-    if (v.series_id) idx.push({
-      t: v.name, u: `../series/${v.series?.slug}/${v.slug}.html`, g: 'variation',
-      k: v.series?.name ?? 'Variation', y: v.release_year ?? '',
+    const href = variationHref(v);
+    if (!href) continue;
+    idx.push({
+      t: v.name, u: `..${href}`, g: 'variation',
+      k: v.lines?.name ?? v.series?.name ?? 'Variation', y: v.release_year ?? '',
       m: kw(v.variation_type, v.region, v.card_type, v.releases?.name),
     });
   }
@@ -3483,6 +3482,26 @@ for (const [i, r] of releases.entries()) {
     written++;
     console.log(`built release/${r.slug}.html`);
   } else skipped++;
+
+  // A variation with no line/series of its own gets its page nested here
+  // instead (tagged ones already got theirs from the line/series loop above)
+  // — every variation has an own page now, per variationHref.
+  const unnestedVariations = variations.filter((v) => !v.line_id && !v.series_id);
+  if (unnestedVariations.length) {
+    await mkdir(join(root, 'release', r.slug), { recursive: true });
+    const crumbs = [
+      { label: 'Home', href: '/index.html' },
+      { label: 'Toy Database', href: '/toys/index.html' },
+      { label: r.name, href: `/release/${r.slug}.html` },
+    ];
+    for (const v of unnestedVariations) {
+      const vHtml = renderVariationPage(v, crumbs);
+      if (await writeIfChanged(join(root, 'release', r.slug, `${v.slug}.html`), vHtml)) {
+        written++;
+        console.log(`built release/${r.slug}/${v.slug}.html`);
+      } else skipped++;
+    }
+  }
 }
 
 // Media hub — editorial page (intro + video library) + a page per item

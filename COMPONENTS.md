@@ -319,15 +319,15 @@ Prev/next yellow blocks (`.dossier-pager__next` right-aligns).
 - **`.release-manufacturer`** — in the sidebar under the powers card: the LINE's manufacturer
   logo (`__logo`, from `media_lines`) + name (`__name`, not the line name) on a
   white card, both linking to the line's `manufacturer_website` when set.
-- **`.release-variations` / `.variation-card`** — documented variants: per-card
-  `.variation-card__gallery`, `.variation-card__head` (`h3` + tags), `.variation-card__meta`
-  (line/series/year/region/action feature/accessories/card type — whichever the
-  variation overrides from its parent release), `.variation-card__values`
-  and `.variation-card__notes`. Only variations with *neither* a line nor a
-  series tag get the full card here — a tagged one has its own page instead
-  (see Line / Series / Team pages below), so showing the full card here too
-  would just be duplicated content; instead it's an "Also released as"
-  `.figures-grid` of plain teaser tiles beneath the full cards, linking out.
+- **`.release-variations` / `.variation-card`** — every variation gets a card
+  here, but it's a *teaser*: `.variation-card__gallery`, `.variation-card__head`
+  (`h3` — a link to the variation's own page, see below — + tags),
+  `.variation-card__meta` (line/series/year/region/action feature/accessories/
+  card type — whichever the variation overrides from its parent release),
+  description, then a `.variation-card__more` "More Info" link (same look as
+  `.release-charlink`) sending the reader to that page, then `.variation-card__values`.
+  Notes are deliberately left off here — they only show on the variation's own
+  page, standard paragraph styling (no smaller/muted override).
 
 ---
 
@@ -349,19 +349,37 @@ components, no new CSS beyond the two hover rules noted below:
   with the row — a line's releases (grouped by series/wave, like the Toy
   Database), a series' releases, or a team's member characters (plain
   `.figure-card`s to their dossiers).
-- A line or series page can ALSO have its own `.release-variations` /
-  `.variation-list` section — a `release_variations` row tagged with that
-  line/series directly (not via its parent release), e.g. a foreign
-  licensee's rebrand documented as a variation on the original release
-  rather than a release of its own ("Superman (Estrela)" on the Kenner
-  Superman page, tagged `line_id` = Estrela). Reuses the exact `.variation-card`
-  the release page renders — same shared `variationCard()` helper — except
-  the heading links back to that parent release, anchored to the card
-  (`/release/<slug>.html#var-<slug>`; every variation card carries that id
-  now, `text-decoration: none` + underline-on-hover like `.release-manufacturer__name`)
-  and an "On `<release>`" line gives it context it wouldn't need on the
-  release's own page.
+- A line or series page can ALSO have its own "Documented Variations" —
+  a `release_variations` row tagged with that line/series directly (not via
+  its parent release), e.g. a foreign licensee's rebrand documented as a
+  variation on the original release rather than a release of its own
+  ("Superman (Estrela)" on the Kenner Superman page, tagged `line_id` =
+  Estrela). Unlike the release page, this is a plain `.dossier-figures` /
+  `.figures-grid` of bare `variationTile()`s (photo + name only, built like
+  a stripped-down `figureCard`) — each opens that variation's own page.
 - `.dossier-pager` closes out every one of these pages.
+
+### A variation's own page
+
+Every variation gets one now — `renderVariationPage()` — nested under
+whichever tagged it: `/line/<line-slug>/<variation-slug>.html`,
+`/series/<series-slug>/<variation-slug>.html`, or, for a variation with
+neither tag (most of them — a card-back or paint difference, nothing more),
+`/release/<release-slug>/<variation-slug>.html`. `variationHref()` computes
+the one canonical URL for a given variation (line, then series, then
+release), so it's the single thing every other page's link/tile points at.
+The page itself is just a breadcrumb (`.dossier-head`) plus the exact
+`.variation-card` the release page's own list would show, in full-detail
+mode (`{ linkToRelease: true }`) — notes included, and an "On `<release>`"
+line for context.
+
+On the **release page** itself, that same `.variation-card` renders in
+teaser mode instead (`{ ownHref: variationHref(v) }`): the `h3` heading
+links out to the variation's own page, notes are left off (they'd just
+duplicate that page), and a `.variation-card__more` "More Info" link
+(styled like `.release-charlink`) follows the description. Every variation
+shows this way now, regardless of whether its own page is nested under a
+line, a series, or the release itself.
 
 Reached from the release page's Line/Series spec rows and a character's team
 tags/spec row, all now links instead of plain text.
