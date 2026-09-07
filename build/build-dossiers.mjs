@@ -3353,7 +3353,7 @@ function renderArticlePage(a, adj, related = '') {
   const subtitle = [articleDate(a), byline ? `By ${byline}` : null].filter(Boolean).join(' · ');
 
   const mainColumn = `
-      <article class="dossier-lede${a.template === 'single_column' ? ' media-lede' : ''}">
+      <article class="dossier-lede">
         ${a.dek ? `<p class="dek">${esc(a.dek)}</p>` : ''}
 ${media.length ? heroBlock : ''}
 ${bodyBlock}

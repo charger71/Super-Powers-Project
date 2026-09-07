@@ -192,9 +192,8 @@ between two sections stays 2rem instead of doubling. Keep that pair on anything 
 
 A News & Articles post can skip the grid entirely: its admin-editable `template`
 field (`'standard'` default, or `'single_column'`) picks between this two-column
-layout and a single narrow reading column — `.dossier-body > .wrap` holding just
-`.dossier-lede.media-lede` (the same "narrow single-column" combo the index pages'
-intro blurbs use, `max-width: 74ch`), no sidebar at all. The Details spec box and
+layout and a single column filling the full `.wrap` width — `.dossier-body > .wrap`
+holding just a plain `.dossier-lede`, no sidebar at all. The Details spec box and
 Related would only repeat the head tag/subtitle in that layout, so both are simply
 left out rather than finding them a new place to go — see `renderArticlePage`.
 
