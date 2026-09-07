@@ -55,15 +55,17 @@
   --font-mono:    "IBM Plex Mono", "Courier New", ui-monospace, monospace;
   --font-marker:  "Balloon Extra Bold", "Marker Felt", "Comic Sans MS", cursive;
 
+  --step--4: clamp(0.58rem, 0.56rem + 0.04vw, 0.62rem); /* smallest: .dek--sm */
+  --step--3: clamp(0.62rem, 0.6rem + 0.06vw, 0.66rem); /* .dek */
   --step--2: clamp(0.68rem, 0.66rem + 0.08vw, 0.72rem); /* micro: kickers, captions, meta */
   --step--1: clamp(0.75rem, 0.72rem + 0.15vw, 0.85rem);
   --step-0:  clamp(0.95rem, 0.9rem + 0.25vw, 1.05rem);
   --step-1:  clamp(1.1rem, 1rem + 0.5vw, 1.35rem);
   --step-2:  clamp(1.4rem, 1.15rem + 1.25vw, 1.9rem);
   --step-3:  clamp(1.6rem, 1.3rem + 1.5vw, 2.25rem);
-  --step-4:  clamp(2rem, 1.55rem + 2.25vw, 3.25rem);
+  --step-4:  clamp(2rem, 1.55rem + 2.25vw, 3.25rem); /* masthead wordmark, dossier-title */
   --step-5:  clamp(2.75rem, 1.9rem + 4.25vw, 5rem);
-  --step-6:  clamp(2.75rem, 7vw, 5.5rem); /* marquee: dossier-title */
+  --step-6:  clamp(2.75rem, 7vw, 5.5rem); /* unused — bigger than the dossier title */
 
   --page-max: 1240px;
   --gutter:   clamp(1rem, 2.5vw, 2.5rem);
@@ -143,10 +145,14 @@ button { font: inherit; cursor: pointer; }
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: var(--color-blue);
-  font-size: var(--step--1);
+  font-size: var(--step--3);
   margin: 0 0 0.5rem;
 }
-.dek--sm { font-size: var(--step--2); letter-spacing: 0.18em; }
+.dek--sm { font-size: var(--step--4); letter-spacing: 0.18em; }
+/* An article's dek is a standfirst — a whole intro paragraph, not a short
+   label — so it keeps .dek's kicker styling but reads at the old .dek size
+   rather than the new short-label one. */
+.dek--standfirst { font-size: var(--step--1); }
 
 /* Small edition line — used sparingly */
 .edition {
@@ -1068,8 +1074,8 @@ a.dossier-tag:hover, a.dossier-tag:focus-visible {
 .dossier-title {
   font-family: var(--font-brand);
   font-weight: 900;
-  font-size: var(--step-6);
-  line-height: 0.85;
+  font-size: var(--step-4);
+  line-height: 1;
   letter-spacing: -0.035em;
   text-transform: uppercase;
   color: var(--color-blue);
@@ -1287,6 +1293,12 @@ a.dossier-tag:hover, a.dossier-tag:focus-visible {
   letter-spacing: 0.03em;
 }
 .dossier-about tbody tr:nth-child(even) { background: rgba(var(--rgb-blue), 0.04); }
+/* First column is usually a row label (a name, a character) — left-aligned
+   reads as a label heading down the table; the rest stay centered as data. */
+.dossier-lede th:nth-child(1), .dossier-about th:nth-child(1),
+.dossier-lede td:nth-child(1), .dossier-about td:nth-child(1) {
+  text-align: left;
+}
 
 /* Horizontal rule — an in-article section divider */
 .dossier-lede hr, .dossier-about hr {
@@ -1564,8 +1576,11 @@ a.dossier-tag:hover, a.dossier-tag:focus-visible {
 .release-gallery-block .dek { margin: 0 0 0.75rem; }
 /* An article's lead image is the one place this block wraps a bare <img>
    instead of a .release-gallery grid — the grid's own images are rounded by
-   `.release-gallery img`, so the lead needs saying separately to match. */
-.release-gallery-block > img { border-radius: var(--radius); }
+   `.release-gallery img`, so the lead needs saying separately to match.
+   width:100% overrides the global img max-width:100% (which only ever
+   shrinks, never stretches) so a photo narrower than the column still
+   fills it edge to edge, matching the width of the text/tables around it. */
+.release-gallery-block > img { width: 100%; height: auto; border-radius: var(--radius); }
 /* the release page heads its gallery with the shared section head instead of a
    dek — keep the same gap above the grid */
 .release-gallery-block .dossier-section-head { margin-bottom: 0.75rem; }

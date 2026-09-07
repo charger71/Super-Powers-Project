@@ -3371,7 +3371,7 @@ function renderArticlePage(a, adj, related = '') {
 
   const mainColumn = `
       <article class="dossier-lede">
-        ${a.dek ? `<p class="dek">${esc(a.dek)}</p>` : ''}
+        ${a.dek ? `<p class="dek dek--standfirst">${esc(a.dek)}</p>` : ''}
 ${media.length ? heroBlock : ''}
 ${bodyBlock}
 ${sourcesSection}

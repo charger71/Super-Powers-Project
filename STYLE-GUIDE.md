@@ -73,15 +73,17 @@ Use the step tokens — never a raw `rem`/`px` font-size for display text.
 
 | Token | Range | Typical use |
 |---|---|---|
-| `--step--2` | 0.68–0.72rem | micro labels: kickers, figcaptions, card meta |
+| `--step--4` | 0.58–0.62rem | smallest: `.dek--sm` (photo credits, one-line asides) |
+| `--step--3` | 0.62–0.66rem | `.dek` (section kickers) |
+| `--step--2` | 0.68–0.72rem | micro labels: figcaptions, card meta |
 | `--step--1` | 0.75–0.85rem | secondary captions, fine print |
 | `--step-0` | 0.95–1.05rem | body copy (base) |
 | `--step-1` | 1.1–1.35rem | ledes, sub-headers |
 | `--step-2` | 1.4–1.9rem | card titles, section subheads |
 | `--step-3` | 1.6–2.25rem | section titles |
-| `--step-4` | 2–3.25rem | masthead wordmark |
+| `--step-4` | 2–3.25rem | masthead wordmark, dossier marquee title (`.dossier-title`) |
 | `--step-5` | 2.75–5rem | hero titles |
-| `--step-6` | 2.75–5.5rem | dossier marquee title (`.dossier-title`) |
+| `--step-6` | 2.75–5.5rem | (unused — reserve for anything bigger than the dossier title) |
 
 ### Voice conventions (how the roles read on the page)
 
