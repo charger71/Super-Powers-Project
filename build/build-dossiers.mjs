@@ -13,12 +13,20 @@
 import { writeFile, readFile, mkdir } from 'node:fs/promises';
 import { dirname, join, relative, sep as pathSep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { SUPABASE_URL, SUPABASE_KEY } from '../js/config.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Stand-in until real photography is attached (see CLAUDE.md conventions).
 const PLACEHOLDER = '../assets/sp-palceholder.jpg';
+
+// Cache-busts styles.css so a deploy shows up without readers needing a hard
+// refresh — content-hashed rather than a build timestamp, so the query
+// string (and so the cached copy) only changes when the CSS actually does.
+const STYLES_HREF = `/styles.css?v=${
+  createHash('md5').update(await readFile(join(root, 'styles.css'))).digest('hex').slice(0, 8)
+}`;
 
 const MEDIA_EMBED = 'media_assets(id,storage_path,embed_url,alt_text,credit)';
 // The screen-media VIDEO asset, plus poster_path/caption/source_url — used where
@@ -549,7 +557,7 @@ function pageShell({ title, description, ogImage, body }) {
   <meta property="og:title" content="${esc(title)} · Archive84">
   <meta property="og:description" content="${esc(description)}">
   <meta property="og:image" content="${esc(ogImage)}">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="${STYLES_HREF}">
 </head>
 <body>
 
@@ -2811,7 +2819,7 @@ function renderHome(characters, releases, screenMedia, merchandise, publicationC
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ARCHIVE84 — The DC Super Powers Reference Archive</title>
   <meta name="description" content="Archive84 is a visual reference to the DC Super Powers Collection — the characters, comics, and toys of 1984 and beyond.">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="${STYLES_HREF}">
 </head>
 <body>
 
