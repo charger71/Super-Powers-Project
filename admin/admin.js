@@ -358,6 +358,7 @@ const ENTITIES = {
       { col: 'published_at', label: 'Published (a future time schedules it)', kind: 'text',
         required: true, initial: () => localTimestamp() },
       { col: 'body',         label: 'Body',         kind: 'rich' },
+      { col: 'sources',      label: 'Sources (comma-separated URLs)', kind: 'array' },
     ],
   },
   editors: {

@@ -591,6 +591,7 @@ create table articles (
   dek          text,                                   -- standfirst / teaser
   body         text,                                   -- rich HTML from the admin editor
   template     text not null default 'standard',       -- 'standard' | 'single_column' — layout choice, code-level not a lookup table
+  sources      text[] default '{}',                    -- citation URLs
   author_id    uuid references editors(id) on delete set null,
   published_at timestamptz not null default now(),     -- future = scheduled, see RLS below
   created_at   timestamptz default now(),

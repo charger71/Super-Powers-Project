@@ -1265,7 +1265,7 @@ a.dossier-tag:hover, a.dossier-tag:focus-visible {
   border-collapse: collapse;
   margin: 0 0 1.25rem;
   font-family: var(--font-body);
-  font-size: var(--step-0);
+  font-size: var(--step--1);
   /* wide tables scroll rather than blow out the page on small screens */
   display: block;
   overflow-x: auto;
@@ -1274,8 +1274,8 @@ a.dossier-tag:hover, a.dossier-tag:focus-visible {
 .dossier-lede td, .dossier-about td {
   border: 1px solid var(--color-rule);
   padding: 0.5rem 0.7rem;
-  text-align: left;
-  vertical-align: top;
+  text-align: center;
+  vertical-align: middle;
 }
 .dossier-lede th, .dossier-about th {
   background: var(--color-blue);
@@ -1283,7 +1283,7 @@ a.dossier-tag:hover, a.dossier-tag:focus-visible {
   font-family: var(--font-brand);
   font-weight: 900;
   text-transform: uppercase;
-  font-size: var(--step--1);
+  font-size: var(--step--2);
   letter-spacing: 0.03em;
 }
 .dossier-about tbody tr:nth-child(even) { background: rgba(var(--rgb-blue), 0.04); }

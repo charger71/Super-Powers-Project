@@ -3350,6 +3350,15 @@ function renderArticlePage(a, adj, related = '') {
           ${richText(a.body)}
         </section>` : '';
 
+  const sources = (a.sources ?? []).filter(Boolean);
+  const sourcesSection = sources.length ? `
+        <div class="release-sources">
+          <p class="dek">Sources</p>
+          <ul>
+            ${sources.map((s) => `<li><a href="${esc(s)}" rel="nofollow noopener">${esc(s.replace(/^https?:\/\//, '').replace(/\/$/, ''))}</a></li>`).join('\n            ')}
+          </ul>
+        </div>` : '';
+
   const subtitle = [articleDate(a), byline ? `By ${byline}` : null].filter(Boolean).join(' · ');
 
   const mainColumn = `
@@ -3357,6 +3366,7 @@ function renderArticlePage(a, adj, related = '') {
         ${a.dek ? `<p class="dek">${esc(a.dek)}</p>` : ''}
 ${media.length ? heroBlock : ''}
 ${bodyBlock}
+${sourcesSection}
       </article>`;
 
   // 'single_column' drops the sidebar entirely — its Details box only ever
