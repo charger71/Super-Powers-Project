@@ -1,0 +1,11 @@
+-- ============================================================
+-- Article template chooser
+--
+-- 'standard' (default) is the existing two-column layout — main copy +
+-- sidebar (Details spec, Related). 'single_column' drops the sidebar for a
+-- full-width reading column, for a long-form or photo-heavy piece where the
+-- Details box would just repeat what the head/subtitle already says. A fixed
+-- code-level choice, not an editable vocab table — same shape as
+-- media_releases.role, no lookup table or check constraint.
+-- ============================================================
+alter table articles add column if not exists template text not null default 'standard';

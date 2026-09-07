@@ -190,6 +190,14 @@ under 800px. Each main-column section (`.dossier-lede__more`, `.dossier-spec`,
 **and** bottom, so the rhythm holds in any order — adjacent margins collapse, so the gap
 between two sections stays 2rem instead of doubling. Keep that pair on anything new.
 
+A News & Articles post can skip the grid entirely: its admin-editable `template`
+field (`'standard'` default, or `'single_column'`) picks between this two-column
+layout and a single narrow reading column — `.dossier-body > .wrap` holding just
+`.dossier-lede.media-lede` (the same "narrow single-column" combo the index pages'
+intro blurbs use, `max-width: 74ch`), no sidebar at all. The Details spec box and
+Related would only repeat the head tag/subtitle in that layout, so both are simply
+left out rather than finding them a new place to go — see `renderArticlePage`.
+
 - **`.dossier-lede`** — lead article; first paragraph is enlarged. Rich-text children
   (`h2`–`h4`, `ul`/`ol`, `table`, `blockquote`, `hr`, `a`, `small`) are all styled — this
   is the admin-editor output surface. Same styling applies inside `.dossier-about`.

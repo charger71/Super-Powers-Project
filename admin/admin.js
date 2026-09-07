@@ -331,6 +331,12 @@ const ENTITIES = {
       { col: 'title',        label: 'Title',        kind: 'text', required: true },
       { col: 'slug',         label: 'Slug',         kind: 'slug', required: true },
       { col: 'kind',         label: 'Kind',         kind: 'lookup', table: 'article_kinds', required: true, initial: 'news' },
+      // A fixed, code-level layout choice (each value is a real branch in
+      // renderArticlePage), not an editable vocab table — same reasoning as
+      // media role fields. required + initial for the same NOT NULL reason
+      // published_at below is: an empty select submits as null, not "absent".
+      { col: 'template',     label: 'Template',     kind: 'enum', values: ['standard', 'single_column'],
+        required: true, initial: 'standard' },
       // The image that heads the post. Not a column — it is the primary row in
       // media_articles, the same one the "Attached media" section below flags,
       // so there is exactly one source of truth for the hero. This field just

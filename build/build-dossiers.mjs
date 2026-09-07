@@ -3350,13 +3350,43 @@ function renderArticlePage(a, adj, related = '') {
           ${richText(a.body)}
         </section>` : '';
 
-  const spec = specRows([
-    ['Kind', articleKind(a)],
-    ['Published', articleDate(a)],
-    ['By', byline],
-  ]);
-
   const subtitle = [articleDate(a), byline ? `By ${byline}` : null].filter(Boolean).join(' · ');
+
+  const mainColumn = `
+      <article class="dossier-lede${a.template === 'single_column' ? ' media-lede' : ''}">
+        ${a.dek ? `<p class="dek">${esc(a.dek)}</p>` : ''}
+${media.length ? heroBlock : ''}
+${bodyBlock}
+      </article>`;
+
+  // 'single_column' drops the sidebar entirely — its Details box only ever
+  // repeated the head tag + subtitle above, and Related is a sidebar
+  // convention everywhere else on the site, so there's nowhere else for it
+  // to go in a single reading column.
+  const bodySection = a.template === 'single_column' ? `
+  <section class="dossier-body">
+    <div class="wrap">
+${mainColumn}
+    </div>
+  </section>` : `
+  <section class="dossier-body">
+    <div class="wrap dossier-body__grid">
+${mainColumn}
+      <div class="dossier-sidebar">
+        <aside class="dossier-spec">
+          <p class="dek">Details</p>
+          <dl>
+            ${specRows([
+              ['Kind', articleKind(a)],
+              ['Published', articleDate(a)],
+              ['By', byline],
+            ])}
+          </dl>
+        </aside>
+${related}
+      </div>
+    </div>
+  </section>`;
 
   const body = `
   <section class="dossier-head">
@@ -3375,28 +3405,7 @@ ${backAndCrumb([
       ${subtitle ? `<p class="dossier-aliases">${esc(subtitle)}</p>` : ''}
     </div>
   </section>
-
-  <section class="dossier-body">
-    <div class="wrap dossier-body__grid">
-
-      <article class="dossier-lede">
-        ${a.dek ? `<p class="dek">${esc(a.dek)}</p>` : ''}
-${media.length ? heroBlock : ''}
-${bodyBlock}
-      </article>
-
-      <div class="dossier-sidebar">
-        <aside class="dossier-spec">
-          <p class="dek">Details</p>
-          <dl>
-            ${spec}
-          </dl>
-        </aside>
-${related}
-      </div>
-
-    </div>
-  </section>
+${bodySection}
 ${pager('news', adj?.prev, adj?.next)}`;
 
   return pageShell({ title: a.title, description, ogImage: hero, body });
