@@ -1470,7 +1470,7 @@ async function insertInternalLink(editor) {
       <h3>Internal link</h3>
       <p class="hint">${hasSelectedText ? 'Pick what the selected text should link to.' : 'Pick a record — its name becomes the link text.'}</p>
       <select id="rte-link-kind">
-        ${kinds.map((k) => `<option value="${esc(k.table)}">${esc(k.label)}</option>`).join('')}
+        ${kinds.map((k) => `<option value="${escHtml(k.table)}">${escHtml(k.label)}</option>`).join('')}
       </select>
       <input id="rte-link-input" list="${listId}" placeholder="Loading…" autocomplete="off" disabled>
       <datalist id="${listId}"></datalist>
