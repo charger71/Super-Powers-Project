@@ -747,21 +747,23 @@ input[type="checkbox"] {
 .rte a { color: var(--accent); }
 .rte img { display: block; max-width: 100%; height: auto; margin: 0.7rem 0; border-radius: 4px; }
 
-/* "Insert image" media picker (opened from the rich-text toolbar) */
-.rte-img-dialog {
+/* Search-and-pick dialogs opened from the rich-text toolbar — "Insert image"
+   (media library) and "Internal Link" (any record with a public page) share
+   this shell: title, hint, search input, Cancel/Insert actions. */
+.rte-picker-dialog {
   border: 1px solid var(--rule);
   border-radius: 8px;
   padding: 1.25rem;
   max-width: 440px;
   width: 90vw;
 }
-.rte-img-dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
-.rte-img-dialog h3 { margin: 0 0 0.3rem; }
-.rte-img-dialog .hint { margin: 0 0 0.75rem; }
-.rte-img-dialog input { margin-bottom: 1rem; }
-.rte-img-dialog__actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
-.rte-img-dialog__actions button { width: auto; }
-.rte-img-dialog__actions .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.rte-picker-dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
+.rte-picker-dialog h3 { margin: 0 0 0.3rem; }
+.rte-picker-dialog .hint { margin: 0 0 0.75rem; }
+.rte-picker-dialog input, .rte-picker-dialog select { margin-bottom: 1rem; }
+.rte-picker-dialog__actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+.rte-picker-dialog__actions button { width: auto; }
+.rte-picker-dialog__actions .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* image cropper -----------------------------------------------------------
    The shaded surround is the crop box's own giant box-shadow (clipped by the

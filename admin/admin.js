@@ -1329,7 +1329,8 @@ const RTE_TOOLS = [
   { cmd: 'insertTable',         label: 'Table',   title: 'Insert table' },
   { cmd: 'insertImage',         label: 'Image',   title: 'Insert image — from media library' },
   { cmd: 'small',               label: 'Sm',      title: 'Small text — citations, footers' },
-  { cmd: 'createLink',          label: 'Link',    title: 'Add link' },
+  { cmd: 'createLink',          label: 'Link',    title: 'Add link — external URL' },
+  { cmd: 'insertInternalLink',  label: 'Archive Link', title: 'Link to a character, release, comic, and so on — searchable, no URL to type' },
   { cmd: 'removeFormat',        label: 'Clear',   title: 'Clear formatting' },
   { cmd: 'toggleSource',        label: '</>',     title: 'Edit raw HTML' },
 ];
@@ -1377,7 +1378,7 @@ async function insertImage(editor) {
   const byLabel = new Map(assets.map((m) => [mediaLabel(m), m]));
 
   const dialog = document.createElement('dialog');
-  dialog.className = 'rte-img-dialog';
+  dialog.className = 'rte-picker-dialog';
   const listId = 'dl-rte-img';
   dialog.innerHTML = `
     <form method="dialog">
@@ -1385,7 +1386,7 @@ async function insertImage(editor) {
       <p class="hint">Pick from the media library — credit and alt travel with the asset.</p>
       <input id="rte-img-input" list="${listId}" placeholder="Type to search…" autocomplete="off">
       <datalist id="${listId}"></datalist>
-      <div class="rte-img-dialog__actions">
+      <div class="rte-picker-dialog__actions">
         <button type="button" id="rte-img-cancel">Cancel</button>
         <button type="submit" value="insert" class="primary">Insert</button>
       </div>
@@ -1424,6 +1425,110 @@ async function insertImage(editor) {
       sel.addRange(end);
     }
     document.execCommand('insertHTML', false, `${img.outerHTML}<p><br></p>`);
+  });
+
+  document.body.append(dialog);
+  dialog.showModal();
+  input.focus();
+}
+
+// Every record type with a public page (VIEW_DIRS) — searchable, so a link
+// picks a page by name instead of hand-typing e.g. /dossier/superman.html.
+// Same "never hand-typed IDs" reasoning as every FK picker in the admin,
+// applied to hyperlinks. Derived from VIEW_DIRS/ENTITIES rather than another
+// hand-kept list, since RELATED_TYPES above shows exactly how those drift
+// (it's missing articles/lines/series/teams).
+function linkableEntityKinds() {
+  return Object.entries(VIEW_DIRS).map(([key, dir]) => {
+    const def = ENTITIES[key];
+    return { table: def.table, label: def.label, titleCol: def.titleCol ?? 'name', dir };
+  });
+}
+
+// Search-and-pick a record to link to, across every type with a public page.
+// Selected text (if any) becomes the link; with just a caret, the picked
+// record's own name/title is inserted as the link text. Modeled on
+// insertImage: the caret is captured before the modal steals focus and
+// restored before the link is applied — the same fix the "Link" button's
+// createLink needed, since a <dialog> steals focus exactly like prompt() does.
+async function insertInternalLink(editor) {
+  const sel = window.getSelection();
+  let savedRange = null;
+  if (sel.rangeCount) {
+    const r = sel.getRangeAt(0);
+    if (editor.contains(r.commonAncestorContainer)) savedRange = r.cloneRange();
+  }
+  const hasSelectedText = !!savedRange && !savedRange.collapsed;
+
+  const kinds = linkableEntityKinds();
+  const listId = 'dl-rte-link';
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'rte-picker-dialog';
+  dialog.innerHTML = `
+    <form method="dialog">
+      <h3>Internal link</h3>
+      <p class="hint">${hasSelectedText ? 'Pick what the selected text should link to.' : 'Pick a record — its name becomes the link text.'}</p>
+      <select id="rte-link-kind">
+        ${kinds.map((k) => `<option value="${esc(k.table)}">${esc(k.label)}</option>`).join('')}
+      </select>
+      <input id="rte-link-input" list="${listId}" placeholder="Type to search…" autocomplete="off">
+      <datalist id="${listId}"></datalist>
+      <div class="rte-picker-dialog__actions">
+        <button type="button" id="rte-link-cancel">Cancel</button>
+        <button type="submit" value="insert" class="primary">Insert</button>
+      </div>
+    </form>`;
+
+  const kindSelect = dialog.querySelector('#rte-link-kind');
+  const input = dialog.querySelector('#rte-link-input');
+  const datalist = dialog.querySelector(`#${listId}`);
+  let byLabel = new Map();
+
+  async function loadKind(kind) {
+    input.value = '';
+    input.disabled = true;
+    const prevPlaceholder = input.placeholder;
+    input.placeholder = 'Loading…';
+    const { data, error } = await db.from(kind.table).select(`id, slug, ${kind.titleCol}`).order(kind.titleCol);
+    input.disabled = false;
+    input.placeholder = prevPlaceholder;
+    byLabel = new Map((error ? [] : data).map((r) =>
+      [`${r[kind.titleCol]} · ${r.slug}`, { slug: r.slug, dir: kind.dir, name: r[kind.titleCol] }]));
+    datalist.replaceChildren(...[...byLabel.keys()].map((label) => {
+      const o = document.createElement('option');
+      o.value = label;
+      return o;
+    }));
+  }
+
+  kindSelect.addEventListener('change', () => loadKind(kinds.find((k) => k.table === kindSelect.value)));
+  await loadKind(kinds[0]);
+
+  dialog.querySelector('#rte-link-cancel').addEventListener('click', () => dialog.close('cancel'));
+
+  dialog.addEventListener('close', () => {
+    const record = dialog.returnValue === 'insert' ? byLabel.get(input.value) : null;
+    dialog.remove();
+    if (!record) return;   // cancelled, or nothing valid typed
+
+    const href = `/${record.dir}/${record.slug}.html`;
+    editor.focus();
+    if (savedRange) {
+      sel.removeAllRanges();
+      sel.addRange(savedRange);
+    } else {                                   // no prior caret → append at the end
+      const end = document.createRange();
+      end.selectNodeContents(editor);
+      end.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(end);
+    }
+    if (hasSelectedText) {
+      document.execCommand('createLink', false, href);
+    } else {
+      document.execCommand('insertHTML', false, `<a href="${href}">${escHtml(record.name)}</a>`);
+    }
   });
 
   document.body.append(dialog);
@@ -1580,14 +1685,30 @@ function buildRichField(field, value) {
       editor.focus();
       try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch { /* older browsers */ }
       if (t.cmd === 'createLink') {
+        // prompt() steals focus to its own dialog and back — Chrome and
+        // Safari both drop the text selection across that round trip rather
+        // than restoring it, so by the time the dialog closes the selection
+        // is collapsed. createLink on a collapsed selection has nothing to
+        // wrap, so instead of linking the text picked (often a table cell,
+        // where the empty result is most obvious against the surrounding
+        // grid) it inserts a stray new link at the caret. Capture the range
+        // before prompting and restore it right after, before running the
+        // command.
+        const sel = window.getSelection();
+        const savedRange = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
         const url = prompt('Link URL (https://…)');
-        if (url) document.execCommand('createLink', false, url);
+        if (url) {
+          if (savedRange) { sel.removeAllRanges(); sel.addRange(savedRange); }
+          document.execCommand('createLink', false, url);
+        }
       } else if (t.cmd === 'small') {
         wrapSelection('small', editor);
       } else if (t.cmd === 'insertTable') {
         insertTable(editor);
       } else if (t.cmd === 'insertImage') {
         insertImage(editor);
+      } else if (t.cmd === 'insertInternalLink') {
+        insertInternalLink(editor);
       } else if (t.cmd === 'toggleSource') {
         toggleRawHtml(wrap, toolbar, editor, b);
       } else if (t.cmd === 'formatBlock') {
