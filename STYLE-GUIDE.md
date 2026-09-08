@@ -81,8 +81,8 @@ Use the step tokens — never a raw `rem`/`px` font-size for display text.
 | `--step-1` | 1.1–1.35rem | ledes, sub-headers |
 | `--step-2` | 1.4–1.9rem | card titles, section subheads |
 | `--step-3` | 1.6–2.25rem | section titles |
-| `--step-4` | 2–3.25rem | masthead wordmark, dossier marquee title (`.dossier-title`) |
-| `--step-5` | 2.75–5rem | hero titles |
+| `--step-4` | 2–3.25rem | masthead wordmark |
+| `--step-5` | 2.75–5rem | hero titles, dossier marquee title (`.dossier-title`) |
 | `--step-6` | 2.75–5.5rem | (unused — reserve for anything bigger than the dossier title) |
 
 ### Voice conventions (how the roles read on the page)

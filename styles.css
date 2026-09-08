@@ -63,8 +63,8 @@
   --step-1:  clamp(1.1rem, 1rem + 0.5vw, 1.35rem);
   --step-2:  clamp(1.4rem, 1.15rem + 1.25vw, 1.9rem);
   --step-3:  clamp(1.6rem, 1.3rem + 1.5vw, 2.25rem);
-  --step-4:  clamp(2rem, 1.55rem + 2.25vw, 3.25rem); /* masthead wordmark, dossier-title */
-  --step-5:  clamp(2.75rem, 1.9rem + 4.25vw, 5rem);
+  --step-4:  clamp(2rem, 1.55rem + 2.25vw, 3.25rem); /* masthead wordmark */
+  --step-5:  clamp(2.75rem, 1.9rem + 4.25vw, 5rem); /* hero titles, dossier-title */
   --step-6:  clamp(2.75rem, 7vw, 5.5rem); /* unused — bigger than the dossier title */
 
   --page-max: 1240px;
@@ -1074,7 +1074,7 @@ a.dossier-tag:hover, a.dossier-tag:focus-visible {
 .dossier-title {
   font-family: var(--font-brand);
   font-weight: 900;
-  font-size: var(--step-4);
+  font-size: var(--step-5);
   line-height: 1;
   letter-spacing: -0.035em;
   text-transform: uppercase;
