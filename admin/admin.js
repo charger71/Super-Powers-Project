@@ -1472,8 +1472,9 @@ async function insertInternalLink(editor) {
       <select id="rte-link-kind">
         ${kinds.map((k) => `<option value="${esc(k.table)}">${esc(k.label)}</option>`).join('')}
       </select>
-      <input id="rte-link-input" list="${listId}" placeholder="Type to search…" autocomplete="off">
+      <input id="rte-link-input" list="${listId}" placeholder="Loading…" autocomplete="off" disabled>
       <datalist id="${listId}"></datalist>
+      <p class="login__error" id="rte-link-error" hidden></p>
       <div class="rte-picker-dialog__actions">
         <button type="button" id="rte-link-cancel">Cancel</button>
         <button type="submit" value="insert" class="primary">Insert</button>
@@ -1483,17 +1484,33 @@ async function insertInternalLink(editor) {
   const kindSelect = dialog.querySelector('#rte-link-kind');
   const input = dialog.querySelector('#rte-link-input');
   const datalist = dialog.querySelector(`#${listId}`);
+  const errorEl = dialog.querySelector('#rte-link-error');
   let byLabel = new Map();
 
+  // Errors are surfaced (not swallowed) and the dialog is already visible
+  // (see below) while this runs, so a slow or failed query reads as "loading
+  // failed," never as "nothing happened when I clicked the button."
   async function loadKind(kind) {
     input.value = '';
     input.disabled = true;
-    const prevPlaceholder = input.placeholder;
     input.placeholder = 'Loading…';
-    const { data, error } = await db.from(kind.table).select(`id, slug, ${kind.titleCol}`).order(kind.titleCol);
+    errorEl.hidden = true;
+    let data, error;
+    try {
+      ({ data, error } = await db.from(kind.table).select(`id, slug, ${kind.titleCol}`).order(kind.titleCol));
+    } catch (err) {
+      error = err;
+    }
     input.disabled = false;
-    input.placeholder = prevPlaceholder;
-    byLabel = new Map((error ? [] : data).map((r) =>
+    input.placeholder = 'Type to search…';
+    if (error) {
+      byLabel = new Map();
+      datalist.replaceChildren();
+      errorEl.textContent = `Couldn't load ${kind.label.toLowerCase()}: ${error.message ?? error}`;
+      errorEl.hidden = false;
+      return;
+    }
+    byLabel = new Map(data.map((r) =>
       [`${r[kind.titleCol]} · ${r.slug}`, { slug: r.slug, dir: kind.dir, name: r[kind.titleCol] }]));
     datalist.replaceChildren(...[...byLabel.keys()].map((label) => {
       const o = document.createElement('option');
@@ -1503,7 +1520,6 @@ async function insertInternalLink(editor) {
   }
 
   kindSelect.addEventListener('change', () => loadKind(kinds.find((k) => k.table === kindSelect.value)));
-  await loadKind(kinds[0]);
 
   dialog.querySelector('#rte-link-cancel').addEventListener('click', () => dialog.close('cancel'));
 
@@ -1531,9 +1547,12 @@ async function insertInternalLink(editor) {
     }
   });
 
+  // Show the dialog first — before the initial query, not after — so a slow
+  // network never looks like the button did nothing. loadKind re-enables and
+  // focuses the search input itself once the first kind's records are in.
   document.body.append(dialog);
   dialog.showModal();
-  input.focus();
+  loadKind(kinds[0]).then(() => input.focus());
 }
 
 // Tab / Shift-Tab moves between cells while editing a table; Tab out of the
