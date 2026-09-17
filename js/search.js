@@ -14,6 +14,7 @@
     character: 'Character', toy: 'Toy', comic: 'Comic',
     media: 'Media', merch: 'Merchandise', creator: 'Creator',
     article: 'News', line: 'Line', series: 'Series', team: 'Team', variation: 'Variation',
+    artwork: 'Artwork',
   };
   const MAX_RESULTS = 200;
 

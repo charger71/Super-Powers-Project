@@ -402,9 +402,27 @@ async function fetchMerchandise() {
   }
 }
 
+// Artwork — style guides, card/box art, comic art, concept, prototype renders.
+// Each piece carries exactly one image (media_id, not a join table) and credits
+// the creator(s) who made it, plus the character(s) it depicts.
+async function fetchArtwork() {
+  try {
+    return await rest(
+      'artwork?select=*,' + MEDIA_EMBED_FULL + ',' +
+      'artwork_creators(sort_order,creators(name,slug)),' +
+      'artwork_characters(sort_order,characters(name,slug))' +
+      '&order=type.asc,year.asc'
+    );
+  } catch {
+    console.warn('Artwork unavailable (is the artwork migration applied?) — building without the artwork gallery.');
+    return [];
+  }
+}
+
 // Creators — public bio pages. Each carries an optional photo (media_creators)
 // and its "credited work" is derived from the reverse join tables (toys via
-// release_creators, comics via publication_creators). Tolerant: if the
+// release_creators, comics via publication_creators, artwork via
+// artwork_creators — that one has no role column). Tolerant: if the
 // overview/photo columns aren't migrated yet, build without creator pages.
 async function fetchCreators() {
   try {
@@ -412,7 +430,8 @@ async function fetchCreators() {
       'creators?select=*,' +
       `media_creators(is_primary,sort_order,${MEDIA_EMBED}),` +
       'release_creators(role,releases(name,slug,type,release_year)),' +
-      'publication_creators(role,publications(title,slug,kind,year))' +
+      'publication_creators(role,publications(title,slug,kind,year)),' +
+      'artwork_creators(artwork(title,slug,type,year))' +
       '&order=name.asc'
     );
   } catch {
@@ -812,7 +831,7 @@ function headshotFigure(media, label, fallbackAlt) {
 // doesn't resolve (deleted target, unknown type) — the caller drops it, so a
 // dead link degrades to "the card disappears", never a broken page. Kept in
 // lockstep with entity_types and the admin's RELATED_TYPES.
-function buildRelatedResolver({ characters, releases, publications, screenMedia, creators, merchandise, articles = [] }) {
+function buildRelatedResolver({ characters, releases, publications, screenMedia, creators, merchandise, articles = [], artwork = [] }) {
   const byId = (arr) => new Map(arr.map((x) => [x.id, x]));
   const TYPES = {
     character:    { map: byId(characters),  dir: 'dossier',  label: 'Character',
@@ -829,6 +848,8 @@ function buildRelatedResolver({ characters, releases, publications, screenMedia,
                     name: (m) => m.name,  thumb: (m) => mediaUrl(sortedMedia(m.media_merchandise)[0]) },
     article:      { map: byId(articles),    dir: 'news',     label: 'Article',
                     name: (a) => a.title, thumb: (a) => articleHero(a) },
+    artwork:      { map: byId(artwork),     dir: 'artwork',  label: 'Artwork',
+                    name: (a) => a.title, thumb: (a) => mediaUrl(a.media_assets) },
   };
   return (type, id) => {
     const t = TYPES[type];
@@ -1808,6 +1829,208 @@ ${pager('merchandise', adj?.prev, adj?.next)}`;
   return pageShell({ title: m.name, description, ogImage: hero, body });
 }
 
+// ---- artwork (style guides, card/box art, comic art, concept, prototypes) ----
+
+const ARTWORK_TYPE_LABELS = {
+  style_guide: 'Style Guide Art',
+  card_art: 'Card Art',
+  box_art: 'Box Art',
+  comic_cover: 'Comic Covers',
+  comic_interior: 'Comic Interiors',
+  concept: 'Concept Art',
+  prototype_render: 'Prototype Renders',
+};
+const ARTWORK_TYPE_ORDER = ['style_guide', 'card_art', 'box_art', 'comic_cover', 'comic_interior', 'concept', 'prototype_render'];
+
+// Reuses the figure-card shell, like merchCard — one image per piece
+// (artwork.media_id is a single FK, never a set), so no sortedMedia() here.
+function artworkCard(a) {
+  const img = mediaUrl(a.media_assets) ?? PLACEHOLDER;
+  const alt = a.media_assets?.alt_text ?? `${a.title}${a.year ? `, ${a.year}` : ''}`;
+  const meta = [ARTWORK_TYPE_LABELS[a.type] ?? titleCase((a.type ?? '').replaceAll('_', ' ')), a.year].filter(Boolean).join(' · ');
+  const credit = a.media_assets?.credit ? `<p class="figure-card__meta">Photo: ${esc(a.media_assets.credit)}</p>` : '';
+  return `<a class="figure-card artwork-card" href="/artwork/${esc(a.slug)}.html">
+          <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
+            <img class="figure-card__photo" src="${esc(img)}" alt="${esc(alt)}">
+          </div>
+          <h3>${esc(a.title)}</h3>
+          <p class="figure-card__meta">${esc(meta)}</p>
+          ${credit}
+        </a>`;
+}
+
+function renderArtworkIndex(artwork) {
+  const byType = new Map();
+  for (const a of artwork) {
+    const t = a.type ?? 'other';
+    if (!byType.has(t)) byType.set(t, []);
+    byType.get(t).push(a);
+  }
+  const orderedTypes = [
+    ...ARTWORK_TYPE_ORDER.filter((t) => byType.has(t)),
+    ...[...byType.keys()].filter((t) => !ARTWORK_TYPE_ORDER.includes(t)),
+  ];
+
+  const typeSections = orderedTypes.map((t) => `
+  <section class="dossier-figures merch-section">
+    <div class="wrap">
+      <div class="dossier-section-head">
+        <p class="dek">Artwork</p>
+        <h2>${esc(ARTWORK_TYPE_LABELS[t] ?? titleCase(t.replaceAll('_', ' ')))}</h2>
+      </div>
+      <div class="figures-grid">
+        ${byType.get(t).map(artworkCard).join('\n        ')}
+      </div>
+    </div>
+  </section>`).join('\n');
+
+  const emptyState = !artwork.length ? `
+  <section class="dossier-figures merch-section">
+    <div class="wrap">
+      <p class="media-empty">No artwork entered yet. Add pieces under <strong>Artwork</strong> in the admin, attach an image, and rebuild.</p>
+    </div>
+  </section>` : '';
+
+  const description = 'Style guides, card and box art, comic covers, concept sketches, and prototype renders from the Super Powers Collection.';
+
+  const body = `
+  <section class="dossier-head">
+    <div class="wrap">
+${backAndCrumb([
+  { label: 'Home', href: '/index.html' },
+  { label: 'Artwork' },
+])}
+
+      <div class="dossier-head__tags">
+        <span class="dossier-tag dossier-tag--blue">Gallery</span>
+      </div>
+
+      <h1 class="dossier-title">Artwork</h1>
+      <p class="dossier-aliases">The illustration behind the toys, comics, and packaging</p>
+    </div>
+  </section>
+
+  <section class="dossier-body">
+    <div class="wrap">
+      <article class="dossier-lede media-lede">
+        <p class="dek">Overview</p>
+        <p>Every figure and vehicle started as a drawing — style guide sheets defining a character's proportions and palette, card and box art painted for the package, comic covers and interiors, and the concept sketches and prototype renders along the way. This gallery collects that original artwork, credited to the artists who made it.</p>
+      </article>
+    </div>
+  </section>
+${typeSections}${emptyState}`;
+
+  return pageShell({ title: 'Artwork Gallery', description, ogImage: PLACEHOLDER, body });
+}
+
+function renderArtworkPage(a, adj, related = '') {
+  const hero = mediaUrl(a.media_assets) ?? PLACEHOLDER;
+
+  const chars = (a.artwork_characters ?? []).map((ac) => ac.characters).filter(Boolean);
+  const credits = (a.artwork_creators ?? []).map((ac) => ac.creators).filter((c) => c?.name);
+
+  const description = stripTags(a.description ?? `${a.title} — Super Powers artwork${a.year ? `, ${a.year}` : ''}.`)
+    .slice(0, 158);
+
+  const typeTag = a.type
+    ? `<span class="dossier-tag dossier-tag--blue">${esc(ARTWORK_TYPE_LABELS[a.type] ?? titleCase(a.type.replaceAll('_', ' ')))}</span>`
+    : '';
+
+  const spec = specRows([
+    ['Type', ARTWORK_TYPE_LABELS[a.type] ?? (a.type ? titleCase(a.type.replaceAll('_', ' ')) : null)],
+    ['Year', a.year],
+  ]);
+
+  // A single image, not a photo set (artwork.media_id is one FK) — still a
+  // release-gallery-block so it opens the shared lightbox like every other
+  // detail page's photography.
+  const heroBlock = `
+        <section class="release-gallery-block">
+          <p class="dek">Artwork</p>
+          <div class="release-gallery">
+            <figure>
+              ${lbTrigger(a.media_assets, `artwork-${a.slug}`, a.title)}
+              ${a.media_assets?.credit ? `<figcaption>Photo: ${esc(a.media_assets.credit)}</figcaption>` : ''}
+            </figure>
+          </div>
+        </section>`;
+
+  const descSection = a.description ? `
+        <section class="dossier-about">
+          <h3>About</h3>
+          ${richText(a.description)}
+        </section>` : '';
+
+  // Same Credits block a release uses for design/sculpt credits — artwork_creators
+  // has no role column, so it's just a name, linked to the creator's bio page.
+  const creditsSection = credits.length ? `
+        <section class="dossier-about">
+          <h3>Credits</h3>
+          <ul class="credits-list">
+            ${credits.map((c) => `<li><a href="/creators/${esc(c.slug)}.html">${esc(c.name)}</a></li>`).join('\n            ')}
+          </ul>
+        </section>` : '';
+
+  const charsSection = chars.length ? `
+  <section class="dossier-enemies">
+    <div class="wrap">
+      <div class="dossier-section-head">
+        <p class="dek">Featured</p>
+        <h2>Characters</h2>
+      </div>
+      <ul class="enemies-list">
+        ${chars.map((ch) => `<li><a class="enemy-link" href="/dossier/${esc(ch.slug)}.html">${esc(ch.name)}</a></li>`).join('\n        ')}
+      </ul>
+    </div>
+  </section>` : '';
+
+  const subtitle = ['Super Powers artwork', a.year].filter(Boolean).join(' · ');
+
+  const body = `
+  <section class="dossier-head">
+    <div class="wrap">
+${backAndCrumb([
+  { label: 'Home', href: '/index.html' },
+  { label: 'Artwork', href: '/artwork/index.html' },
+  { label: a.title },
+])}
+
+      <div class="dossier-head__tags">
+        ${typeTag}
+      </div>
+
+      <h1 class="dossier-title">${esc(a.title)}</h1>
+      ${subtitle ? `<p class="dossier-aliases">${esc(subtitle)}</p>` : ''}
+    </div>
+  </section>
+
+  <section class="dossier-body">
+    <div class="wrap dossier-body__grid">
+
+      <article class="dossier-lede">
+${heroBlock}
+${descSection}
+${creditsSection}
+      </article>
+
+      <div class="dossier-sidebar">
+        <aside class="dossier-spec">
+          <p class="dek">Specifications</p>
+          <dl>
+            ${spec}
+          </dl>
+        </aside>
+${related}
+      </div>
+
+    </div>
+  </section>
+${charsSection}
+${pager('artwork', adj?.prev, adj?.next)}`;
+
+  return pageShell({ title: a.title, description, ogImage: hero, body });
+}
+
 // ---- publication (comic) detail page ------------------------------------
 
 const PUB_KIND_LABEL = {
@@ -1960,12 +2183,15 @@ function renderCreatorPage(cr, adj, related = '') {
     .sort((a, b) => (a.release_year ?? 9999) - (b.release_year ?? 9999) || a.name.localeCompare(b.name));
   const comics = groupCredits(cr.publication_creators, 'publications', (p) => p.slug)
     .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999) || a.title.localeCompare(b.title));
+  const artworkPieces = groupCredits(cr.artwork_creators, 'artwork', (a) => a.slug)
+    .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999) || a.title.localeCompare(b.title));
 
   const spec = specRows([
     ['Role', cr.role_summary],
     ['Years', lifespan],
     ['Toys credited', toys.length || null],
     ['Comics credited', comics.length || null],
+    ['Artwork credited', artworkPieces.length || null],
   ]);
 
   const portraitSidebar = `
@@ -1997,11 +2223,12 @@ function renderCreatorPage(cr, adj, related = '') {
             ${items.map((it) => `<li><a href="/${hrefBase}/${esc(it.slug)}.html">${esc(labelOf(it))}</a>${metaOf(it) ? ` <span class="credit-meta">${esc(metaOf(it))}</span>` : ''}${creditRoles(it.roles)}</li>`).join('\n            ')}
           </ul>`;
 
-  const creditedSection = (toys.length || comics.length) ? `
+  const creditedSection = (toys.length || comics.length || artworkPieces.length) ? `
         <section class="dossier-about">
           <h3>Credited Work</h3>
           ${toys.length ? `<p class="dek">Toys &amp; Figures</p>${creditList(toys, 'release', (r) => r.name, (r) => [r.release_year, titleCase(r.type)].filter(Boolean).join(' · '))}` : ''}
           ${comics.length ? `<p class="dek">Comics</p>${creditList(comics, 'comics', (p) => p.title, (p) => p.year ? String(p.year) : '')}` : ''}
+          ${artworkPieces.length ? `<p class="dek">Artwork</p>${creditList(artworkPieces, 'artwork', (a) => a.title, (a) => [a.year, ARTWORK_TYPE_LABELS[a.type] ?? (a.type ? titleCase(a.type.replaceAll('_', ' ')) : null)].filter(Boolean).join(' · '))}` : ''}
         </section>` : `
         <section class="dossier-about">
           <p class="hint">No credited work recorded yet.</p>
@@ -3122,7 +3349,7 @@ function renderTimeline(releases, publications, screenMedia) {
 // relative to /search/index.html (one level deep) so they resolve correctly
 // wherever the site is mounted — matching the relativize() philosophy, which
 // can't reach a JSON file or a fetch() inside a static script.
-function buildSearchIndex(characters, releases, publications, screenMedia, merchandise, creators, articles = [], lines = [], seriesRows = [], teams = [], variations = []) {
+function buildSearchIndex(characters, releases, publications, screenMedia, merchandise, creators, articles = [], lines = [], seriesRows = [], teams = [], variations = [], artwork = []) {
   const kw = (...parts) => parts.flat().filter(Boolean).join(' ').toLowerCase();
   const idx = [];
 
@@ -3195,6 +3422,13 @@ function buildSearchIndex(characters, releases, publications, screenMedia, merch
       k: 'Team', y: '', m: '',
     });
   }
+  for (const a of artwork) {
+    idx.push({
+      t: a.title, u: `../artwork/${a.slug}.html`, g: 'artwork',
+      k: ARTWORK_TYPE_LABELS[a.type] ?? titleCase((a.type ?? 'artwork').replaceAll('_', ' ')),
+      y: a.year ?? '', m: kw(a.type),
+    });
+  }
   // Every variation has its own page now (variationHref) — one search entry
   // each, at whichever of those pages is its canonical one.
   for (const v of variations) {
@@ -3215,7 +3449,7 @@ function renderSearch(indexCount) {
   const filters = [
     ['all', 'Everything'], ['character', 'Characters'], ['toy', 'Toys'],
     ['comic', 'Comics'], ['media', 'Media'], ['merch', 'Merchandise'],
-    ['creator', 'Creators'], ['article', 'News'],
+    ['creator', 'Creators'], ['article', 'News'], ['artwork', 'Artwork'],
   ];
   const filterBtns = filters.map(([g, label], i) =>
     `<button type="button" class="search-filter${i === 0 ? ' is-active' : ''}" data-group="${g}">${esc(label)}</button>`
@@ -3248,7 +3482,8 @@ function renderSearch(indexCount) {
           <a href="/media/index.html">Media</a>,
           <a href="/merchandise/index.html">Merchandise</a>,
           <a href="/creators/index.html">Creators</a>,
-          <a href="/news/index.html">News</a>.</p>
+          <a href="/news/index.html">News</a>,
+          <a href="/artwork/index.html">Artwork</a>.</p>
       </noscript>
     </div>
   </section>
@@ -3431,7 +3666,7 @@ ${pager('news', adj?.prev, adj?.next)}`;
 
 // ---- main ---------------------------------------------------------------
 
-const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems, lineInfoById, articles, captionRows, lines, seriesRows, teams] = await Promise.all([
+const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variationsByRelease, screenMedia, merchandise, allPublications, creators, relatedItems, lineInfoById, articles, captionRows, lines, seriesRows, teams, artwork] = await Promise.all([
   fetchCharacters(), fetchReleases(), fetchPublicationsByCharacter(), fetchEnemiesByCharacter(),
   fetchCreatorsByCharacter(), fetchVariationsByRelease(), fetchScreenMedia(), fetchMerchandise(),
   rest(`publications?select=*,media_publications(is_primary,sort_order,${MEDIA_EMBED}),publication_creators(role,creators(name,slug)),publication_characters(characters(name,slug))&order=kind.asc,year.asc`).catch(() => []),
@@ -3439,12 +3674,12 @@ const [characters, releases, pubsByChar, enemiesByChar, creatorsByChar, variatio
   // Translation pins for comic pages — keyed by media_id (a page image), not
   // publication_id, since it's not a PostgREST child of publications.
   rest(`publication_page_captions?select=*&order=sort_order`).catch(() => []),
-  fetchLines(), fetchSeriesRows(), fetchTeams(),
+  fetchLines(), fetchSeriesRows(), fetchTeams(), fetchArtwork(),
 ]);
 
 // Resolve curated related_items against the rows we just fetched. `relatedFor`
 // yields a ready-to-embed sidebar block (or '') for any source record.
-const resolveRelatedTarget = buildRelatedResolver({ characters, releases, publications: allPublications, screenMedia, creators, merchandise, articles });
+const resolveRelatedTarget = buildRelatedResolver({ characters, releases, publications: allPublications, screenMedia, creators, merchandise, articles, artwork });
 const relatedFor = (type, id) => relatedSidebar(resolveRelated(relatedItems.get(`${type}:${id}`), resolveRelatedTarget));
 
 const captionsByMedia = new Map();
@@ -3472,6 +3707,7 @@ await mkdir(join(root, 'news'), { recursive: true });
 await mkdir(join(root, 'line'), { recursive: true });
 await mkdir(join(root, 'series'), { recursive: true });
 await mkdir(join(root, 'team'), { recursive: true });
+await mkdir(join(root, 'artwork'), { recursive: true });
 
 const adjacent = (arr, i) => arr.length > 1
   ? { prev: arr[(i - 1 + arr.length) % arr.length], next: arr[(i + 1) % arr.length] }
@@ -3580,6 +3816,22 @@ for (const [i, m] of merchandise.entries()) {
   if (await writeIfChanged(join(root, 'merchandise', `${m.slug}.html`), html)) {
     written++;
     console.log(`built merchandise/${m.slug}.html`);
+  } else skipped++;
+}
+
+// Artwork — index grid grouped by type + one detail page per piece
+{
+  const html = renderArtworkIndex(artwork);
+  if (await writeIfChanged(join(root, 'artwork', 'index.html'), html)) {
+    written++;
+    console.log('built artwork/index.html');
+  } else skipped++;
+}
+for (const [i, a] of artwork.entries()) {
+  const html = renderArtworkPage(a, adjacent(artwork, i), relatedFor('artwork', a.id));
+  if (await writeIfChanged(join(root, 'artwork', `${a.slug}.html`), html)) {
+    written++;
+    console.log(`built artwork/${a.slug}.html`);
   } else skipped++;
 }
 
@@ -3706,7 +3958,7 @@ for (const [dir, html] of [
 
 // Search — client-side index (JSON) + the search page that queries it
 {
-  const index = buildSearchIndex(characters, releases, allPublications, screenMedia, merchandise, creators, articles, lines, seriesRows, teams, allVariations);
+  const index = buildSearchIndex(characters, releases, allPublications, screenMedia, merchandise, creators, articles, lines, seriesRows, teams, allVariations, artwork);
   if (await writeIfChanged(join(root, 'search-index.json'), JSON.stringify(index))) {
     written++;
     console.log(`built search-index.json (${index.length} records)`);

@@ -16,6 +16,7 @@ supabase/.temp/
 # deployed by .github/workflows/rebuild.yml. Not committed; CI regenerates it.
 /index.html
 /search-index.json
+/artwork/
 /characters/
 /toys/
 /comics/

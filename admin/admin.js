@@ -382,9 +382,7 @@ const ENTITIES = {
     titleCol: 'title',
     orderBy: { col: 'title', ascending: true },
     listCols: ['title', 'slug', 'type', 'year'],
-    // No relatedType: 'artwork' is not in entity_types, so it can be neither
-    // source nor target of a curated "Related" link yet. Add the entity_types
-    // row first if artwork ever gets public pages.
+    relatedType: 'artwork',
     linkJoins: [
       // who drew it, and who it depicts — the two questions every style guide
       // page and card-art scan needs answered
@@ -481,6 +479,7 @@ const RELATED_TYPES = [
   { slug: 'screen_media', label: 'Media',        table: 'screen_media', titleCol: 'title' },
   { slug: 'creator',      label: 'Creator',      table: 'creators',     titleCol: 'name'  },
   { slug: 'merchandise',  label: 'Merchandise',  table: 'merchandise',  titleCol: 'name'  },
+  { slug: 'artwork',      label: 'Artwork',      table: 'artwork',      titleCol: 'title' },
 ];
 const RELATED_BY_SLUG = new Map(RELATED_TYPES.map((t) => [t.slug, t]));
 
