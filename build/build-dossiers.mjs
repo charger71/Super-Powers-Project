@@ -403,12 +403,14 @@ async function fetchMerchandise() {
 }
 
 // Artwork — style guides, card/box art, comic art, concept, prototype renders.
-// Each piece carries exactly one image (media_id, not a join table) and credits
-// the creator(s) who made it, plus the character(s) it depicts.
+// May carry more than one image (different scans/prints/states of the same
+// piece, via media_artwork) and credits the creator(s) who made it, plus the
+// character(s) it depicts.
 async function fetchArtwork() {
   try {
     return await rest(
-      'artwork?select=*,' + MEDIA_EMBED_FULL + ',' +
+      'artwork?select=*,' +
+      `media_artwork(is_primary,sort_order,${MEDIA_EMBED}),` +
       'artwork_creators(sort_order,creators(name,slug)),' +
       'artwork_characters(sort_order,characters(name,slug))' +
       '&order=type.asc,year.asc'
@@ -849,7 +851,7 @@ function buildRelatedResolver({ characters, releases, publications, screenMedia,
     article:      { map: byId(articles),    dir: 'news',     label: 'Article',
                     name: (a) => a.title, thumb: (a) => articleHero(a) },
     artwork:      { map: byId(artwork),     dir: 'artwork',  label: 'Artwork',
-                    name: (a) => a.title, thumb: (a) => mediaUrl(a.media_assets) },
+                    name: (a) => a.title, thumb: (a) => mediaUrl(sortedMedia(a.media_artwork)[0]) },
   };
   return (type, id) => {
     const t = TYPES[type];
@@ -1842,13 +1844,14 @@ const ARTWORK_TYPE_LABELS = {
 };
 const ARTWORK_TYPE_ORDER = ['style_guide', 'card_art', 'box_art', 'comic_cover', 'comic_interior', 'concept', 'prototype_render'];
 
-// Reuses the figure-card shell, like merchCard — one image per piece
-// (artwork.media_id is a single FK, never a set), so no sortedMedia() here.
+// Reuses the figure-card shell, like merchCard — the card always shows the
+// primary (or first) image, however many are attached.
 function artworkCard(a) {
-  const img = mediaUrl(a.media_assets) ?? PLACEHOLDER;
-  const alt = a.media_assets?.alt_text ?? `${a.title}${a.year ? `, ${a.year}` : ''}`;
+  const media = sortedMedia(a.media_artwork);
+  const img = mediaUrl(media[0]) ?? PLACEHOLDER;
+  const alt = media[0]?.alt_text ?? `${a.title}${a.year ? `, ${a.year}` : ''}`;
   const meta = [ARTWORK_TYPE_LABELS[a.type] ?? titleCase((a.type ?? '').replaceAll('_', ' ')), a.year].filter(Boolean).join(' · ');
-  const credit = a.media_assets?.credit ? `<p class="figure-card__meta">Photo: ${esc(a.media_assets.credit)}</p>` : '';
+  const credit = media[0]?.credit ? `<p class="figure-card__meta">Photo: ${esc(media[0].credit)}</p>` : '';
   return `<a class="figure-card artwork-card" href="/artwork/${esc(a.slug)}.html">
           <div class="figure-card__flip figure-card__flip--static" aria-hidden="true">
             <img class="figure-card__photo" src="${esc(img)}" alt="${esc(alt)}">
@@ -1924,7 +1927,8 @@ ${typeSections}${emptyState}`;
 }
 
 function renderArtworkPage(a, adj, related = '') {
-  const hero = mediaUrl(a.media_assets) ?? PLACEHOLDER;
+  const media = sortedMedia(a.media_artwork);
+  const hero = mediaUrl(media[0]) ?? PLACEHOLDER;
 
   const chars = (a.artwork_characters ?? []).map((ac) => ac.characters).filter(Boolean);
   const credits = (a.artwork_creators ?? []).map((ac) => ac.creators).filter((c) => c?.name);
@@ -1941,19 +1945,16 @@ function renderArtworkPage(a, adj, related = '') {
     ['Year', a.year],
   ]);
 
-  // A single image, not a photo set (artwork.media_id is one FK) — still a
-  // release-gallery-block so it opens the shared lightbox like every other
-  // detail page's photography.
-  const heroBlock = `
+  const galleryInline = media.length ? `
         <section class="release-gallery-block">
           <p class="dek">Artwork</p>
           <div class="release-gallery">
-            <figure>
-              ${lbTrigger(a.media_assets, `artwork-${a.slug}`, a.title)}
-              ${a.media_assets?.credit ? `<figcaption>Photo: ${esc(a.media_assets.credit)}</figcaption>` : ''}
-            </figure>
+            ${media.map((im) => `<figure>
+              ${lbTrigger(im, `artwork-${a.slug}`, a.title)}
+              ${im.credit ? `<figcaption>Photo: ${esc(im.credit)}</figcaption>` : ''}
+            </figure>`).join('\n            ')}
           </div>
-        </section>`;
+        </section>` : '';
 
   const descSection = a.description ? `
         <section class="dossier-about">
@@ -2008,7 +2009,7 @@ ${backAndCrumb([
     <div class="wrap dossier-body__grid">
 
       <article class="dossier-lede">
-${heroBlock}
+${galleryInline}
 ${descSection}
 ${creditsSection}
       </article>

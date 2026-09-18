@@ -424,7 +424,6 @@ create table artwork (
   type          text not null references artwork_types(slug) on update cascade on delete restrict,
   year          smallint,
   description   text,
-  media_id      uuid references media_assets(id) on delete set null,
   created_at    timestamptz default now(),
   updated_at    timestamptz default now()
 );
@@ -440,6 +439,16 @@ create table artwork_characters (
   sort_order   int default 0,   -- editorial order in the admin's link editor
   primary key (artwork_id, character_id)
 );
+-- Artwork can carry more than one image (different scans/prints/states of the
+-- same piece) — see 20260918000000_media_artwork.sql.
+create table media_artwork (
+  media_id   uuid references media_assets(id) on delete cascade,
+  artwork_id uuid references artwork(id)      on delete cascade,
+  sort_order smallint default 0,
+  is_primary boolean default false,
+  primary key (media_id, artwork_id)
+);
+create index on media_artwork (artwork_id);
 
 -- ============================================================
 -- Publications (comics, mini-comics, books, RPG)
@@ -719,7 +728,7 @@ begin
     'character_enemies','character_creators','creators',
     'releases','release_creators','release_characters','release_variations',
     'media_assets','media_releases','media_characters','media_creators','media_variations','media_lines',
-    'artwork','artwork_creators','artwork_characters',
+    'artwork','artwork_creators','artwork_characters','media_artwork',
     'publications','media_publications','publication_creators','publication_characters',
     'publication_page_captions',
     'screen_media','interviews','merchandise','merchandise_characters','media_merchandise',

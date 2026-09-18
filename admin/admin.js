@@ -382,6 +382,9 @@ const ENTITIES = {
     titleCol: 'title',
     orderBy: { col: 'title', ascending: true },
     listCols: ['title', 'slug', 'type', 'year'],
+    // more than one image per piece — different scans/prints/states of the
+    // same artwork (e.g. a style guide page reprinted across multiple sources).
+    mediaJoin: { table: 'media_artwork', fk: 'artwork_id' },
     relatedType: 'artwork',
     linkJoins: [
       // who drew it, and who it depicts — the two questions every style guide
@@ -395,11 +398,6 @@ const ENTITIES = {
       { col: 'type',        label: 'Type',        kind: 'lookup', table: 'artwork_types', required: true },
       { col: 'year',        label: 'Year',        kind: 'number' },
       { col: 'description', label: 'Description', kind: 'rich' },
-      // the scan/photo itself — one asset, like interviews. Attribution lives on
-      // the asset (credit/rights/alt captured at upload in the Media tab).
-      { col: 'media_id',    label: 'Image (media asset)', kind: 'fk', table: 'media_assets',
-        fkCols: 'id, caption, alt_text, credit', fkOrder: 'created_at',
-        fkLabel: (m) => `${m.caption || m.alt_text || 'untitled'} · ${m.credit}` },
     ],
   },
   creators: {
