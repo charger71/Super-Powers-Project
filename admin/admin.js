@@ -574,6 +574,8 @@ async function refreshAuth() {
   $('logout').hidden = !session;
   $('rebuild').hidden = !session;
   $('rebuild-all-wrap').hidden = !session;
+  $('deploy').hidden = !session;
+  $('deploy-link').hidden = !session;
   $('menu').hidden = !session;
   $('menu-toggle').hidden = !session;
   $('user-email').textContent = session?.user?.email ?? '';
@@ -618,6 +620,35 @@ $('rebuild').addEventListener('click', async () => {
   } finally {
     btn.disabled = false;
     setTimeout(() => { btn.textContent = 'Rebuild site'; }, 5000);
+  }
+});
+
+// ---- deploy (GitHub Actions "Build & deploy site" workflow, via the
+// trigger-deploy Edge Function — see supabase/functions/trigger-deploy) ----
+$('deploy').addEventListener('click', async () => {
+  const btn = $('deploy');
+  btn.disabled = true;
+  btn.textContent = 'Deploying…';
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Session expired — sign in again.');
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/trigger-deploy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+    btn.textContent = 'Triggered ✓';
+  } catch (err) {
+    btn.textContent = 'Deploy failed';
+    console.error('Deploy trigger failed', err);
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = 'Deploy site'; }, 5000);
   }
 });
 

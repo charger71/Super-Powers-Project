@@ -391,6 +391,13 @@ deno_version = 2
 enabled = true
 verify_jwt = true
 
+# Fires the GitHub Actions build & deploy from the admin header. verify_jwt
+# stays on: any signed-in co-author may call it, and it re-checks the caller's
+# session itself before touching the GitHub API.
+[functions.trigger-deploy]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

@@ -75,6 +75,23 @@ input[type="checkbox"] {
   white-space: nowrap;
 }
 .bar button { background: transparent; border-color: rgba(255, 255, 255, 0.4); }
+/* "View runs" — opens the GitHub Actions workflow in a new tab, for watching
+   a deploy the #deploy button triggered (or checking past runs). Styled to
+   match the transparent header buttons. */
+.bar__link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  text-decoration: none;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bar__link:hover { opacity: 0.88; }
 
 /* everything but the brand — nav + account controls — so it can be collapsed
    as one block behind the hamburger toggle below the breakpoint (see below) */
