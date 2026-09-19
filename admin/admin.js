@@ -15,6 +15,12 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 // Users panel uses it to prompt for a new password on arrival.
 const INITIAL_AUTH_TYPE = new URLSearchParams(location.hash.slice(1)).get('type');
 
+// The local rebuild button only works against build/serve.mjs, which binds to
+// localhost only (see that file) — on the live site there's no /api/rebuild
+// to hit, so hide it there and leave "Deploy site" (the GitHub Action) as the
+// only rebuild path.
+const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+
 const publicUrl = (path) => `${SUPABASE_URL}/storage/v1/object/public/media/${path}`;
 
 // "now" as an ISO-8601 string carrying the browser's own UTC offset, e.g.
@@ -572,8 +578,8 @@ async function refreshAuth() {
   $('login-view').hidden = !!session;
   $('app-view').hidden = !session;
   $('logout').hidden = !session;
-  $('rebuild').hidden = !session;
-  $('rebuild-all-wrap').hidden = !session;
+  $('rebuild').hidden = !session || !IS_LOCAL;
+  $('rebuild-all-wrap').hidden = !session || !IS_LOCAL;
   $('deploy').hidden = !session;
   $('deploy-link').hidden = !session;
   $('menu').hidden = !session;
